@@ -1,0 +1,11 @@
+/target
+**/target
+.DS_Store
+
+# Node/TS
+/sdk/node_modules
+/sdk/dist
+
+# IDE
+.idea
+.vscode

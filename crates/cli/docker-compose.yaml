@@ -1,0 +1,183 @@
+name: rgbldk-cli-e2e
+
+volumes:
+  bitcoin-data:
+  node-a-data:
+  node-b-data:
+
+networks:
+  rgbldk-regtest:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.0.0/24
+
+services:
+  bitcoind:
+    image: bitlightlabs/bitcoind:v27.0
+    restart: unless-stopped
+    networks:
+      rgbldk-regtest:
+        ipv4_address: 172.31.0.10
+    ports:
+      - "18443:18443"
+      - "18444:18444"
+    volumes:
+      - bitcoin-data:/data/.bitcoin
+    command:
+      - -printtoconsole=1
+      - -regtest=1
+      - -server=1
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -rpcuser=${RPC_USER:-bitcoin}
+      - -rpcpassword=${RPC_PASSWORD:-bitcoin}
+      - -fallbackfee=0.0002
+      - -txindex=1
+      - -rest=1
+      - -listenonion=0
+
+  chain-init:
+    image: bitlightlabs/bitcoind:v27.0
+    restart: "no"
+    depends_on:
+      - bitcoind
+    networks:
+      - rgbldk-regtest
+    volumes:
+      - bitcoin-data:/data/.bitcoin
+    entrypoint: /bin/sh
+    command:
+      - -ec
+      - |
+        echo "Waiting for bitcoind RPC..."
+        bitcoin-cli -regtest -rpcconnect=bitcoind -rpcport=18443 -rpcuser="$${RPC_USER:-bitcoin}" -rpcpassword="$${RPC_PASSWORD:-bitcoin}" -rpcwait getblockchaininfo >/dev/null
+
+        # Mine enough blocks so:
+        # - coinbase outputs are spendable (100 blocks maturity)
+        # - esplora starts serving fee estimates immediately
+        bitcoin-cli -regtest -rpcconnect=bitcoind -rpcport=18443 -rpcuser="$${RPC_USER:-bitcoin}" -rpcpassword="$${RPC_PASSWORD:-bitcoin}" createwallet dev >/dev/null 2>&1 || true
+        ADDR="$$(bitcoin-cli -regtest -rpcconnect=bitcoind -rpcport=18443 -rpcuser="$${RPC_USER:-bitcoin}" -rpcpassword="$${RPC_PASSWORD:-bitcoin}" getnewaddress)"
+        bitcoin-cli -regtest -rpcconnect=bitcoind -rpcport=18443 -rpcuser="$${RPC_USER:-bitcoin}" -rpcpassword="$${RPC_PASSWORD:-bitcoin}" generatetoaddress 101 "$$ADDR" >/dev/null
+
+        echo "Mined 101 blocks to $$ADDR"
+
+  esplora:
+    image: bitlightlabs/esplora-api-rln:v0.3.0
+    restart: unless-stopped
+    depends_on:
+      - bitcoind
+    networks:
+      - rgbldk-regtest
+    ports:
+      - "${API_PORT:-3003}:3000"
+      - "${ELECTRUM_PORT:-50005}:50001"
+    volumes:
+      - bitcoin-data:/data/.bitcoin
+    command:
+      - -vvvv
+      - --network
+      - regtest
+      - --daemon-dir
+      - /data/.bitcoin
+      - --daemon-rpc-addr
+      # electrs in this image may not resolve Docker service names; use static IP instead
+      - 172.31.0.10:18443
+      - --cors
+      - "*"
+      - --cookie
+      - "${RPC_USER:-bitcoin}:${RPC_PASSWORD:-bitcoin}"
+      - --http-addr
+      - "0.0.0.0:3000"
+      - --electrum-rpc-addr
+      - 0.0.0.0:50001
+
+  wait-esplora:
+    image: curlimages/curl:8.12.1
+    restart: "no"
+    depends_on:
+      chain-init:
+        condition: service_completed_successfully
+      esplora:
+        condition: service_started
+    networks:
+      - rgbldk-regtest
+    command:
+      - sh
+      - -ec
+      - |
+        for _ in $$(seq 1 120); do
+          if curl -sSf http://esplora:3000/fee-estimates >/dev/null; then
+            echo "esplora ready"
+            exit 0
+          fi
+          sleep 0.5
+        done
+        echo "esplora not ready after timeout" >&2
+        exit 1
+
+  node-a:
+    image: ${RLN_IMAGE:-bitlightlabs/rln-ldk-node:latest}
+    restart: unless-stopped
+    depends_on:
+      wait-esplora:
+        condition: service_completed_successfully
+    networks:
+      - rgbldk-regtest
+    ports:
+      - "127.0.0.1:${NODE_A_HTTP_PORT:-8501}:8500"
+      - "127.0.0.1:${NODE_A_P2P_PORT:-9735}:9735"
+    volumes:
+      - node-a-data:/home/rgbldk/.ldk-node
+    command:
+      - rgbldkd
+      - server
+      - --allow-non-loopback-listen
+      - --listen
+      - 0.0.0.0:8500
+      - --ldk-listen
+      - 0.0.0.0:9735
+      - --network
+      - regtest
+      - --esplora-url
+      - http://esplora:3000
+      - --data-dir
+      - /home/rgbldk/.ldk-node
+      - --node-alias
+      - node-a
+      - --log-to-stdout
+      - --log-level
+      - info
+
+  node-b:
+    image: ${RLN_IMAGE:-bitlightlabs/rln-ldk-node:latest}
+    restart: unless-stopped
+    depends_on:
+      wait-esplora:
+        condition: service_completed_successfully
+    networks:
+      - rgbldk-regtest
+    ports:
+      - "127.0.0.1:${NODE_B_HTTP_PORT:-8502}:8500"
+      - "127.0.0.1:${NODE_B_P2P_PORT:-9736}:9735"
+    volumes:
+      - node-b-data:/home/rgbldk/.ldk-node
+    command:
+      - rgbldkd
+      - server
+      - --allow-non-loopback-listen
+      - --listen
+      - 0.0.0.0:8500
+      - --ldk-listen
+      - 0.0.0.0:9735
+      - --network
+      - regtest
+      - --esplora-url
+      - http://esplora:3000
+      - --data-dir
+      - /home/rgbldk/.ldk-node
+      - --node-alias
+      - node-b
+      - --log-to-stdout
+      - --log-level
+      - info

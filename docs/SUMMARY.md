@@ -1,0 +1,34 @@
+# Docs Index
+
+- Home: [README](README.md)
+- Getting Started
+  - Run daemon via Docker: [Docker guide](getting-started/docker.md)
+  - Regtest quickstart: [Regtest quickstart](getting-started/regtest.md)
+  - Local binary quickstart: [Local binary quickstart](getting-started/local-binary.md)
+- CLI
+  - Overview: [CLI overview](cli/README.md)
+  - Commands (reference): [Commands reference](cli/commands.md)
+  - Examples (copy/paste): [Examples](cli/examples.md)
+- HTTP API
+  - Overview: [HTTP API overview](api/README.md)
+  - HTTP API (reference): [HTTP API reference](api/http-api.md)
+  - Integration patterns: [Integration patterns](api/integration-patterns.md)
+- Concepts
+  - Architecture: [Architecture](concepts/architecture.md)
+  - Health vs readiness: [Health vs readiness](concepts/health-readiness.md)
+  - Events (ACK model): [Events (ACK model)](concepts/events-ack-model.md)
+  - Identifiers & formats: [Identifiers](concepts/identifiers.md)
+- Tutorials
+  - Open a channel: [Open a channel](tutorials/open-a-channel.md)
+  - Receive a payment: [Receive a payment](tutorials/receive-a-payment.md)
+  - Send a payment: [Send a payment](tutorials/send-a-payment.md)
+  - Consume events: [Consume events](tutorials/consume-events.md)
+- Troubleshooting: [Troubleshooting](troubleshooting/README.md)
+- Ops
+  - Logging & observability: [Logging & observability](ops/logging-observability.md)
+- Security
+  - Security model: [Security model](security/README.md)
+  - Threat model: [Threat model](security/threat-model.md)
+- Contributing: [Contributing](contributing.md)
+- Releases
+  - Versioning & upgrades: [Versioning & upgrades](releases/versioning.md)

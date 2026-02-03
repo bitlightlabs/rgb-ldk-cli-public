@@ -1,0 +1,31 @@
+[package]
+name = "rgbldk-cli"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92.0"
+
+[[bin]]
+name = "rgbldk"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5.27", features = ["derive", "env"] }
+rgbldk-api = { path = "../api" }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1.0", default-features = false, features = ["std", "derive"] }
+serde_json = { version = "1.0", default-features = false, features = ["std"] }
+tokio = { version = "1.37", features = ["rt-multi-thread", "macros", "time"] }
+comfy-table = "7.1.5"
+owo-colors = "4.2.0"
+supports-color = "3.0.2"
+toml = "0.8.20"
+
+[dev-dependencies]
+bitcoin = "0.32.6"
+
+[target.'cfg(not(no_download))'.dev-dependencies]
+electrsd = { version = "0.34.0", default-features = false, features = ["legacy", "esplora_a33e97e1", "corepc-node_27_2"] }
+
+[target.'cfg(no_download)'.dev-dependencies]
+electrsd = { version = "0.34.0", default-features = false, features = ["legacy"] }
+corepc-node = { version = "0.7.0", default-features = false, features = ["27_2"] }
