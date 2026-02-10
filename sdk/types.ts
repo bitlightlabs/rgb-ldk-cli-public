@@ -49,6 +49,7 @@ export interface PaymentDetailsDto {
   amount_msat: Int | null;
   kind: PaymentKind;
   fee_paid_msat: Int | null;
+  kind_details?: any;
 }
 
 export interface ChannelDetailsDto {
@@ -165,8 +166,16 @@ export type EventDto =
   | { type: "ChannelClosed"; data: {} }
   | { type: "Other"; data: { kind: string } };
 
+export interface HealthCheckDto {
+  name: string;
+  ok: boolean;
+  detail?: string | null;
+  hint?: string | null;
+}
+
 export interface OkResponse {
   ok: boolean;
+  checks?: HealthCheckDto[];
 }
 
 export interface NodeIdResponse {
@@ -175,4 +184,95 @@ export interface NodeIdResponse {
 
 export interface ListeningAddressesResponse {
   addresses: string[];
+}
+
+// ---- BOLT12 (offers + refunds) ----
+
+export interface Bolt12OfferReceiveRequest {
+  amount_msat: number;
+  description: string;
+  expiry_secs?: number | null;
+  quantity?: number | null;
+}
+
+export interface Bolt12OfferReceiveVarRequest {
+  description: string;
+  expiry_secs?: number | null;
+}
+
+export interface Bolt12OfferResponse {
+  offer: string; // bech32 lno...
+}
+
+export interface Bolt12OfferDecodeRequest {
+  offer: string;
+}
+
+export interface Bolt12OfferDecodeResponse {
+  offer_id: string;
+  signing_pubkey?: string | null;
+  description?: string | null;
+  issuer?: string | null;
+  amount_msat?: Int | null;
+  absolute_expiry_unix_secs?: Int | null;
+  chain_hashes: string[];
+  paths_count: number;
+  expects_quantity: boolean;
+}
+
+export interface Bolt12OfferSendRequest {
+  offer: string;
+  amount_msat?: number | null;
+  quantity?: number | null;
+  payer_note?: string | null;
+}
+
+export interface Bolt12RefundInitiateRequest {
+  amount_msat: number;
+  expiry_secs: number;
+  quantity?: number | null;
+  payer_note?: string | null;
+}
+
+export interface Bolt12RefundInitiateResponse {
+  refund: string; // bech32 lnr...
+  payment_id: string;
+}
+
+export interface Bolt12RefundDecodeRequest {
+  refund: string;
+}
+
+export interface Bolt12RefundDecodeResponse {
+  description: string;
+  issuer?: string | null;
+  amount_msat: Int;
+  absolute_expiry_unix_secs?: Int | null;
+  chain_hash: string;
+  payer_signing_pubkey: string;
+  payer_note?: string | null;
+  quantity?: Int | null;
+  paths_count: number;
+}
+
+export interface Bolt12RefundRequestPaymentRequest {
+  refund: string;
+}
+
+export interface Bolt12RefundRequestPaymentResponse {
+  invoice: string;
+  invoice_hex: string;
+  payment_id: string;
+}
+
+// ---- Payments (unified) ----
+
+export interface PaymentWaitRequest {
+  timeout_secs?: number | null;
+}
+
+export interface PaymentWaitResponse {
+  ok: boolean;
+  payment: PaymentDetailsDto;
+  checks?: HealthCheckDto[];
 }

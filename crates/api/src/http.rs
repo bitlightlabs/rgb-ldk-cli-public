@@ -1,6 +1,7 @@
 //! HTTP API request/response types.
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 
 /// Node status response.
 #[derive(Debug, Serialize, Deserialize)]
@@ -73,6 +74,9 @@ pub struct PaymentDetailsDto {
 	pub kind: String,
 	/// Fee paid in millisatoshis, if known.
 	pub fee_paid_msat: Option<u64>,
+	/// Kind-specific details (when available).
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub kind_details: Option<JsonValue>,
 }
 
 /// Channel details entry (extended for control-plane integrations).
@@ -366,4 +370,186 @@ pub enum EventDto {
 		/// Name of the event kind.
 		kind: String,
 	},
+}
+
+/// ---- BOLT12 (offers + refunds) ----
+
+/// Request to create a fixed-amount BOLT12 offer.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Bolt12OfferReceiveRequest {
+	/// Amount in millisatoshis.
+	pub amount_msat: u64,
+	/// Offer description.
+	pub description: String,
+	/// Seconds from now; if omitted, offer does not expire.
+	#[serde(default)]
+	pub expiry_secs: Option<u32>,
+	/// Optional item quantity.
+	#[serde(default)]
+	pub quantity: Option<u64>,
+}
+
+/// Request to create a variable-amount (zero-amount) BOLT12 offer.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Bolt12OfferReceiveVarRequest {
+	/// Offer description.
+	pub description: String,
+	/// Seconds from now; if omitted, offer does not expire.
+	#[serde(default)]
+	pub expiry_secs: Option<u32>,
+}
+
+/// Response containing an encoded BOLT12 offer string.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Bolt12OfferResponse {
+	/// Bech32-encoded offer (HRP `lno`).
+	pub offer: String,
+}
+
+/// Request to decode a BOLT12 offer.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Bolt12OfferDecodeRequest {
+	/// Bech32-encoded offer (HRP `lno`).
+	pub offer: String,
+}
+
+/// Decoded BOLT12 offer summary.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Bolt12OfferDecodeResponse {
+	/// Offer id (hex-encoded 32 bytes).
+	pub offer_id: String,
+	/// Issuer signing pubkey (hex), if present.
+	#[serde(default)]
+	pub signing_pubkey: Option<String>,
+	/// Offer description, if present.
+	#[serde(default)]
+	pub description: Option<String>,
+	/// Offer issuer, if present.
+	#[serde(default)]
+	pub issuer: Option<String>,
+	/// Offer amount in millisatoshis, if fixed-amount.
+	#[serde(default)]
+	pub amount_msat: Option<u64>,
+	/// Seconds since Unix epoch.
+	#[serde(default)]
+	pub absolute_expiry_unix_secs: Option<u64>,
+	/// Chain hashes this offer supports (hex).
+	#[serde(default)]
+	pub chain_hashes: Vec<String>,
+	/// Number of blinded message paths.
+	pub paths_count: usize,
+	/// Whether the offer expects a quantity in the invoice request.
+	pub expects_quantity: bool,
+}
+
+/// Request to pay a BOLT12 offer.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Bolt12OfferSendRequest {
+	/// Bech32-encoded offer (HRP `lno`).
+	pub offer: String,
+	/// Required for zero-amount offers; may be used to overpay fixed-amount offers.
+	#[serde(default)]
+	pub amount_msat: Option<u64>,
+	/// Optional item quantity.
+	#[serde(default)]
+	pub quantity: Option<u64>,
+	/// Optional payer note to include in the invoice request.
+	#[serde(default)]
+	pub payer_note: Option<String>,
+}
+
+/// Request to initiate a BOLT12 refund (payer-side), returning an encoded refund string.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Bolt12RefundInitiateRequest {
+	/// Amount in millisatoshis.
+	pub amount_msat: u64,
+	/// Refund expiry in seconds from now.
+	pub expiry_secs: u32,
+	/// Optional item quantity.
+	#[serde(default)]
+	pub quantity: Option<u64>,
+	/// Optional payer note.
+	#[serde(default)]
+	pub payer_note: Option<String>,
+}
+
+/// Response of a successfully initiated refund.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Bolt12RefundInitiateResponse {
+	/// Bech32-encoded refund (HRP `lnr`).
+	pub refund: String,
+	/// Payment id associated with the refund flow (hex-encoded 32 bytes).
+	pub payment_id: String,
+}
+
+/// Request to decode a BOLT12 refund.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Bolt12RefundDecodeRequest {
+	/// Bech32-encoded refund (HRP `lnr`).
+	pub refund: String,
+}
+
+/// Decoded BOLT12 refund summary.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Bolt12RefundDecodeResponse {
+	/// Refund description.
+	pub description: String,
+	/// Refund issuer, if present.
+	#[serde(default)]
+	pub issuer: Option<String>,
+	/// Refund amount in millisatoshis.
+	pub amount_msat: u64,
+	/// Seconds since Unix epoch.
+	#[serde(default)]
+	pub absolute_expiry_unix_secs: Option<u64>,
+	/// Chain hash the refund is valid for (hex).
+	pub chain_hash: String,
+	/// Payer signing pubkey (hex).
+	pub payer_signing_pubkey: String,
+	/// Optional payer note.
+	#[serde(default)]
+	pub payer_note: Option<String>,
+	/// Optional item quantity.
+	#[serde(default)]
+	pub quantity: Option<u64>,
+	/// Number of blinded message paths.
+	pub paths_count: usize,
+}
+
+/// Request to respond to a refund by creating and sending an invoice (payee-side).
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Bolt12RefundRequestPaymentRequest {
+	/// Bech32-encoded refund (HRP `lnr`).
+	pub refund: String,
+}
+
+/// Response for a refund payment request.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Bolt12RefundRequestPaymentResponse {
+	/// Informational only (bech32-encoded BOLT12 invoice, HRP `lni`).
+	pub invoice: String,
+	/// Informational only (raw TLV bytes hex-encoded).
+	pub invoice_hex: String,
+	/// Payment id for tracking the inbound refund payment (hex-encoded 32 bytes).
+	pub payment_id: String,
+}
+
+/// Request to wait for a payment to reach a terminal state.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PaymentWaitRequest {
+	/// Default: 60 seconds.
+	#[serde(default)]
+	pub timeout_secs: Option<u32>,
+}
+
+/// Response of a waited payment result.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PaymentWaitResponse {
+	/// Whether the wait succeeded (i.e., payment succeeded).
+	pub ok: bool,
+	/// The final payment details.
+	pub payment: PaymentDetailsDto,
+	/// Explainability sub-checks for the wait flow.
+	#[serde(default)]
+	pub checks: Vec<HealthCheckDto>,
 }

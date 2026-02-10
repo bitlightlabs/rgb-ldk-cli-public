@@ -15,8 +15,14 @@ This document is based on the **main-branch** API. If you are consuming from ano
 > `u64/u32` are returned as JSON numbers. Frontends that need strict safety should use `BigInt` or a big-int JSON parser.
 
 ```ts
-export type OkResponse = { ok: boolean };
 export type ErrorResponse = { error: string };
+export type HealthCheckDto = {
+  name: string;
+  ok: boolean;
+  detail?: string | null;
+  hint?: string | null;
+};
+export type OkResponse = { ok: boolean; checks?: HealthCheckDto[] };
 
 export type StatusDto = {
   is_running: boolean;
@@ -105,6 +111,76 @@ export type Bolt11PayResponse = {
   fee_paid_msat: number | null; // u64 | null
 };
 
+// ---- BOLT12 (offers + refunds) ----
+
+export type Bolt12OfferReceiveRequest = {
+  amount_msat: number; // u64
+  description: string;
+  expiry_secs?: number | null; // u32 | null
+  quantity?: number | null; // u64 | null
+};
+
+export type Bolt12OfferReceiveVarRequest = {
+  description: string;
+  expiry_secs?: number | null; // u32 | null
+};
+
+export type Bolt12OfferResponse = { offer: string }; // bech32 `lno...`
+
+export type Bolt12OfferDecodeRequest = { offer: string }; // bech32 `lno...`
+export type Bolt12OfferDecodeResponse = {
+  offer_id: string; // hex 32 bytes
+  signing_pubkey: string | null;
+  description: string | null;
+  issuer: string | null;
+  amount_msat: number | null;
+  absolute_expiry_unix_secs: number | null;
+  chain_hashes: string[]; // hex
+  paths_count: number;
+  expects_quantity: boolean;
+};
+
+export type Bolt12OfferSendRequest = {
+  offer: string; // bech32 `lno...`
+  amount_msat?: number | null; // required for zero-amount offers
+  quantity?: number | null;
+  payer_note?: string | null;
+};
+
+export type Bolt12RefundInitiateRequest = {
+  amount_msat: number; // u64
+  expiry_secs: number; // u32
+  quantity?: number | null;
+  payer_note?: string | null;
+};
+export type Bolt12RefundInitiateResponse = {
+  refund: string; // bech32 `lnr...`
+  payment_id: string; // hex 32 bytes
+};
+
+export type Bolt12RefundDecodeRequest = { refund: string }; // bech32 `lnr...`
+export type Bolt12RefundDecodeResponse = {
+  description: string;
+  issuer: string | null;
+  amount_msat: number; // u64
+  absolute_expiry_unix_secs: number | null;
+  chain_hash: string; // hex
+  payer_signing_pubkey: string; // hex pubkey
+  payer_note: string | null;
+  quantity: number | null;
+  paths_count: number;
+};
+
+export type Bolt12RefundRequestPaymentRequest = { refund: string }; // bech32 `lnr...`
+export type Bolt12RefundRequestPaymentResponse = {
+  invoice: string; // bech32 `lni...` (informational only)
+  invoice_hex: string; // hex (informational only)
+  payment_id: string; // hex 32 bytes
+};
+
+export type PaymentWaitRequest = { timeout_secs?: number | null }; // default 60
+export type PaymentWaitResponse = { ok: boolean; payment: PaymentDetailsDto; checks?: HealthCheckDto[] };
+
 export type CustomTlvDto = { type: number; value_hex: string };
 export type SpontaneousSendRequest = {
   counterparty_node_id: string;
@@ -119,6 +195,7 @@ export type PaymentDetailsDto = {
   amount_msat: number | null;
   kind: "Bolt11" | "Bolt11Jit" | "Bolt12Offer" | "Bolt12Refund" | "Spontaneous" | "Onchain";
   fee_paid_msat: number | null;
+  kind_details?: any | null; // kind-specific machine-friendly details (optional)
 };
 
 export type VersionResponse = {
@@ -139,7 +216,15 @@ export type EventDto =
   | { type: "PaymentReceived"; data: { payment_id: string | null; amount_msat: number } }
   | { type: "ChannelPending"; data: { funding_txo: OutPointDto } }
   | { type: "ChannelReady"; data: { user_channel_id: string } }
-  | { type: "ChannelClosed"; data: Record<string, never> }
+  | {
+      type: "ChannelClosed";
+      data: {
+        channel_id: string; // hex 32 bytes
+        user_channel_id: string; // hex 16 bytes (32 chars), big-endian
+        counterparty_node_id?: string | null; // pubkey hex
+        reason?: string | null; // debug string
+      };
+    }
   | { type: "Other"; data: { kind: string } };
 ```
 
@@ -186,8 +271,18 @@ export type EventDto =
 - `POST /bolt11/send` → `SendResponse`
 - `POST /bolt11/send_using_amount` → `SendResponse`
 - `POST /bolt11/pay` → `Bolt11PayResponse` (waits for completion)
+- `POST /bolt12/offer/receive` → `Bolt12OfferResponse`
+- `POST /bolt12/offer/receive_var` → `Bolt12OfferResponse`
+- `POST /bolt12/offer/decode` → `Bolt12OfferDecodeResponse`
+- `POST /bolt12/offer/send` → `SendResponse`
+- `POST /bolt12/refund/initiate` → `Bolt12RefundInitiateResponse`
+- `POST /bolt12/refund/decode` → `Bolt12RefundDecodeResponse`
+- `POST /bolt12/refund/request_payment` → `Bolt12RefundRequestPaymentResponse`
 - `POST /spontaneous/send` → `SendResponse`
+- `GET /payments` → `PaymentDetailsDto[]`
 - `GET /payment/:payment_id` → `PaymentDetailsDto`
+- `POST /payment/:payment_id/wait` → `PaymentWaitResponse`
+- `POST /payment/:payment_id/abandon` → `OkResponse`
 
 ### Events
 

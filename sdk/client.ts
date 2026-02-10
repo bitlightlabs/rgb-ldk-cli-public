@@ -9,6 +9,18 @@ import {
   Bolt11ReceiveVarRequest,
   Bolt11SendRequest,
   Bolt11SendUsingAmountRequest,
+  Bolt12OfferDecodeRequest,
+  Bolt12OfferDecodeResponse,
+  Bolt12OfferReceiveRequest,
+  Bolt12OfferReceiveVarRequest,
+  Bolt12OfferResponse,
+  Bolt12OfferSendRequest,
+  Bolt12RefundDecodeRequest,
+  Bolt12RefundDecodeResponse,
+  Bolt12RefundInitiateRequest,
+  Bolt12RefundInitiateResponse,
+  Bolt12RefundRequestPaymentRequest,
+  Bolt12RefundRequestPaymentResponse,
   ChannelDetailsExtendedDto,
   CloseChannelRequest,
   EventDto,
@@ -18,6 +30,8 @@ import {
   OpenChannelRequest,
   OpenChannelResponse,
   PaymentDetailsDto,
+  PaymentWaitRequest,
+  PaymentWaitResponse,
   PeerConnectRequest,
   PeerDetailsDto,
   PeerDisconnectRequest,
@@ -216,6 +230,98 @@ export class NodeHttpClient {
       undefined,
       { ...options, returnNullOn404: true },
     ) as Promise<PaymentDetailsDto | null>;
+  }
+
+  // GET /payments
+  payments(options?: RequestOptions): Promise<PaymentDetailsDto[]> {
+    return this.request<PaymentDetailsDto[]>("GET", "/payments", undefined, options) as Promise<
+      PaymentDetailsDto[]
+    >;
+  }
+
+  // POST /payment/{paymentId}/wait
+  paymentWait(paymentIdHex: string, req: PaymentWaitRequest = {}, options?: RequestOptions): Promise<PaymentWaitResponse> {
+    if (!paymentIdHex) throw new Error("paymentIdHex is required");
+    return this.request<PaymentWaitResponse>(
+      "POST",
+      `/payment/${encodeURIComponent(paymentIdHex)}/wait`,
+      req,
+      options,
+    ) as Promise<PaymentWaitResponse>;
+  }
+
+  // POST /payment/{paymentId}/abandon
+  paymentAbandon(paymentIdHex: string, options?: RequestOptions): Promise<OkResponse> {
+    if (!paymentIdHex) throw new Error("paymentIdHex is required");
+    return this.request<OkResponse>(
+      "POST",
+      `/payment/${encodeURIComponent(paymentIdHex)}/abandon`,
+      {},
+      options,
+    ) as Promise<OkResponse>;
+  }
+
+  // ---- BOLT12 offers ----
+
+  // POST /bolt12/offer/receive
+  bolt12OfferReceive(req: Bolt12OfferReceiveRequest, options?: RequestOptions): Promise<Bolt12OfferResponse> {
+    return this.request<Bolt12OfferResponse>("POST", "/bolt12/offer/receive", req, options) as Promise<
+      Bolt12OfferResponse
+    >;
+  }
+
+  // POST /bolt12/offer/receive_var
+  bolt12OfferReceiveVar(req: Bolt12OfferReceiveVarRequest, options?: RequestOptions): Promise<Bolt12OfferResponse> {
+    return this.request<Bolt12OfferResponse>(
+      "POST",
+      "/bolt12/offer/receive_var",
+      req,
+      options,
+    ) as Promise<Bolt12OfferResponse>;
+  }
+
+  // POST /bolt12/offer/decode
+  bolt12OfferDecode(req: Bolt12OfferDecodeRequest, options?: RequestOptions): Promise<Bolt12OfferDecodeResponse> {
+    return this.request<Bolt12OfferDecodeResponse>("POST", "/bolt12/offer/decode", req, options) as Promise<
+      Bolt12OfferDecodeResponse
+    >;
+  }
+
+  // POST /bolt12/offer/send
+  bolt12OfferSend(req: Bolt12OfferSendRequest, options?: RequestOptions): Promise<SendResponse> {
+    return this.request<SendResponse>("POST", "/bolt12/offer/send", req, options) as Promise<SendResponse>;
+  }
+
+  // ---- BOLT12 refunds ----
+
+  // POST /bolt12/refund/initiate
+  bolt12RefundInitiate(req: Bolt12RefundInitiateRequest, options?: RequestOptions): Promise<Bolt12RefundInitiateResponse> {
+    return this.request<Bolt12RefundInitiateResponse>(
+      "POST",
+      "/bolt12/refund/initiate",
+      req,
+      options,
+    ) as Promise<Bolt12RefundInitiateResponse>;
+  }
+
+  // POST /bolt12/refund/decode
+  bolt12RefundDecode(req: Bolt12RefundDecodeRequest, options?: RequestOptions): Promise<Bolt12RefundDecodeResponse> {
+    return this.request<Bolt12RefundDecodeResponse>("POST", "/bolt12/refund/decode", req, options) as Promise<
+      Bolt12RefundDecodeResponse
+    >;
+  }
+
+  // POST /bolt12/refund/request_payment
+  bolt12RefundRequestPayment(
+    req: Bolt12RefundRequestPaymentRequest,
+    options?: RequestOptions,
+  ): Promise<Bolt12RefundRequestPaymentResponse> {
+    return this.request<Bolt12RefundRequestPaymentResponse>(
+      "POST",
+      "/bolt12/refund/request_payment",
+      req,
+      options,
+    ) as Promise<Bolt12RefundRequestPaymentResponse>;
   }
 
   // POST /events/wait_next (long-poll)

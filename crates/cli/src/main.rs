@@ -9,19 +9,24 @@ pub use crate::cli::OutputOpt;
 use clap::Parser;
 use rgbldk_api::http::{
 	BalancesDto, Bolt11PayRequest, Bolt11PayResponse, Bolt11ReceiveRequest, Bolt11ReceiveResponse,
-	Bolt11ReceiveVarRequest, ChannelDetailsExtendedDto, CloseChannelRequest, CustomTlvDto,
-	EventDto, OkResponse, OpenChannelRequest, OpenChannelResponse, PaymentDetailsDto,
-	PeerConnectRequest, PeerDetailsDto, PeerDisconnectRequest, SendResponse,
-	SpontaneousSendRequest, StatusDto,
+	Bolt11ReceiveVarRequest, Bolt12OfferDecodeRequest, Bolt12OfferDecodeResponse,
+	Bolt12OfferReceiveRequest, Bolt12OfferReceiveVarRequest, Bolt12OfferResponse,
+	Bolt12OfferSendRequest, Bolt12RefundDecodeRequest, Bolt12RefundDecodeResponse,
+	Bolt12RefundInitiateRequest, Bolt12RefundInitiateResponse, Bolt12RefundRequestPaymentRequest,
+	Bolt12RefundRequestPaymentResponse, ChannelDetailsExtendedDto, CloseChannelRequest,
+	CustomTlvDto, EventDto, OkResponse, OpenChannelRequest, OpenChannelResponse, PaymentDetailsDto,
+	PaymentWaitRequest, PaymentWaitResponse, PeerConnectRequest, PeerDetailsDto,
+	PeerDisconnectRequest, SendResponse, SpontaneousSendRequest, StatusDto,
 };
 
 use owo_colors::OwoColorize;
 
 use crate::cli::{
-	ChannelCommand, Cli, ColorOpt, Command, CtxCommand, EventsCommand, NodeCommand, PayCommand,
-	PeerCommand, WalletCommand,
+	ChannelCommand, Cli, ColorOpt, Command, CtxCommand, EventsCommand, InvoiceCommand,
+	KeysendCommand, NodeCommand, OfferCommand, PayCommand, PeerCommand, RefundCommand,
+	WalletCommand,
 };
-use crate::client::{join_url, send_json, send_json_allow_status};
+use crate::client::{join_url, send_json, send_json_allow_status, send_value};
 use crate::utils::{confirm_or_exit, die, print_json, with_spinner};
 
 struct App {
@@ -611,7 +616,102 @@ async fn main() {
 		},
 
 		Command::Pay { command } => match command {
-			PayCommand::Status { payment_id } => {
+			PayCommand::Ls => {
+				let url = join_url(&app.base, "/api/v1/payments");
+				let ps: Vec<PaymentDetailsDto> =
+					send_json(app.client.get(url)).await.unwrap_or_else(|e| die(e));
+				match app.output {
+					ui::OutputMode::Json => print_json(&ps, app.pretty),
+					ui::OutputMode::Text => {
+						let rows = ps
+							.into_iter()
+							.map(|p| {
+								let id =
+									if app.no_truncate { p.id.clone() } else { truncate_id(&p.id) };
+								vec![
+									id,
+									p.status,
+									p.kind,
+									p.direction,
+									p.amount_msat
+										.map(|v| format!("{}", format_u64_with_commas(v)))
+										.unwrap_or_else(|| "-".into()),
+									p.fee_paid_msat
+										.map(|v| format!("{}", format_u64_with_commas(v)))
+										.unwrap_or_else(|| "-".into()),
+								]
+							})
+							.collect::<Vec<_>>();
+						ui::print_table(
+							app.theme,
+							&["ID", "Status", "Kind", "Dir", "Amount (msat)", "Fee (msat)"],
+							rows,
+						);
+					},
+				}
+			},
+			PayCommand::Wait(args) => {
+				use reqwest::StatusCode as HttpStatus;
+
+				let url = join_url(&app.base, &format!("/api/v1/payment/{}/wait", args.payment_id));
+				let req = PaymentWaitRequest { timeout_secs: args.timeout_secs };
+				let (status, v) =
+					send_value(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+
+				match (status, app.output) {
+					(HttpStatus::OK, ui::OutputMode::Json) => {
+						let resp: PaymentWaitResponse =
+							serde_json::from_value(v).unwrap_or_else(|e| die(e.to_string()));
+						print_json(&resp, app.pretty);
+					},
+					(HttpStatus::OK, ui::OutputMode::Text) => {
+						let resp: PaymentWaitResponse =
+							serde_json::from_value(v).unwrap_or_else(|e| die(e.to_string()));
+						ui::print_checks(app.theme, "Payment wait", resp.ok, &resp.checks);
+						println!("{}", resp.payment.id);
+					},
+					(_, ui::OutputMode::Json) => {
+						print_json(&v, app.pretty);
+					},
+					(_, ui::OutputMode::Text) => {
+						let err =
+							v.get("error").and_then(|e| e.as_str()).unwrap_or("request failed");
+						if app.theme.color {
+							eprintln!("{}", format!("{err}").red());
+						} else {
+							eprintln!("{err}");
+						}
+						if let Some(checks) = v.get("checks") {
+							if let Ok(checks) = serde_json::from_value::<
+								Vec<rgbldk_api::http::HealthCheckDto>,
+							>(checks.clone())
+							{
+								ui::print_checks(app.theme, "Details", false, &checks);
+							}
+						}
+						if let Some(payment) = v.get("payment") {
+							if let Ok(p) =
+								serde_json::from_value::<PaymentDetailsDto>(payment.clone())
+							{
+								println!("{}", p.id);
+							}
+						}
+					},
+				}
+			},
+			PayCommand::Abandon { payment_id } => {
+				let url = join_url(&app.base, &format!("/api/v1/payment/{payment_id}/abandon"));
+				let resp: OkResponse = send_json(app.client.post(url).json(&serde_json::json!({})))
+					.await
+					.unwrap_or_else(|e| die(e));
+				match app.output {
+					ui::OutputMode::Json => print_json(&resp, app.pretty),
+					ui::OutputMode::Text => {
+						ui::print_checks(app.theme, "Abandon payment", resp.ok, &resp.checks);
+					},
+				}
+			},
+			PayCommand::Get { payment_id } => {
 				let url = join_url(&app.base, &format!("/api/v1/payment/{}", payment_id));
 				let p: PaymentDetailsDto =
 					send_json(app.client.get(url)).await.unwrap_or_else(|e| die(e));
@@ -648,6 +748,13 @@ async fn main() {
 							vec!["status".into(), status_value],
 							vec!["kind".into(), p.kind],
 							vec![
+								"kind_details".into(),
+								p.kind_details
+									.as_ref()
+									.map(|v| v.to_string())
+									.unwrap_or_else(|| "-".into()),
+							],
+							vec![
 								"amount (msat)".into(),
 								p.amount_msat
 									.map(|v| format!("{} msat", format_u64_with_commas(v)))
@@ -664,60 +771,225 @@ async fn main() {
 					},
 				}
 			},
-			PayCommand::Invoice(args) => {
-				let url;
-				let body;
-				if let Some(amount_msat) = args.amount_msat {
-					url = join_url(&app.base, "/api/v1/bolt11/receive");
-					body = serde_json::to_value(Bolt11ReceiveRequest {
-						amount_msat,
-						description: args.desc,
-						expiry_secs: args.expiry_secs,
-					})
-					.unwrap();
-				} else {
-					url = join_url(&app.base, "/api/v1/bolt11/receive_var");
-					body = serde_json::to_value(Bolt11ReceiveVarRequest {
-						description: args.desc,
-						expiry_secs: args.expiry_secs,
-					})
-					.unwrap();
-				}
-				let resp: Bolt11ReceiveResponse =
-					send_json(app.client.post(url).json(&body)).await.unwrap_or_else(|e| die(e));
-				match app.output {
-					ui::OutputMode::Json => print_json(&resp, app.pretty),
-					ui::OutputMode::Text => println!("{}", resp.invoice),
-				}
+			PayCommand::Invoice { command } => match command {
+				InvoiceCommand::Create(args) => {
+					let url;
+					let body;
+					if let Some(amount_msat) = args.amount_msat {
+						url = join_url(&app.base, "/api/v1/bolt11/receive");
+						body = serde_json::to_value(Bolt11ReceiveRequest {
+							amount_msat,
+							description: args.desc,
+							expiry_secs: args.expiry_secs,
+						})
+						.unwrap();
+					} else {
+						url = join_url(&app.base, "/api/v1/bolt11/receive_var");
+						body = serde_json::to_value(Bolt11ReceiveVarRequest {
+							description: args.desc,
+							expiry_secs: args.expiry_secs,
+						})
+						.unwrap();
+					}
+					let resp: Bolt11ReceiveResponse = send_json(app.client.post(url).json(&body))
+						.await
+						.unwrap_or_else(|e| die(e));
+					match app.output {
+						ui::OutputMode::Json => print_json(&resp, app.pretty),
+						ui::OutputMode::Text => println!("{}", resp.invoice),
+					}
+				},
+				InvoiceCommand::Pay(args) => {
+					let req =
+						Bolt11PayRequest { invoice: args.invoice, amount_msat: args.amount_msat };
+					let url = join_url(&app.base, "/api/v1/bolt11/pay");
+					let resp: Bolt11PayResponse =
+						send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+					match app.output {
+						ui::OutputMode::Json => print_json(&resp, app.pretty),
+						ui::OutputMode::Text => println!("{}", resp.payment_id),
+					}
+				},
 			},
-			PayCommand::Send(args) => {
-				let req = Bolt11PayRequest { invoice: args.invoice, amount_msat: args.amount_msat };
-				let url = join_url(&app.base, "/api/v1/bolt11/pay");
-				let resp: Bolt11PayResponse =
-					send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
-				match app.output {
-					ui::OutputMode::Json => print_json(&resp, app.pretty),
-					ui::OutputMode::Text => println!("{}", resp.payment_id),
-				}
+			PayCommand::Offer { command } => match command {
+				OfferCommand::Create(args) => {
+					let expiry_secs = if args.no_expiry { None } else { Some(args.expiry_secs) };
+					let (url, body) = if let Some(amount_msat) = args.amount_msat {
+						(
+							join_url(&app.base, "/api/v1/bolt12/offer/receive"),
+							serde_json::to_value(Bolt12OfferReceiveRequest {
+								amount_msat,
+								description: args.desc,
+								expiry_secs,
+								quantity: args.quantity,
+							})
+							.unwrap(),
+						)
+					} else {
+						(
+							join_url(&app.base, "/api/v1/bolt12/offer/receive_var"),
+							serde_json::to_value(Bolt12OfferReceiveVarRequest {
+								description: args.desc,
+								expiry_secs,
+							})
+							.unwrap(),
+						)
+					};
+					let resp: Bolt12OfferResponse = send_json(app.client.post(url).json(&body))
+						.await
+						.unwrap_or_else(|e| die(e));
+					match app.output {
+						ui::OutputMode::Json => print_json(&resp, app.pretty),
+						ui::OutputMode::Text => println!("{}", resp.offer),
+					}
+				},
+				OfferCommand::Decode { offer } => {
+					let url = join_url(&app.base, "/api/v1/bolt12/offer/decode");
+					let req = Bolt12OfferDecodeRequest { offer };
+					let resp: Bolt12OfferDecodeResponse =
+						send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+					match app.output {
+						ui::OutputMode::Json => print_json(&resp, app.pretty),
+						ui::OutputMode::Text => {
+							let rows = vec![
+								vec!["offer_id".into(), resp.offer_id],
+								vec![
+									"signing_pubkey".into(),
+									resp.signing_pubkey.unwrap_or_else(|| "-".into()),
+								],
+								vec![
+									"description".into(),
+									resp.description.unwrap_or_else(|| "-".into()),
+								],
+								vec!["issuer".into(), resp.issuer.unwrap_or_else(|| "-".into())],
+								vec![
+									"amount_msat".into(),
+									resp.amount_msat
+										.map(|v| format_u64_with_commas(v))
+										.unwrap_or_else(|| "-".into()),
+								],
+								vec![
+									"absolute_expiry_unix_secs".into(),
+									resp.absolute_expiry_unix_secs
+										.map(|v| v.to_string())
+										.unwrap_or_else(|| "-".into()),
+								],
+								vec!["paths_count".into(), resp.paths_count.to_string()],
+								vec!["expects_quantity".into(), resp.expects_quantity.to_string()],
+								vec!["chain_hashes".into(), resp.chain_hashes.join(", ")],
+							];
+							ui::print_table(app.theme, &["Field", "Value"], rows);
+						},
+					}
+				},
+				OfferCommand::Pay(args) => {
+					let url = join_url(&app.base, "/api/v1/bolt12/offer/send");
+					let req = Bolt12OfferSendRequest {
+						offer: args.offer,
+						amount_msat: args.amount_msat,
+						quantity: args.quantity,
+						payer_note: args.payer_note,
+					};
+					let resp: SendResponse =
+						send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+					match app.output {
+						ui::OutputMode::Json => print_json(&resp, app.pretty),
+						ui::OutputMode::Text => println!("{}", resp.payment_id),
+					}
+				},
 			},
-			PayCommand::Keysend(args) => {
-				let tlvs: Vec<CustomTlvDto> = args
-					.tlv
-					.into_iter()
-					.map(|t| CustomTlvDto { r#type: t.r#type, value_hex: t.value_hex })
-					.collect();
-				let req = SpontaneousSendRequest {
-					counterparty_node_id: args.node_id,
-					amount_msat: args.amount_msat,
-					custom_tlvs: tlvs,
-				};
-				let url = join_url(&app.base, "/api/v1/spontaneous/send");
-				let resp: SendResponse =
-					send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
-				match app.output {
-					ui::OutputMode::Json => print_json(&resp, app.pretty),
-					ui::OutputMode::Text => println!("{}", resp.payment_id),
-				}
+			PayCommand::Refund { command } => match command {
+				RefundCommand::Initiate(args) => {
+					let url = join_url(&app.base, "/api/v1/bolt12/refund/initiate");
+					let req = Bolt12RefundInitiateRequest {
+						amount_msat: args.amount_msat,
+						expiry_secs: args.expiry_secs,
+						quantity: args.quantity,
+						payer_note: args.payer_note,
+					};
+					let resp: Bolt12RefundInitiateResponse =
+						send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+					match app.output {
+						ui::OutputMode::Json => print_json(&resp, app.pretty),
+						ui::OutputMode::Text => {
+							println!("{}", resp.refund);
+							eprintln!("payment_id: {}", resp.payment_id);
+						},
+					}
+				},
+				RefundCommand::Decode { refund } => {
+					let url = join_url(&app.base, "/api/v1/bolt12/refund/decode");
+					let req = Bolt12RefundDecodeRequest { refund };
+					let resp: Bolt12RefundDecodeResponse =
+						send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+					match app.output {
+						ui::OutputMode::Json => print_json(&resp, app.pretty),
+						ui::OutputMode::Text => {
+							let rows = vec![
+								vec!["description".into(), resp.description],
+								vec!["issuer".into(), resp.issuer.unwrap_or_else(|| "-".into())],
+								vec![
+									"amount_msat".into(),
+									format_u64_with_commas(resp.amount_msat),
+								],
+								vec![
+									"absolute_expiry_unix_secs".into(),
+									resp.absolute_expiry_unix_secs
+										.map(|v| v.to_string())
+										.unwrap_or_else(|| "-".into()),
+								],
+								vec!["chain_hash".into(), resp.chain_hash],
+								vec!["payer_signing_pubkey".into(), resp.payer_signing_pubkey],
+								vec![
+									"payer_note".into(),
+									resp.payer_note.unwrap_or_else(|| "-".into()),
+								],
+								vec![
+									"quantity".into(),
+									resp.quantity
+										.map(|v| v.to_string())
+										.unwrap_or_else(|| "-".into()),
+								],
+								vec!["paths_count".into(), resp.paths_count.to_string()],
+							];
+							ui::print_table(app.theme, &["Field", "Value"], rows);
+						},
+					}
+				},
+				RefundCommand::RequestPayment { refund } => {
+					let url = join_url(&app.base, "/api/v1/bolt12/refund/request_payment");
+					let req = Bolt12RefundRequestPaymentRequest { refund };
+					let resp: Bolt12RefundRequestPaymentResponse =
+						send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+					match app.output {
+						ui::OutputMode::Json => print_json(&resp, app.pretty),
+						ui::OutputMode::Text => {
+							println!("{}", resp.invoice);
+							eprintln!("payment_id: {}", resp.payment_id);
+						},
+					}
+				},
+			},
+			PayCommand::Keysend { command } => match command {
+				KeysendCommand::Send(args) => {
+					let tlvs: Vec<CustomTlvDto> = args
+						.tlv
+						.into_iter()
+						.map(|t| CustomTlvDto { r#type: t.r#type, value_hex: t.value_hex })
+						.collect();
+					let req = SpontaneousSendRequest {
+						counterparty_node_id: args.node_id,
+						amount_msat: args.amount_msat,
+						custom_tlvs: tlvs,
+					};
+					let url = join_url(&app.base, "/api/v1/spontaneous/send");
+					let resp: SendResponse =
+						send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+					match app.output {
+						ui::OutputMode::Json => print_json(&resp, app.pretty),
+						ui::OutputMode::Text => println!("{}", resp.payment_id),
+					}
+				},
 			},
 		},
 

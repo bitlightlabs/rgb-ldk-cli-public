@@ -19,6 +19,18 @@ pub async fn send_json<T: serde::de::DeserializeOwned>(
 	}
 }
 
+pub async fn send_value(
+	rb: reqwest::RequestBuilder,
+) -> Result<(reqwest::StatusCode, serde_json::Value), String> {
+	let resp = rb.send().await.map_err(|e| e.to_string())?;
+	let status = resp.status();
+	let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+	let value = serde_json::from_slice::<serde_json::Value>(&bytes).unwrap_or_else(
+		|_| serde_json::json!({ "raw": String::from_utf8_lossy(&bytes).to_string() }),
+	);
+	Ok((status, value))
+}
+
 pub async fn send_json_allow_status<T: serde::de::DeserializeOwned>(
 	rb: reqwest::RequestBuilder, allowed: &[reqwest::StatusCode],
 ) -> Result<T, String> {

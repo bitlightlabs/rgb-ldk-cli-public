@@ -71,5 +71,5 @@ curl -sSf http://127.0.0.1:8500/api/v1/healthz
 Then use the CLI:
 
 ```bash
-RGBLDK_CONNECT=http://127.0.0.1:8500 rgbldk status
+RGBLDK_CONNECT=http://127.0.0.1:8500 rgbldk node status
 ```

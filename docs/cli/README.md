@@ -9,23 +9,23 @@ By default the CLI connects to `http://127.0.0.1:8500`.
 Override per-command:
 
 ```bash
-rgbldk --connect http://127.0.0.1:8500 status
+rgbldk --connect http://127.0.0.1:8500 node status
 ```
 
 Or set the default:
 
 ```bash
 export RGBLDK_CONNECT=http://127.0.0.1:8500
-rgbldk status
+rgbldk node status
 ```
 
 ## Output modes
 
-- Default output is `text` (intended for humans).
+- Default output is `auto` (text on TTY, json otherwise).
 - Use JSON for automation:
 
 ```bash
-rgbldk --output json status
+rgbldk --output json node status
 ```
 
 ## Next

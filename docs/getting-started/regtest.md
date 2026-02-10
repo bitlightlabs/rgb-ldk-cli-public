@@ -1,18 +1,18 @@
-# Regtest Quickstart (Docker Compose + local binaries)
+# Regtest Quickstart (Docker Compose)
 
-This guide starts a regtest chain source using Docker Compose, then runs RLN (`rgbldkd`) via the public Docker image and verifies it via CLI.
+This guide starts a self-contained regtest environment (bitcoind + esplora + two nodes) using Docker Compose, then verifies it via the CLI.
 
 ## Prerequisites
 
 - Docker + Docker Compose
 - Rust toolchain (for building the CLI `rgbldk`)
 
-## 1) Start regtest chain source (bitcoind + esplora)
+## 1) Start the regtest environment
 
-The repo provides a regtest stack in `docker-compose.yml`:
+The repo provides a regtest stack in `crates/cli/docker-compose.yaml`:
 
 ```bash
-RPC_USER=bitcoin RPC_PASSWORD=bitcoin docker compose up -d bitcoin-core electrs mining
+RPC_USER=bitcoin RPC_PASSWORD=bitcoin docker compose -f crates/cli/docker-compose.yaml up -d
 ```
 
 Verify Esplora is reachable:
@@ -20,6 +20,13 @@ Verify Esplora is reachable:
 ```bash
 curl -sSf http://127.0.0.1:3003/blocks/tip/height
 curl -sSf http://127.0.0.1:3003/fee-estimates
+```
+
+The two node endpoints on the host are:
+
+```text
+node_a=http://127.0.0.1:8501
+node_b=http://127.0.0.1:8502
 ```
 
 ## 2) Build the CLI (`rgbldk`)
@@ -34,47 +41,13 @@ Add the local binary dir to your PATH for this shell:
 export PATH="$PWD/target/debug:$PATH"
 ```
 
-## 3) Run the daemon (`rgbldkd`) via Docker (`bitlightlabs/rln-ldk-node`)
-
-Start RLN on regtest using Esplora (macOS/Windows):
+## 3) Verify with the CLI (`rgbldk`)
 
 ```bash
-docker run --rm \
-  -p 127.0.0.1:8500:8500 \
-  -v rgbldk-data:/home/rgbldk/.ldk-node \
-  bitlightlabs/rln-ldk-node:latest \
-  rgbldkd server \
-  --allow-non-loopback-listen \
-  --network regtest \
-  --esplora-url http://host.docker.internal:3003 \
-  --listen 0.0.0.0:8500 \
-  --data-dir /home/rgbldk/.ldk-node \
-  --log-to-stdout \
-  --log-level info
-```
-
-Linux: add `--add-host=host.docker.internal:host-gateway` to the `docker run` command.
-
-You should see a line like:
-
-```text
-rgbldkd listening on http://0.0.0.0:8500
-```
-
-## 4) Verify with the CLI (`rgbldk`)
-
-```bash
-rgbldk version
-rgbldk healthz
-rgbldk readyz
-rgbldk status
-```
-
-If you run the daemon on a different port, point the CLI at it:
-
-```bash
-rgbldk --connect http://127.0.0.1:8500 status
-RGBLDK_CONNECT=http://127.0.0.1:8500 rgbldk status
+RGBLDK_CONNECT=http://127.0.0.1:8501 rgbldk node version
+RGBLDK_CONNECT=http://127.0.0.1:8501 rgbldk node health
+RGBLDK_CONNECT=http://127.0.0.1:8501 rgbldk node ready
+RGBLDK_CONNECT=http://127.0.0.1:8501 rgbldk node status
 ```
 
 ## Next steps

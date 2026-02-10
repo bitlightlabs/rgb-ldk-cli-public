@@ -37,8 +37,8 @@ cargo build -p rgbldk-cli --bin rgbldk
 3) Call the daemon:
 
 ```bash
-RGBLDK_CONNECT=http://127.0.0.1:8501 ./target/debug/rgbldk status
-RGBLDK_CONNECT=http://127.0.0.1:8501 ./target/debug/rgbldk balances
+RGBLDK_CONNECT=http://127.0.0.1:8501 ./target/debug/rgbldk node status
+RGBLDK_CONNECT=http://127.0.0.1:8501 ./target/debug/rgbldk wallet balance
 ```
 
 ## Docs
@@ -53,4 +53,3 @@ RGBLDK_CONNECT=http://127.0.0.1:8501 ./target/debug/rgbldk balances
 ## License
 
 Dual-licensed under Apache-2.0 and MIT. See [`LICENSE-APACHE`](LICENSE-APACHE) and [`LICENSE-MIT`](LICENSE-MIT).
-

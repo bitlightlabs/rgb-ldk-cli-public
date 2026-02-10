@@ -23,14 +23,14 @@ By default the CLI connects to `http://127.0.0.1:8500`.
 Override per-command:
 
 ```bash
-./target/debug/rgbldk --connect http://127.0.0.1:8500 status
+./target/debug/rgbldk --connect http://127.0.0.1:8500 node status
 ```
 
 Or set a default for the shell:
 
 ```bash
 export RGBLDK_CONNECT=http://127.0.0.1:8500
-./target/debug/rgbldk status
+./target/debug/rgbldk node status
 ```
 
 ## Regtest environment (Docker Compose)
@@ -53,8 +53,8 @@ Then:
 
 ```bash
 export RGBLDK_CONNECT=http://127.0.0.1:8501
-./target/debug/rgbldk status
-./target/debug/rgbldk balances
+./target/debug/rgbldk node status
+./target/debug/rgbldk wallet balance
 ```
 
 ## Docs
@@ -62,4 +62,3 @@ export RGBLDK_CONNECT=http://127.0.0.1:8501
 - CLI reference: [`../../docs/cli/README.md`](../../docs/cli/README.md)
 - Commands list: [`../../docs/cli/commands.md`](../../docs/cli/commands.md)
 - Regtest quickstart: [`../../docs/getting-started/regtest.md`](../../docs/getting-started/regtest.md)
-

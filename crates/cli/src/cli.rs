@@ -77,7 +77,7 @@ pub enum Command {
 		#[command(subcommand)]
 		command: ChannelCommand,
 	},
-	/// Payments (invoice + keysend).
+	/// Payments (BOLT11 invoices, BOLT12 offers/refunds, keysend).
 	Pay {
 		#[command(subcommand)]
 		command: PayCommand,
@@ -185,17 +185,49 @@ pub struct ChannelCloseArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum PayCommand {
-	/// Create an invoice (fixed amount if `--amount-msat` is set, variable otherwise).
-	Invoice(InvoiceCreateArgs),
+	/// BOLT11 invoice operations (create/pay).
+	Invoice {
+		#[command(subcommand)]
+		command: InvoiceCommand,
+	},
 
-	/// Pay an invoice (uses `--amount-msat` for variable-amount invoices).
-	Send(InvoicePayArgs),
+	/// BOLT12 offer operations (create/decode/pay).
+	Offer {
+		#[command(subcommand)]
+		command: OfferCommand,
+	},
 
-	/// Send a spontaneous (keysend) payment.
-	Keysend(KeysendArgs),
+	/// BOLT12 refund operations (initiate/decode/request-payment).
+	Refund {
+		#[command(subcommand)]
+		command: RefundCommand,
+	},
+
+	/// Spontaneous (keysend) payment operations.
+	Keysend {
+		#[command(subcommand)]
+		command: KeysendCommand,
+	},
+
+	/// List known payments.
+	Ls,
+
+	/// Wait for a payment to reach a terminal state.
+	Wait(PaymentWaitArgs),
+
+	/// Abandon an in-flight outbound payment (useful for BOLT12 awaiting an invoice).
+	Abandon { payment_id: String },
+
 	/// Get details for a payment id.
-	#[command(alias = "get")]
-	Status { payment_id: String },
+	Get { payment_id: String },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum InvoiceCommand {
+	/// Create an invoice (fixed amount if `--amount-msat` is set, variable otherwise).
+	Create(InvoiceCreateArgs),
+	/// Pay an invoice (uses `--amount-msat` for variable-amount invoices).
+	Pay(InvoicePayArgs),
 }
 
 #[derive(Args, Debug)]
@@ -214,6 +246,77 @@ pub struct InvoicePayArgs {
 	pub invoice: String,
 	#[arg(long)]
 	pub amount_msat: Option<u64>,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum OfferCommand {
+	/// Create an offer (fixed amount if `--amount-msat` is set, variable otherwise).
+	Create(OfferCreateArgs),
+	/// Decode an offer.
+	Decode { offer: String },
+	/// Pay an offer.
+	Pay(OfferPayArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct OfferCreateArgs {
+	#[arg(long)]
+	pub desc: String,
+	#[arg(long)]
+	pub amount_msat: Option<u64>,
+	/// Offer expiry in seconds from now. Use `--no-expiry` for no expiry.
+	#[arg(long, default_value_t = 3600)]
+	pub expiry_secs: u32,
+	/// Do not set an expiry on the offer.
+	#[arg(long)]
+	pub no_expiry: bool,
+	/// Optional item quantity.
+	#[arg(long)]
+	pub quantity: Option<u64>,
+}
+
+#[derive(Args, Debug)]
+pub struct OfferSendArgs {
+	#[arg(long)]
+	pub offer: String,
+	/// Required for zero-amount offers; may be used to overpay fixed-amount offers.
+	#[arg(long)]
+	pub amount_msat: Option<u64>,
+	#[arg(long)]
+	pub quantity: Option<u64>,
+	#[arg(long)]
+	pub payer_note: Option<String>,
+}
+
+pub type OfferPayArgs = OfferSendArgs;
+
+#[derive(Subcommand, Debug)]
+pub enum RefundCommand {
+	/// Initiate a refund (payer-side), returning an encoded refund string.
+	Initiate(RefundInitiateArgs),
+	/// Decode a refund.
+	Decode { refund: String },
+	/// Request the refund payment (payee-side), sending an invoice via onion messages.
+	RequestPayment { refund: String },
+}
+
+#[derive(Args, Debug)]
+pub struct RefundInitiateArgs {
+	#[arg(long)]
+	pub amount_msat: u64,
+	#[arg(long, default_value_t = 3600)]
+	pub expiry_secs: u32,
+	#[arg(long)]
+	pub quantity: Option<u64>,
+	#[arg(long)]
+	pub payer_note: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct PaymentWaitArgs {
+	pub payment_id: String,
+	#[arg(long)]
+	pub timeout_secs: Option<u32>,
 }
 
 #[derive(Clone, Debug)]
@@ -241,6 +344,12 @@ pub struct KeysendArgs {
 	pub amount_msat: u64,
 	#[arg(long, value_name = "<type>:<hex>")]
 	pub tlv: Vec<TlvArg>,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum KeysendCommand {
+	/// Send a spontaneous (keysend) payment.
+	Send(KeysendArgs),
 }
 
 #[derive(Subcommand, Debug)]

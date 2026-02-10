@@ -54,7 +54,7 @@ curl -sSf http://127.0.0.1:8500/api/v1/healthz
 Then via CLI:
 
 ```bash
-rgbldk version
-rgbldk healthz
-rgbldk status
+rgbldk node version
+rgbldk node health
+rgbldk node status
 ```

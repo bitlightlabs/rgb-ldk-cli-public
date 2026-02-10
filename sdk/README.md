@@ -28,6 +28,15 @@ Usage
     const sent = await client.bolt11Send({ invoice: inv.invoice }); // or client.bolt11Pay({ invoice: inv.invoice })
     const payment = await client.getPayment(sent.payment_id);
 
+    // BOLT12 offer (receive + pay)
+    const { offer } = await client.bolt12OfferReceive({ amount_msat: 1000, description: "coffee", expiry_secs: 600 });
+    const p = await client.bolt12OfferSend({ offer });
+    const waited = await client.paymentWait(p.payment_id, { timeout_secs: 60 });
+    if (!waited.ok) {
+      // For example, if it's awaiting an invoice, you may cancel it:
+      await client.paymentAbandon(p.payment_id);
+    }
+
 Notes
 -----
 
