@@ -13,6 +13,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./nmh": {
+      "types": "./dist/nmh.d.ts",
+      "import": "./dist/nmh.js"
+    },
+    "./nmh-node": {
+      "types": "./dist/nmh-node.d.ts",
+      "import": "./dist/nmh-node.js"
+    },
+    "./control-http": {
+      "types": "./dist/control-http.d.ts",
+      "import": "./dist/control-http.js"
     }
   },
   "files": [
@@ -21,9 +33,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "rm -rf dist",
+    "test": "npm run build && node --test test/*.test.mjs",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
+    "@types/node": "^22.13.10",
     "typescript": "^5.4.0"
   },
   "dependencies": {

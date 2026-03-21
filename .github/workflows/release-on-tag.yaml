@@ -1,0 +1,142 @@
+name: Release on tag
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "dev-*"
+
+permissions:
+  contents: write
+
+env:
+  APP: rgb-ldk-cli
+  BIN: rgbldk
+
+jobs:
+  build-binaries:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            use_cross: true
+            exe_ext: ""
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            use_cross: true
+            exe_ext: ""
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            use_cross: false
+            exe_ext: ""
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            use_cross: false
+            exe_ext: ".exe"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ matrix.target }}-
+            ${{ runner.os }}-cargo-
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross
+        if: matrix.use_cross
+        uses: taiki-e/install-action@cross
+
+      - name: Build
+        shell: bash
+        run: |
+          BUILD_CMD="cargo"
+          if [ "${{ matrix.use_cross }}" = "true" ]; then
+            BUILD_CMD="cross"
+          fi
+          $BUILD_CMD build --locked --release --target "${{ matrix.target }}" -p rgbldk-cli --bin "${{ env.BIN }}"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bin-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/${{ env.BIN }}${{ matrix.exe_ext }}
+          if-no-files-found: error
+
+  release:
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: sdk/package-lock.json
+
+      - name: Build and pack TypeScript SDK
+        shell: bash
+        run: |
+          cd sdk
+          npm ci
+          npm run build
+          PKG="$(npm pack --silent)"
+          mkdir -p ../release_assets
+          mv "$PKG" "../release_assets/rgb-ldk-node-sdk-${{ github.ref_name }}.tgz"
+          sha256sum "../release_assets/rgb-ldk-node-sdk-${{ github.ref_name }}.tgz" > "../release_assets/rgb-ldk-node-sdk-${{ github.ref_name }}.tgz.sha256"
+
+      - name: Package binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release_assets
+
+          for DIR in artifacts/bin-*; do
+            TARGET="${DIR#artifacts/bin-}"
+            BASE="${{ env.APP }}-${{ github.ref_name }}-${TARGET}"
+            mkdir -p "${BASE}"
+
+            cp "${DIR}/${{ env.BIN }}"* "${BASE}/"
+            cp LICENSE-APACHE LICENSE-MIT LICENSE.md "${BASE}/" 2>/dev/null || true
+
+            if [[ "${TARGET}" == *"windows"* ]]; then
+              (cd "${BASE}" && zip -rq "../release_assets/${BASE}.zip" .)
+              sha256sum "release_assets/${BASE}.zip" > "release_assets/${BASE}.zip.sha256"
+            else
+              tar -czf "release_assets/${BASE}.tar.gz" "${BASE}"
+              sha256sum "release_assets/${BASE}.tar.gz" > "release_assets/${BASE}.tar.gz.sha256"
+            fi
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release_assets/*

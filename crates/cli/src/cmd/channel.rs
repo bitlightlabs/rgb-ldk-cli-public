@@ -1,0 +1,130 @@
+use rgbldk_http_dto::{
+	ChannelDetailsExtendedDto, CloseChannelRequest, OpenChannelRequest, OpenChannelResponse,
+	RgbOpenChannelRequest,
+};
+
+use crate::app::App;
+use crate::cli::ChannelCommand;
+use crate::client::{join_url, send_json};
+use crate::utils::{confirm_or_exit, die, print_json};
+
+pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
+	match command {
+		ChannelCommand::Ls => {
+			let url = join_url(&app.base, "/api/v1/channels");
+			let chans: Vec<ChannelDetailsExtendedDto> =
+				send_json(app.client.get(url)).await.unwrap_or_else(|e| die(e));
+			match app.output {
+				crate::ui::OutputMode::Json => print_json(&chans, app.pretty),
+				crate::ui::OutputMode::Text => {
+					let show_rgb = chans.iter().any(|c| c.rgb_balance.is_some());
+					let rows = chans
+						.into_iter()
+						.map(|c| {
+							let mut row = vec![
+								c.user_channel_id,
+								c.counterparty_node_id,
+								c.channel_value_sats.to_string(),
+								c.is_channel_ready.to_string(),
+								c.is_usable.to_string(),
+							];
+							if show_rgb {
+								if let Some(rgb) = c.rgb_balance {
+									let asset = if app.no_truncate {
+										rgb.asset_id
+									} else {
+										crate::ui::truncate_id(&rgb.asset_id)
+									};
+									row.push(asset);
+									row.push(crate::ui::format_u64_with_commas(rgb.local_amount));
+									row.push(crate::ui::format_u64_with_commas(rgb.remote_amount));
+								} else {
+									row.extend(["-".into(), "-".into(), "-".into()]);
+								}
+							}
+							row
+						})
+						.map(|mut r| {
+							if !app.no_truncate {
+								r[0] = crate::ui::truncate_id(&r[0]);
+								r[1] = crate::ui::truncate_id(&r[1]);
+							}
+							r
+						})
+						.collect::<Vec<_>>();
+					let mut headers = vec![
+						"User Channel ID",
+						"Counterparty",
+						"Capacity (sats)",
+						"Ready",
+						"Usable",
+					];
+					if show_rgb {
+						headers.extend(["RGB Asset", "RGB Local", "RGB Remote"]);
+					}
+					crate::ui::print_table(app.theme, &headers, rows);
+				},
+			}
+		},
+		ChannelCommand::Open(args) => {
+			let rgb = match (&args.rgb_asset_id, args.rgb_asset_amount, &args.rgb_context) {
+				(None, None, None) => None,
+				(Some(asset_id), Some(asset_amount), Some(color_context_data)) => Some(
+					RgbOpenChannelRequest {
+						asset_id: asset_id.clone(),
+						asset_amount,
+						color_context_data: color_context_data.clone(),
+					},
+				),
+				_ => die(
+					"invalid rgb channel args: require --rgb-asset-id, --rgb-asset-amount, and --rgb-context together",
+				),
+			};
+			let req = OpenChannelRequest {
+				node_id: args.node_id.clone(),
+				address: args.addr.clone(),
+				channel_amount_sats: args.amount_sats,
+				push_to_counterparty_msat: args.push_msat,
+				announce: if args.private { Some(false) } else { None },
+				rgb,
+			};
+			let url = join_url(&app.base, "/api/v1/channel/open");
+			let resp: OpenChannelResponse =
+				send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+			match app.output {
+				crate::ui::OutputMode::Json => print_json(&resp, app.pretty),
+				crate::ui::OutputMode::Text => println!("{}", resp.user_channel_id),
+			}
+		},
+		ChannelCommand::Close(args) => {
+			let req = CloseChannelRequest {
+				user_channel_id: args.user_channel_id.clone(),
+				counterparty_node_id: args.counterparty_node_id.clone(),
+			};
+			let url = join_url(&app.base, "/api/v1/channel/close");
+			let v: serde_json::Value =
+				send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+			match app.output {
+				crate::ui::OutputMode::Json => print_json(&v, app.pretty),
+				crate::ui::OutputMode::Text => println!("Channel close initiated."),
+			}
+		},
+		ChannelCommand::ForceClose(args) => {
+			confirm_or_exit(
+				app.yes,
+				"About to force-close a channel (potentially costly/time-locked).",
+			);
+			let req = CloseChannelRequest {
+				user_channel_id: args.user_channel_id.clone(),
+				counterparty_node_id: args.counterparty_node_id.clone(),
+			};
+			let url = join_url(&app.base, "/api/v1/channel/force_close");
+			let v: serde_json::Value =
+				send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+			match app.output {
+				crate::ui::OutputMode::Json => print_json(&v, app.pretty),
+				crate::ui::OutputMode::Text => println!("Channel force-close initiated."),
+			}
+		},
+	}
+}

@@ -5,7 +5,7 @@ use comfy_table::{Cell, CellAlignment, Table};
 use owo_colors::OwoColorize;
 use supports_color::Stream;
 
-use rgbldk_api::http::HealthCheckDto;
+use rgbldk_http_dto::{EventDto, HealthCheckDto};
 
 #[derive(Clone, Copy, Debug)]
 pub enum ColorMode {
@@ -26,6 +26,105 @@ pub struct Theme {
 	pub unicode: bool,
 	pub ok: &'static str,
 	pub bad: &'static str,
+}
+
+pub fn truncate_id(s: &str) -> String {
+	const HEAD: usize = 8;
+	const TAIL: usize = 8;
+	if s.len() <= HEAD + TAIL + 3 {
+		return s.to_string();
+	}
+	format!("{}...{}", &s[..HEAD], &s[s.len() - TAIL..])
+}
+
+pub fn format_u64_with_commas(v: u64) -> String {
+	format_sats_with_commas(v)
+}
+
+fn format_sats_with_commas(v: u64) -> String {
+	let s = v.to_string();
+	let mut out = String::with_capacity(s.len() + s.len() / 3);
+	for (n, ch) in s.chars().rev().enumerate() {
+		if n > 0 && n.is_multiple_of(3) {
+			out.push(',');
+		}
+		out.push(ch);
+	}
+	out.chars().rev().collect()
+}
+
+fn format_btc_from_sats(sats: u64) -> String {
+	let btc = (sats as f64) / 100_000_000.0;
+	let mut s = format!("{btc:.8}");
+	while s.contains('.') && s.ends_with('0') {
+		s.pop();
+	}
+	if s.ends_with('.') {
+		s.push('0');
+	}
+	format!("{s} BTC")
+}
+
+pub fn format_balance_sats(sats: u64, force_sats: bool) -> String {
+	if force_sats {
+		format!("{sats} sats")
+	} else if sats >= 100_000_000 {
+		format_btc_from_sats(sats)
+	} else {
+		format!("{} sats", format_sats_with_commas(sats))
+	}
+}
+
+pub fn print_event_text(ev: &EventDto, no_truncate: bool) {
+	match ev {
+		EventDto::PaymentSuccessful { payment_id, fee_paid_msat } => {
+			let pid = payment_id.as_deref().unwrap_or("-");
+			let fee = fee_paid_msat
+				.map(|v| format!("{} msat", format_u64_with_commas(v)))
+				.unwrap_or_else(|| "-".into());
+			println!("PaymentSuccessful payment_id={pid} fee_paid={fee}");
+		},
+		EventDto::PaymentFailed { payment_id } => {
+			let pid = payment_id.as_deref().unwrap_or("-");
+			println!("PaymentFailed payment_id={pid}");
+		},
+		EventDto::PaymentReceived { payment_id, payment_hash, amount_msat, rgb, .. } => {
+			let pid = payment_id.as_deref().unwrap_or("-");
+			let rgb_summary = rgb.as_ref().map(|r| {
+				let asset_id =
+					if no_truncate { r.asset_id.clone() } else { truncate_id(&r.asset_id) };
+				format!(
+					" rgb={{asset_id={} asset_amount={} dir={} swap={}}}",
+					asset_id,
+					format_u64_with_commas(r.asset_amount),
+					r.direction,
+					r.is_swap
+				)
+			});
+			println!(
+				"PaymentReceived payment_id={pid} payment_hash={} amount={} msat{}",
+				payment_hash,
+				format_u64_with_commas(*amount_msat),
+				rgb_summary.unwrap_or_default()
+			);
+		},
+		EventDto::ChannelPending { funding_txo } => {
+			println!("ChannelPending funding_txo={}:{}", funding_txo.txid, funding_txo.vout);
+		},
+		EventDto::ChannelReady { user_channel_id } => {
+			println!("ChannelReady user_channel_id={user_channel_id}");
+		},
+		EventDto::ChannelClosed { channel_id, user_channel_id, counterparty_node_id, reason } => {
+			let cp = counterparty_node_id.as_deref().unwrap_or("-");
+			let reason = reason.as_deref().unwrap_or("-");
+			println!(
+				"ChannelClosed user_channel_id={user_channel_id} channel_id={channel_id} counterparty_node_id={cp} reason={reason}"
+			);
+		},
+		EventDto::Other { kind } => {
+			println!("Other kind={kind}");
+		},
+	}
 }
 
 pub fn resolve_output_mode(mode: crate::OutputOpt) -> OutputMode {

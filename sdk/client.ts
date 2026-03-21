@@ -35,11 +35,51 @@ import {
   PeerConnectRequest,
   PeerDetailsDto,
   PeerDisconnectRequest,
+  RgbContractBalanceResponse,
+  RgbContractsExportRequest,
+  RgbContractsExportResponse,
+  RgbContractsIssueRequest,
+  RgbContractsIssueResponse,
+  RgbContractsResponse,
+  RgbContractsImportResponse,
+  RgbIssuersImportResponse,
+  RgbIssuersResponse,
+  RgbLnInvoiceCreateRequest,
+  RgbLnInvoiceDecodeRequest,
+  RgbLnInvoiceDecodeResponse,
+  RgbLnInvoiceResponse,
+  RgbLnPayRequest,
+  RgbNewAddressResponse,
+  RgbOnchainInvoiceCreateRequest,
+  RgbOnchainInvoiceResponse,
+  RgbOnchainReceiveRequest,
+  RgbOnchainReceiveResponse,
+  RgbOnchainSendRequest,
+  RgbOnchainSendResponse,
   SendResponse,
   SpontaneousSendRequest,
+  LockedStatusDto,
   StatusDto,
+  UnlockedStatusDto,
 } from "./types.js";
 import { parse, parseNumberAndBigInt } from "lossless-json";
+import {
+  decodeArray,
+  decodeBalancesDto,
+  decodeBolt11DecodeResponse,
+  decodeBolt11PayResponse,
+  decodeBolt12OfferDecodeResponse,
+  decodeBolt12RefundDecodeResponse,
+  decodeChannelDetailsExtendedDto,
+  decodeEventDto,
+  decodePaymentDetailsDto,
+  decodePaymentWaitResponse,
+  decodeRgbContractBalanceResponse,
+  decodeRgbContractsResponse,
+  decodeRgbContractsIssueResponse,
+  decodeRgbLnInvoiceDecodeResponse,
+  decodeRgbOnchainReceiveResponse,
+} from "./codec.js";
 
 export interface RequestOptions {
   timeoutMs?: number;
@@ -55,6 +95,16 @@ export class HttpError extends Error {
     this.status = status;
     this.body = body;
   }
+}
+
+export const HTTP_STATUS_LOCKED = 423;
+
+export function isHttpError(e: unknown): e is HttpError {
+  return e instanceof HttpError;
+}
+
+export function isLockedHttpError(e: unknown): e is HttpError {
+  return isHttpError(e) && e.status === HTTP_STATUS_LOCKED;
 }
 
 export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -117,9 +167,91 @@ export class NodeHttpClient {
     }
   }
 
+  private async requestRaw<T>(
+    method: string,
+    path: string,
+    body?: BodyInit,
+    options?: RequestOptions & { returnNullOn404?: boolean; headers?: Record<string, string> },
+  ): Promise<T | null> {
+    const url = `${this.baseUrl}${path}`;
+    const headers = { ...this.defaultHeaders, ...(options?.headers ?? {}) };
+    const controller = new AbortController();
+    const timeout = options?.timeoutMs && options.timeoutMs > 0
+      ? setTimeout(() => controller.abort(), options.timeoutMs)
+      : undefined;
+    if (options?.signal) {
+      if (options.signal.aborted) controller.abort();
+      else options.signal.addEventListener("abort", () => controller.abort());
+    }
+
+    try {
+      const resp = await this.fetchFn(url, { method, headers, body, signal: controller.signal });
+      const text = await resp.text();
+      const json = text ? safeJsonParse(text) : undefined;
+      if (!resp.ok) {
+        if (resp.status === 404 && options?.returnNullOn404) return null;
+        const msg = (json as any)?.error || `HTTP ${resp.status}`;
+        throw new HttpError(msg, resp.status, json ?? text);
+      }
+      return (json as T) ?? ({} as T);
+    } catch (e: any) {
+      if (e?.name === "AbortError") {
+        throw new Error("Request aborted");
+      }
+      throw e;
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
+  }
+
+  private async requestBinary(
+    method: string,
+    path: string,
+    options?: RequestOptions & { headers?: Record<string, string> },
+  ): Promise<Uint8Array> {
+    const url = `${this.baseUrl}${path}`;
+    const headers = { ...this.defaultHeaders, ...(options?.headers ?? {}) };
+    const controller = new AbortController();
+    const timeout = options?.timeoutMs && options.timeoutMs > 0
+      ? setTimeout(() => controller.abort(), options.timeoutMs)
+      : undefined;
+    if (options?.signal) {
+      if (options.signal.aborted) controller.abort();
+      else options.signal.addEventListener("abort", () => controller.abort());
+    }
+
+    try {
+      const resp = await this.fetchFn(url, { method, headers, signal: controller.signal });
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => "");
+        const json = text ? safeJsonParse(text) : undefined;
+        const msg = (json as any)?.error || `HTTP ${resp.status}`;
+        throw new HttpError(msg, resp.status, json ?? text);
+      }
+      const ab = await resp.arrayBuffer();
+      return new Uint8Array(ab);
+    } catch (e: any) {
+      if (e?.name === "AbortError") {
+        throw new Error("Request aborted");
+      }
+      throw e;
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
+  }
+
   // GET /status
   status(options?: RequestOptions): Promise<StatusDto> {
     return this.request<StatusDto>("GET", "/status", undefined, options) as Promise<StatusDto>;
+  }
+
+  // Convenience helper if you only want the unlocked status shape.
+  async statusUnlocked(options?: RequestOptions): Promise<UnlockedStatusDto> {
+    const s = await this.status(options);
+    if ((s as LockedStatusDto).locked) {
+      throw new Error("Daemon is locked. Run `rgbldk node unlock --passphrase-stdin` to start the node runtime.");
+    }
+    return s as UnlockedStatusDto;
   }
 
   // GET /node_id
@@ -142,9 +274,143 @@ export class NodeHttpClient {
     return this.request<OkResponse>("POST", "/wallet/sync", {}, options) as Promise<OkResponse>;
   }
 
+  // ---- RGB wallet ----
+
+  // POST /rgb/sync
+  rgbSync(options?: RequestOptions): Promise<OkResponse> {
+    return this.request<OkResponse>("POST", "/rgb/sync", {}, options) as Promise<OkResponse>;
+  }
+
+  // POST /rgb/new_address
+  rgbNewAddress(options?: RequestOptions): Promise<RgbNewAddressResponse> {
+    return this.request<RgbNewAddressResponse>("POST", "/rgb/new_address", {}, options) as Promise<RgbNewAddressResponse>;
+  }
+
+  // GET /rgb/contracts
+  rgbContracts(options?: RequestOptions): Promise<RgbContractsResponse> {
+    return this.request<unknown>("GET", "/rgb/contracts", undefined, options).then((v) => decodeRgbContractsResponse(v));
+  }
+
+  // GET /rgb/issuers
+  rgbIssuers(options?: RequestOptions): Promise<RgbIssuersResponse> {
+    return this.request<RgbIssuersResponse>("GET", "/rgb/issuers", undefined, options) as Promise<RgbIssuersResponse>;
+  }
+
+  // POST /rgb/issuers/import (binary body)
+  rgbIssuersImport(
+    name: string,
+    archive: Uint8Array | ArrayBuffer,
+    format: "auto" | "raw" | "gzip" | "zip" = "auto",
+    options?: RequestOptions,
+  ): Promise<RgbIssuersImportResponse> {
+    if (!name) throw new Error("name is required");
+    const q = `name=${encodeURIComponent(name)}&format=${encodeURIComponent(format)}`;
+    return this.requestRaw<RgbIssuersImportResponse>(
+      "POST",
+      `/rgb/issuers/import?${q}`,
+      archive as any,
+      { ...options, headers: { "Content-Type": "application/octet-stream", ...(options?.headers ?? {}) } },
+    ) as Promise<RgbIssuersImportResponse>;
+  }
+
+  // POST /rgb/contracts/import (binary body)
+  rgbContractsImport(
+    contractId: string,
+    archive: Uint8Array | ArrayBuffer,
+    format: "auto" | "raw" | "gzip" | "zip" = "auto",
+    options?: RequestOptions,
+  ): Promise<RgbContractsImportResponse> {
+    if (!contractId) throw new Error("contractId is required");
+    const q = `contract_id=${encodeURIComponent(contractId)}&format=${encodeURIComponent(format)}`;
+    return this.requestRaw<RgbContractsImportResponse>(
+      "POST",
+      `/rgb/contracts/import?${q}`,
+      archive as any,
+      { ...options, headers: { "Content-Type": "application/octet-stream", ...(options?.headers ?? {}) } },
+    ) as Promise<RgbContractsImportResponse>;
+  }
+
+  // POST /rgb/contracts/issue
+  rgbContractsIssue(req: RgbContractsIssueRequest, options?: RequestOptions): Promise<RgbContractsIssueResponse> {
+    return this.request<unknown>("POST", "/rgb/contracts/issue", req, options).then((v) =>
+      decodeRgbContractsIssueResponse(v)
+    ) as Promise<RgbContractsIssueResponse>;
+  }
+
+  // POST /rgb/contracts/export
+  rgbContractsExport(req: RgbContractsExportRequest, options?: RequestOptions): Promise<RgbContractsExportResponse> {
+    return this.request<RgbContractsExportResponse>("POST", "/rgb/contracts/export", req, options) as Promise<RgbContractsExportResponse>;
+  }
+
+  // GET /rgb/consignments/{consignmentKey} (binary response)
+  rgbConsignmentDownload(
+    consignmentKey: string,
+    format: "raw" | "gzip" | "zip" = "raw",
+    options?: RequestOptions,
+  ): Promise<Uint8Array> {
+    if (!consignmentKey) throw new Error("consignmentKey is required");
+    const q = `format=${encodeURIComponent(format)}`;
+    return this.requestBinary(
+      "GET",
+      `/rgb/consignments/${encodeURIComponent(consignmentKey)}?${q}`,
+      options,
+    );
+  }
+
+  // GET /rgb/contract/{contractId}/balance
+  rgbContractBalance(contractId: string, options?: RequestOptions): Promise<RgbContractBalanceResponse> {
+    if (!contractId) throw new Error("contractId is required");
+    return this.request<RgbContractBalanceResponse>(
+      "GET",
+      `/rgb/contract/${encodeURIComponent(contractId)}/balance`,
+      undefined,
+      options,
+    ).then((v) => decodeRgbContractBalanceResponse(v)) as Promise<RgbContractBalanceResponse>;
+  }
+
+  // ---- RGB Lightning ----
+
+  // POST /rgb/ln/invoice/create
+  rgbLnInvoiceCreate(req: RgbLnInvoiceCreateRequest, options?: RequestOptions): Promise<RgbLnInvoiceResponse> {
+    return this.request<RgbLnInvoiceResponse>("POST", "/rgb/ln/invoice/create", req, options) as Promise<RgbLnInvoiceResponse>;
+  }
+
+  // POST /rgb/ln/invoice/decode
+  rgbLnInvoiceDecode(req: RgbLnInvoiceDecodeRequest, options?: RequestOptions): Promise<RgbLnInvoiceDecodeResponse> {
+    return this.request<unknown>("POST", "/rgb/ln/invoice/decode", req, options).then((v) =>
+      decodeRgbLnInvoiceDecodeResponse(v)
+    ) as Promise<RgbLnInvoiceDecodeResponse>;
+  }
+
+  // POST /rgb/ln/pay
+  rgbLnPay(req: RgbLnPayRequest, options?: RequestOptions): Promise<SendResponse> {
+    return this.request<SendResponse>("POST", "/rgb/ln/pay", req, options) as Promise<SendResponse>;
+  }
+
+  // ---- RGB on-chain ----
+
+  // POST /rgb/onchain/invoice/create
+  rgbOnchainInvoiceCreate(req: RgbOnchainInvoiceCreateRequest, options?: RequestOptions): Promise<RgbOnchainInvoiceResponse> {
+    return this.request<RgbOnchainInvoiceResponse>("POST", "/rgb/onchain/invoice/create", req, options) as Promise<RgbOnchainInvoiceResponse>;
+  }
+
+  // POST /rgb/onchain/send
+  rgbOnchainSend(req: RgbOnchainSendRequest, options?: RequestOptions): Promise<RgbOnchainSendResponse> {
+    return this.request<RgbOnchainSendResponse>("POST", "/rgb/onchain/send", req, options) as Promise<RgbOnchainSendResponse>;
+  }
+
+  // POST /rgb/onchain/receive
+  rgbOnchainReceive(req: RgbOnchainReceiveRequest, options?: RequestOptions): Promise<RgbOnchainReceiveResponse> {
+    return this.request<unknown>("POST", "/rgb/onchain/receive", req, options).then((v) =>
+      decodeRgbOnchainReceiveResponse(v)
+    ) as Promise<RgbOnchainReceiveResponse>;
+  }
+
   // GET /balances
   balances(options?: RequestOptions): Promise<BalancesDto> {
-    return this.request<BalancesDto>("GET", "/balances", undefined, options) as Promise<BalancesDto>;
+    return this.request<unknown>("GET", "/balances", undefined, options).then((v) => decodeBalancesDto(v)) as Promise<
+      BalancesDto
+    >;
   }
 
   // GET /peers
@@ -164,7 +430,8 @@ export class NodeHttpClient {
 
   // GET /channels
   channels(options?: RequestOptions): Promise<ChannelDetailsExtendedDto[]> {
-    return this.request<ChannelDetailsExtendedDto[]>("GET", "/channels", undefined, options) as Promise<
+    const decode = decodeArray(decodeChannelDetailsExtendedDto);
+    return this.request<unknown>("GET", "/channels", undefined, options).then((v) => decode(v)) as Promise<
       ChannelDetailsExtendedDto[]
     >;
   }
@@ -196,7 +463,9 @@ export class NodeHttpClient {
 
   // POST /bolt11/decode
   bolt11Decode(req: Bolt11DecodeRequest, options?: RequestOptions): Promise<Bolt11DecodeResponse> {
-    return this.request<Bolt11DecodeResponse>("POST", "/bolt11/decode", req, options) as Promise<Bolt11DecodeResponse>;
+    return this.request<unknown>("POST", "/bolt11/decode", req, options).then((v) => decodeBolt11DecodeResponse(v)) as Promise<
+      Bolt11DecodeResponse
+    >;
   }
 
   // POST /bolt11/send
@@ -211,7 +480,9 @@ export class NodeHttpClient {
 
   // POST /bolt11/pay (waits for completion)
   bolt11Pay(req: Bolt11PayRequest, options?: RequestOptions): Promise<Bolt11PayResponse> {
-    return this.request<Bolt11PayResponse>("POST", "/bolt11/pay", req, options) as Promise<Bolt11PayResponse>;
+    return this.request<unknown>("POST", "/bolt11/pay", req, options).then((v) => decodeBolt11PayResponse(v)) as Promise<
+      Bolt11PayResponse
+    >;
   }
 
   // POST /spontaneous/send
@@ -224,17 +495,18 @@ export class NodeHttpClient {
   // GET /payment/{paymentId}
   getPayment(paymentIdHex: string, options?: RequestOptions): Promise<PaymentDetailsDto | null> {
     if (!paymentIdHex) throw new Error("paymentIdHex is required");
-    return this.request<PaymentDetailsDto>(
+    return this.request<unknown>(
       "GET",
       `/payment/${encodeURIComponent(paymentIdHex)}`,
       undefined,
       { ...options, returnNullOn404: true },
-    ) as Promise<PaymentDetailsDto | null>;
+    ).then((v) => (v ? decodePaymentDetailsDto(v) : null)) as Promise<PaymentDetailsDto | null>;
   }
 
   // GET /payments
   payments(options?: RequestOptions): Promise<PaymentDetailsDto[]> {
-    return this.request<PaymentDetailsDto[]>("GET", "/payments", undefined, options) as Promise<
+    const decode = decodeArray(decodePaymentDetailsDto);
+    return this.request<unknown>("GET", "/payments", undefined, options).then((v) => decode(v)) as Promise<
       PaymentDetailsDto[]
     >;
   }
@@ -242,12 +514,12 @@ export class NodeHttpClient {
   // POST /payment/{paymentId}/wait
   paymentWait(paymentIdHex: string, req: PaymentWaitRequest = {}, options?: RequestOptions): Promise<PaymentWaitResponse> {
     if (!paymentIdHex) throw new Error("paymentIdHex is required");
-    return this.request<PaymentWaitResponse>(
+    return this.request<unknown>(
       "POST",
       `/payment/${encodeURIComponent(paymentIdHex)}/wait`,
       req,
       options,
-    ) as Promise<PaymentWaitResponse>;
+    ).then((v) => decodePaymentWaitResponse(v)) as Promise<PaymentWaitResponse>;
   }
 
   // POST /payment/{paymentId}/abandon
@@ -282,9 +554,9 @@ export class NodeHttpClient {
 
   // POST /bolt12/offer/decode
   bolt12OfferDecode(req: Bolt12OfferDecodeRequest, options?: RequestOptions): Promise<Bolt12OfferDecodeResponse> {
-    return this.request<Bolt12OfferDecodeResponse>("POST", "/bolt12/offer/decode", req, options) as Promise<
-      Bolt12OfferDecodeResponse
-    >;
+    return this.request<unknown>("POST", "/bolt12/offer/decode", req, options).then((v) =>
+      decodeBolt12OfferDecodeResponse(v)
+    ) as Promise<Bolt12OfferDecodeResponse>;
   }
 
   // POST /bolt12/offer/send
@@ -306,9 +578,9 @@ export class NodeHttpClient {
 
   // POST /bolt12/refund/decode
   bolt12RefundDecode(req: Bolt12RefundDecodeRequest, options?: RequestOptions): Promise<Bolt12RefundDecodeResponse> {
-    return this.request<Bolt12RefundDecodeResponse>("POST", "/bolt12/refund/decode", req, options) as Promise<
-      Bolt12RefundDecodeResponse
-    >;
+    return this.request<unknown>("POST", "/bolt12/refund/decode", req, options).then((v) =>
+      decodeBolt12RefundDecodeResponse(v)
+    ) as Promise<Bolt12RefundDecodeResponse>;
   }
 
   // POST /bolt12/refund/request_payment
@@ -326,7 +598,9 @@ export class NodeHttpClient {
 
   // POST /events/wait_next (long-poll)
   eventsWaitNext(options?: RequestOptions): Promise<EventDto> {
-    return this.request<EventDto>("POST", "/events/wait_next", {}, options) as Promise<EventDto>;
+    return this.request<unknown>("POST", "/events/wait_next", {}, options).then((v) => decodeEventDto(v)) as Promise<
+      EventDto
+    >;
   }
 
   // POST /events/handled
@@ -337,8 +611,7 @@ export class NodeHttpClient {
 
 function safeJsonParse(text: string): unknown {
   try {
-    const value = parse(text, null, parseNumberAndBigInt);
-    return normalizeBigInts(value);
+    return parse(text, normalizeBigIntReviver, parseNumberAndBigInt);
   } catch {
     return undefined;
   }
@@ -346,31 +619,16 @@ function safeJsonParse(text: string): unknown {
 
 function jsonBigIntReplacer(_key: string, value: unknown): unknown {
   if (typeof value === "bigint") {
-    const max = BigInt(Number.MAX_SAFE_INTEGER);
-    if (value <= max) return Number(value);
-    throw new Error("Request body contains a bigint larger than Number.MAX_SAFE_INTEGER");
+    return value.toString(10);
   }
   return value;
 }
 
-function normalizeBigInts(value: unknown): unknown {
+function normalizeBigIntReviver(_key: string, value: unknown): unknown {
   if (typeof value === "bigint") {
     const max = BigInt(Number.MAX_SAFE_INTEGER);
     const min = BigInt(Number.MIN_SAFE_INTEGER);
     if (value <= max && value >= min) return Number(value);
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    return value.map(normalizeBigInts);
-  }
-
-  if (value && typeof value === "object") {
-    const obj = value as Record<string, unknown>;
-    for (const key of Object.keys(obj)) {
-      obj[key] = normalizeBigInts(obj[key]);
-    }
-    return obj;
   }
 
   return value;

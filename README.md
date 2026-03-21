@@ -10,10 +10,13 @@ Most users only need:
 
 ## What’s in this repo
 
-- Rust HTTP API DTOs/types: [`crates/api`](crates/api)
 - Rust CLI (`rgbldk`): [`crates/cli`](crates/cli)
 - TypeScript SDK: [`sdk/`](sdk)
-- Docs: [`docs/`](docs)
+
+HTTP API DTOs + generated Rust client live in `rgb-ldk-api`:
+
+- `rgbldk_http_dto`
+- `rgbldk_http_client`
 
 ## Quick start (local regtest)
 
@@ -41,13 +44,27 @@ RGBLDK_CONNECT=http://127.0.0.1:8501 ./target/debug/rgbldk node status
 RGBLDK_CONNECT=http://127.0.0.1:8501 ./target/debug/rgbldk wallet balance
 ```
 
-## Docs
+## Offline debugging (invoice + consignment)
 
-- Docs home: [`docs/README.md`](docs/README.md)
-- Docker guide: [`docs/getting-started/docker.md`](docs/getting-started/docker.md)
-- Local binary guide: [`docs/getting-started/local-binary.md`](docs/getting-started/local-binary.md)
-- HTTP API reference: [`docs/api/http-api.md`](docs/api/http-api.md)
-- CLI reference: [`docs/cli/README.md`](docs/cli/README.md)
+These commands do **not** talk to `rgbldkd`; they help debug issues like
+`No owned allocations resolved from consignment` by checking whether an expected seal/outpoint is
+present in a consignment.
+
+```bash
+# Parse an RGB invoice URI (pass `-` to read from stdin, or `@file` to read from a file)
+./target/debug/rgbldk debug invoice 'contract:...'
+
+# Inspect a consignment file (raw/gzip/zip auto-detected)
+./target/debug/rgbldk debug consignment ./transfer.consignment.zip
+
+# Check for a specific outpoint and/or invoice beneficiary in the consignment
+./target/debug/rgbldk debug consignment ./transfer.consignment.zip \
+  --outpoint cb6525f40318ba6d7a999c429bb2d60f2dab37731db5a14511fa11cd014429b8:0 \
+  --invoice 'contract:...'
+```
+
+## SDK Docs
+
 - TypeScript SDK: [`sdk/README.md`](sdk/README.md)
 
 ## License

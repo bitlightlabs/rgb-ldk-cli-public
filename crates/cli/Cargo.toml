@@ -8,17 +8,43 @@ rust-version = "1.92.0"
 name = "rgbldk"
 path = "src/main.rs"
 
+[[bin]]
+name = "rgbldk-nmh"
+path = "src/nmh.rs"
+
 [dependencies]
 clap = { version = "4.5.27", features = ["derive", "env"] }
-rgbldk-api = { path = "../api" }
+rgbldk_http_dto = { git = "https://github.com/bitlightlabs/rgb-ldk-api-public.git", branch = "main" }
+rgbldk_http_client = { git = "https://github.com/bitlightlabs/rgb-ldk-api-public.git", branch = "main" }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1.0", default-features = false, features = ["std", "derive"] }
 serde_json = { version = "1.0", default-features = false, features = ["std"] }
-tokio = { version = "1.37", features = ["rt-multi-thread", "macros", "time"] }
+tokio = { version = "1.37", features = ["rt-multi-thread", "macros", "time", "net", "io-util"] }
 comfy-table = "7.1.5"
 owo-colors = "4.2.0"
 supports-color = "3.0.2"
 toml = "0.8.20"
+base64 = { version = "0.22.1", default-features = false, features = ["std"] }
+rand = "0.8.5"
+argon2 = { version = "0.5.3", default-features = false, features = ["std"] }
+chacha20poly1305 = { version = "0.10.1", default-features = false, features = ["std"] }
+secrecy = { version = "0.10.3", default-features = false }
+zeroize = { version = "1.8.1", default-features = false, features = ["std"] }
+rpassword = "7.3.1"
+bip39 = "2.0.0"
+hex = "0.4"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+
+
+# Offline RGB invoice + consignment debug helpers.
+rgb-std = { version = "0.12.0-rc.3", features = ["uri", "bitcoin"] }
+bp-core = "0.12.0"
+strict_encoding = "2.9.1"
+commit_verify = "0.12.0"
+amplify = "4.9.0"
+flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }
+zip = { version = "2.2.0", default-features = false, features = ["deflate"] }
+bitcoin_hashes = "0.16.0"
 
 [dev-dependencies]
 bitcoin = "0.32.6"

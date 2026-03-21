@@ -1,4 +1,5 @@
 use std::io::IsTerminal;
+use std::io::Read;
 use std::io::Write;
 use std::time::Duration;
 
@@ -55,4 +56,38 @@ pub async fn with_spinner<T>(
 	eprint!("\r\x1b[2K");
 	let _ = std::io::stderr().flush();
 	out
+}
+
+pub fn read_passphrase(passphrase_stdin: bool) -> Result<String, String> {
+	if passphrase_stdin {
+		let mut buf = String::new();
+		std::io::stdin()
+			.read_to_string(&mut buf)
+			.map_err(|e| format!("failed to read stdin: {e}"))?;
+		Ok(buf.trim_end().to_string())
+	} else {
+		rpassword::prompt_password("Passphrase: ")
+			.map_err(|e| format!("failed to read passphrase: {e}"))
+	}
+}
+
+pub fn read_stdin_trimmed(label: &str) -> Result<String, String> {
+	let mut buf = String::new();
+	std::io::stdin()
+		.read_to_string(&mut buf)
+		.map_err(|e| format!("failed to read stdin for {label}: {e}"))?;
+	let s = buf.trim().to_string();
+	if s.is_empty() {
+		return Err(format!("{label} must not be empty"));
+	}
+	Ok(s)
+}
+
+pub fn read_file_trimmed(path: &str) -> Result<String, String> {
+	let s = std::fs::read_to_string(path).map_err(|e| format!("read {path}: {e}"))?;
+	let v = s.trim().to_string();
+	if v.is_empty() {
+		return Err(format!("{path} is empty"));
+	}
+	Ok(v)
 }

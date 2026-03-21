@@ -20,8 +20,8 @@ services:
       rgbldk-regtest:
         ipv4_address: 172.31.0.10
     ports:
-      - "18443:18443"
-      - "18444:18444"
+      - "127.0.0.1:${BITCOIND_RPC_PORT:-18443}:18443"
+      - "127.0.0.1:${BITCOIND_REST_PORT:-18444}:18444"
     volumes:
       - bitcoin-data:/data/.bitcoin
     command:
@@ -56,7 +56,8 @@ services:
         # Mine enough blocks so:
         # - coinbase outputs are spendable (100 blocks maturity)
         # - esplora starts serving fee estimates immediately
-        bitcoin-cli -regtest -rpcconnect=bitcoind -rpcport=18443 -rpcuser="$${RPC_USER:-bitcoin}" -rpcpassword="$${RPC_PASSWORD:-bitcoin}" createwallet dev >/dev/null 2>&1 || true
+        bitcoin-cli -regtest -rpcconnect=bitcoind -rpcport=18443 -rpcuser="$${RPC_USER:-bitcoin}" -rpcpassword="$${RPC_PASSWORD:-bitcoin}" createwallet dev >/dev/null 2>&1 || \
+          bitcoin-cli -regtest -rpcconnect=bitcoind -rpcport=18443 -rpcuser="$${RPC_USER:-bitcoin}" -rpcpassword="$${RPC_PASSWORD:-bitcoin}" loadwallet dev >/dev/null 2>&1 || true
         ADDR="$$(bitcoin-cli -regtest -rpcconnect=bitcoind -rpcport=18443 -rpcuser="$${RPC_USER:-bitcoin}" -rpcpassword="$${RPC_PASSWORD:-bitcoin}" getnewaddress)"
         bitcoin-cli -regtest -rpcconnect=bitcoind -rpcport=18443 -rpcuser="$${RPC_USER:-bitcoin}" -rpcpassword="$${RPC_PASSWORD:-bitcoin}" generatetoaddress 101 "$$ADDR" >/dev/null
 
@@ -70,8 +71,8 @@ services:
     networks:
       - rgbldk-regtest
     ports:
-      - "${API_PORT:-3003}:3000"
-      - "${ELECTRUM_PORT:-50005}:50001"
+      - "127.0.0.1:${API_PORT:-3003}:3000"
+      - "127.0.0.1:${ELECTRUM_PORT:-50005}:50001"
     volumes:
       - bitcoin-data:/data/.bitcoin
     command:

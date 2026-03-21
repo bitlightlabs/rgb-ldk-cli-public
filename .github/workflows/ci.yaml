@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    name: Rust fmt + clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install nightly (fmt + clippy)
+        run: rustup toolchain install nightly --profile minimal --component rustfmt --component clippy
+
+      - name: Rustfmt
+        run: cargo +nightly fmt --all -- --check
+
+      - name: Clippy
+        run: cargo +nightly clippy --workspace --all-targets -- -D warnings
+
+      - name: Build (stable)
+        run: cargo build --locked --workspace
+
+  sdk:
+    name: TypeScript SDK build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: sdk/package-lock.json
+
+      - name: Install
+        run: npm ci
+        working-directory: sdk
+
+      - name: Build
+        run: npm run build
+        working-directory: sdk
