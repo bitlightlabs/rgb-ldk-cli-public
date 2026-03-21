@@ -4,10 +4,12 @@ use rgbldk_http_dto::{
 	RgbContractsIssueResponse, RgbContractsResponse, RgbIssuersImportResponse, RgbIssuersResponse,
 	RgbLnInvoiceCreateForHashRequest, RgbLnInvoiceCreateRequest, RgbLnInvoiceDecodeRequest,
 	RgbLnInvoiceDecodeResponse, RgbLnInvoiceResponse, RgbLnPayRequest, RgbNewAddressResponse,
-	RgbOnchainInvoiceCreateRequest, RgbOnchainInvoiceResponse, RgbOnchainReceiveRequest,
-	RgbOnchainReceiveResponse, RgbOnchainSendRequest, RgbOnchainSendResponse,
-	RgbUtxosReleaseRequest, RgbUtxosReleaseResponse, RgbUtxosReserveRequest,
-	RgbUtxosReserveResponse, RgbUtxosResponse, RgbUtxosSummaryResponse, SendResponse,
+	RgbOnchainInvoiceCreateRequest, RgbOnchainInvoiceDecodeRequest,
+	RgbOnchainInvoiceDecodeResponse, RgbOnchainInvoiceResponse, RgbOnchainPaymentsResponse,
+	RgbOnchainReceiveRequest, RgbOnchainReceiveResponse, RgbOnchainSendRequest,
+	RgbOnchainSendResponse, RgbUtxosReleaseRequest, RgbUtxosReleaseResponse,
+	RgbUtxosReserveRequest, RgbUtxosReserveResponse, RgbUtxosResponse, RgbUtxosSummaryResponse,
+	SendResponse,
 };
 
 use crate::app::App;
@@ -20,9 +22,27 @@ use crate::ui;
 use crate::utils::{die, print_json};
 
 fn error_from_body(body: &[u8]) -> Option<String> {
-	serde_json::from_slice::<serde_json::Value>(body)
-		.ok()
-		.and_then(|v| v.get("error").and_then(|e| e.as_str()).map(|s| s.to_string()))
+	let v = serde_json::from_slice::<serde_json::Value>(body).ok()?;
+	let error = v.get("error").and_then(|e| e.as_str()).unwrap_or("request failed");
+	let message = v.get("message").and_then(|m| m.as_str());
+	let hint = v.get("hint").and_then(|h| h.as_str());
+	let detail = v.get("detail");
+	let checks = v.get("checks");
+
+	let mut parts = vec![error.to_string()];
+	if let Some(message) = message.filter(|m| *m != error) {
+		parts.push(format!("message={message}"));
+	}
+	if let Some(hint) = hint {
+		parts.push(format!("hint={hint}"));
+	}
+	if let Some(detail) = detail {
+		parts.push(format!("detail={detail}"));
+	}
+	if let Some(checks) = checks {
+		parts.push(format!("checks={checks}"));
+	}
+	Some(parts.join("\n"))
 }
 
 fn ensure_success_or_die(status: reqwest::StatusCode, body: &[u8]) {
@@ -460,7 +480,7 @@ pub(crate) async fn handle(app: &App, command: &RgbCommand) {
 						asset_id: args.asset_id.clone(),
 						asset_amount: args.asset_amount,
 						description: args.desc.clone(),
-						expiry_secs: args.expiry_secs,
+						expiry_secs: Some(args.expiry_secs),
 						btc_carrier_amount_msat: args.btc_carrier_amount_msat,
 					};
 					let resp: RgbLnInvoiceResponse =
@@ -477,7 +497,7 @@ pub(crate) async fn handle(app: &App, command: &RgbCommand) {
 						asset_amount: args.asset_amount,
 						payment_hash: args.payment_hash.clone(),
 						description: args.desc.clone(),
-						expiry_secs: args.expiry_secs,
+						expiry_secs: Some(args.expiry_secs),
 						btc_carrier_amount_msat: args.btc_carrier_amount_msat,
 					};
 					let resp: RgbLnInvoiceResponse =
@@ -542,6 +562,7 @@ pub(crate) async fn handle(app: &App, command: &RgbCommand) {
 				let req = RgbOnchainInvoiceCreateRequest {
 					contract_id: args.contract_id.clone(),
 					amount: args.amount,
+					expiry_secs: args.expiry_secs,
 					use_witness_utxo: Some(args.use_witness_utxo),
 					nonce: args.nonce,
 					blinding_utxo: args.blinding_utxo.clone(),
@@ -555,6 +576,77 @@ pub(crate) async fn handle(app: &App, command: &RgbCommand) {
 						if let Some(u) = resp.blinding_utxo_used.as_deref() {
 							println!("blinding_utxo_used={u}");
 						}
+					},
+				}
+			},
+			RgbOnchainCommand::InvoiceDecode { invoice } => {
+				let url = join_url(&app.base, "/api/v1/rgb/onchain/invoice/decode");
+				let req = RgbOnchainInvoiceDecodeRequest { invoice: invoice.clone() };
+				let resp: RgbOnchainInvoiceDecodeResponse =
+					send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+				match app.output {
+					ui::OutputMode::Json => print_json(&resp, app.pretty),
+					ui::OutputMode::Text => {
+						let rows = vec![
+							vec!["contract_id".into(), resp.contract_id],
+							vec!["amount".into(), ui::format_u64_with_commas(resp.amount)],
+							vec!["beneficiary".into(), resp.beneficiary],
+							vec!["use_witness_utxo".into(), resp.use_witness_utxo.to_string()],
+							vec![
+								"expiry_unix_secs".into(),
+								resp.expiry_unix_secs
+									.map(|v| v.to_string())
+									.unwrap_or_else(|| "-".into()),
+							],
+						];
+						ui::print_table(app.theme, &["Field", "Value"], rows);
+					},
+				}
+			},
+			RgbOnchainCommand::Payments(args) => {
+				let path = match args.contract_id.as_deref() {
+					Some(contract_id) => {
+						format!("/api/v1/rgb/onchain/payments?contract_id={contract_id}")
+					},
+					None => "/api/v1/rgb/onchain/payments".to_string(),
+				};
+				let url = join_url(&app.base, &path);
+				let resp: RgbOnchainPaymentsResponse =
+					send_json(app.client.get(url)).await.unwrap_or_else(|e| die(e));
+				match app.output {
+					ui::OutputMode::Json => print_json(&resp, app.pretty),
+					ui::OutputMode::Text => {
+						let rows = resp
+							.payments
+							.into_iter()
+							.map(|p| {
+								vec![
+									p.id,
+									p.status,
+									p.contract_id.unwrap_or_else(|| "-".into()),
+									p.asset_id.unwrap_or_else(|| "-".into()),
+									p.amount
+										.map(ui::format_u64_with_commas)
+										.unwrap_or_else(|| "-".into()),
+									p.txid.unwrap_or_else(|| "-".into()),
+									p.consignment_key.unwrap_or_else(|| "-".into()),
+								]
+							})
+							.collect::<Vec<_>>();
+						ui::print_table_with_right_align(
+							app.theme,
+							&[
+								"payment_id",
+								"status",
+								"contract_id",
+								"asset_id",
+								"amount",
+								"txid",
+								"consignment_key",
+							],
+							rows,
+							&[4],
+						);
 					},
 				}
 			},
@@ -576,17 +668,30 @@ pub(crate) async fn handle(app: &App, command: &RgbCommand) {
 				}
 			},
 			RgbOnchainCommand::Receive(args) => {
+				if args.payment_id.is_none() && args.invoice.is_none() {
+					die("expected --payment-id or --invoice");
+				}
 				let url = join_url(&app.base, "/api/v1/rgb/onchain/receive");
 				let resp: RgbOnchainReceiveResponse =
 					if let Some(consignment_key) = args.consignment_key.clone() {
-						let req = RgbOnchainReceiveRequest { consignment_key };
+						let req = RgbOnchainReceiveRequest {
+							consignment_key,
+							payment_id: args.payment_id.clone(),
+							invoice: args.invoice.clone(),
+						};
 						send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e))
 					} else if let Some(file) = args.file.clone() {
+						let payment_id = args.payment_id.as_deref().unwrap_or_else(|| {
+							die("binary consignment upload requires --payment-id");
+						});
 						let bytes = std::fs::read(&file)
 							.unwrap_or_else(|e| die(format!("failed to read {file}: {e}")));
 						let url = join_url(
 							&app.base,
-							&format!("/api/v1/rgb/onchain/receive?format={}", args.format),
+							&format!(
+								"/api/v1/rgb/onchain/receive?format={}&payment_id={}",
+								args.format, payment_id
+							),
 						);
 						send_json(
 							app.client

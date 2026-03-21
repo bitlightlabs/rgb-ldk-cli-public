@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import http.client
 import http.server
 import json
@@ -1189,6 +1190,7 @@ def main() -> int:
                     ).get("invoice")
                     if not isinstance(inv_split, str) or not inv_split:
                         raise RuntimeError(f"Invalid RGB on-chain invoice from node-b: {inv_split}")
+                    inv_split_payment_id = hashlib.sha256(inv_split.encode("utf-8")).hexdigest()
                     run_step(
                         f"rgbldk debug invoice '{inv_split}'",
                         display_cmd="rgbldk debug invoice '<invoice>'",
@@ -1224,8 +1226,8 @@ def main() -> int:
                     )
                     run_step("rgbldk ctx use node-b")
                     run_step(
-                        f"rgbldk rgb onchain receive --file {cons_split} --format zip",
-                        display_cmd="rgbldk rgb onchain receive --file <a-to-b.zip> --format zip",
+                        f"rgbldk rgb onchain receive --file {cons_split} --format zip --payment-id {inv_split_payment_id}",
+                        display_cmd="rgbldk rgb onchain receive --file <a-to-b.zip> --format zip --payment-id <payment_id>",
                     )
                     bitcoind_cli(f"generatetoaddress 6 {miner_addr}")
                     run_step("rgbldk wallet sync")
@@ -1388,6 +1390,7 @@ def main() -> int:
                 ).get("invoice")
                 if not isinstance(inv_ba, str) or not inv_ba:
                     raise RuntimeError(f"Invalid RGB on-chain invoice from node-a: {inv_ba}")
+                inv_ba_payment_id = hashlib.sha256(inv_ba.encode("utf-8")).hexdigest()
                 run_step("rgbldk ctx use node-b")
                 run_step("rgbldk wallet sync")
                 ensure_within_runtime("pre rgb onchain send (node-b) rgb sync")
@@ -1414,8 +1417,8 @@ def main() -> int:
                 )
                 run_step("rgbldk ctx use node-a")
                 run_step(
-                    f"rgbldk rgb onchain receive --file {cons_ba} --format zip",
-                    display_cmd="rgbldk rgb onchain receive --file <b-to-a.zip> --format zip",
+                    f"rgbldk rgb onchain receive --file {cons_ba} --format zip --payment-id {inv_ba_payment_id}",
+                    display_cmd="rgbldk rgb onchain receive --file <b-to-a.zip> --format zip --payment-id <payment_id>",
                 )
                 bitcoind_cli(f"generatetoaddress 6 {miner_addr}")
                 run_step("rgbldk wallet sync")

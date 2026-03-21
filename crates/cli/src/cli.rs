@@ -625,6 +625,10 @@ pub struct RgbLnPayArgs {
 pub enum RgbOnchainCommand {
 	/// Create an RGB on-chain invoice.
 	InvoiceCreate(RgbOnchainInvoiceCreateArgs),
+	/// Decode an RGB on-chain invoice.
+	InvoiceDecode { invoice: String },
+	/// List RGB on-chain payment records.
+	Payments(RgbOnchainPaymentsArgs),
 	/// Send an RGB on-chain payment.
 	Send(RgbOnchainSendArgs),
 	/// Receive/finalize an RGB on-chain payment.
@@ -639,9 +643,22 @@ pub struct RgbOnchainReceiveArgs {
 	/// Upload a consignment archive (raw/gzip/zip) in the request body (cross-host setups).
 	#[arg(long, required_unless_present = "consignment_key")]
 	pub file: Option<String>,
+	/// RGB on-chain payment id (64 hex chars). Required for binary uploads.
+	#[arg(long)]
+	pub payment_id: Option<String>,
+	/// Full RGB invoice string. Can be used instead of `--payment-id` when receiving by consignment key.
+	#[arg(long)]
+	pub invoice: Option<String>,
 	/// Archive format for `--file`: `auto` (default), `raw`, `gzip`, `zip`.
 	#[arg(long, default_value = "auto")]
 	pub format: String,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct RgbOnchainPaymentsArgs {
+	/// Optional contract id filter.
+	#[arg(long)]
+	pub contract_id: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -650,6 +667,8 @@ pub struct RgbOnchainInvoiceCreateArgs {
 	pub contract_id: String,
 	#[arg(long)]
 	pub amount: u64,
+	#[arg(long)]
+	pub expiry_secs: Option<u64>,
 	#[arg(long)]
 	pub use_witness_utxo: bool,
 	#[arg(long)]
