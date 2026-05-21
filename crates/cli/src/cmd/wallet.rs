@@ -46,7 +46,7 @@ pub(crate) async fn handle(app: &App, command: &WalletCommand) {
 						let mut rows = Vec::new();
 						for row in &b.rgb.l1 {
 							rows.push(vec![
-								row.asset_id.clone(),
+								row.contract_id.clone(),
 								row.contract_id.clone(),
 								row.mined.to_string(),
 								row.tentative.to_string(),
@@ -57,7 +57,7 @@ pub(crate) async fn handle(app: &App, command: &WalletCommand) {
 						crate::ui::print_table_with_right_align(
 							app.theme,
 							&[
-								"RGB L1 Asset",
+								"RGB L1 Contract",
 								"Contract",
 								"Mined",
 								"Tentative",
@@ -74,14 +74,14 @@ pub(crate) async fn handle(app: &App, command: &WalletCommand) {
 						for row in &b.rgb.l2 {
 							rows.push(vec![
 								row.channel_id.clone(),
-								row.asset_id.clone(),
+								row.contract_id.clone(),
 								row.local_amount.to_string(),
 								row.remote_amount.to_string(),
 							]);
 						}
 						crate::ui::print_table_with_right_align(
 							app.theme,
-							&["RGB L2 Channel", "Asset", "Local", "Remote"],
+							&["RGB L2 Channel", "Contract", "Local", "Remote"],
 							rows,
 							&[2, 3],
 						);

@@ -38,7 +38,6 @@ export interface RgbBalancesDto {
 
 export interface RgbL1BalanceDto {
   contract_id: string;
-  asset_id: string;
   mined: U64;
   tentative: U64;
   offchain: U64;
@@ -48,7 +47,7 @@ export interface RgbL1BalanceDto {
 
 export interface RgbL2BalanceDto {
   channel_id: string;
-  asset_id: string;
+  contract_id: string;
   local_amount: U64;
   remote_amount: U64;
 }
@@ -197,7 +196,7 @@ export interface OutPointDto {
 }
 
 export interface RgbPaymentContextDto {
-  asset_id: string; // hex
+  contract_id: string;
   asset_amount: U64;
   direction: string; // Inbound | Outbound
   is_swap: boolean;
@@ -252,7 +251,7 @@ export interface ListeningAddressesResponse {
 // ---- RGB ----
 
 export interface RgbOpenChannelRequest {
-  asset_id: string; // hex
+  contract_id: string;
   asset_amount: U64;
   color_context_data: string; // e.g. file://...
 }
@@ -261,22 +260,60 @@ export interface RgbNewAddressResponse {
   address: string;
 }
 
+export interface RgbDerivedDescriptorDto {
+  fingerprint: string;
+  derivation_path: string;
+  xpub: string;
+  descriptor: string;
+}
+
+export interface RgbDescriptorResponse {
+  descriptor: string;
+  derived_descriptors?: RgbDerivedDescriptorDto[];
+}
+
+export type RgbSignMessageAlgorithmDto = "bitcoin_signed_message" | "ecdsa";
+export type RgbSignMessageEncodingDto = "hex" | "base64";
+
+export interface RgbSignMessageRequest {
+  message: string;
+  algorithm?: RgbSignMessageAlgorithmDto | null;
+  compact?: boolean | null;
+  encoding?: RgbSignMessageEncodingDto | null;
+}
+
+export interface RgbSignMessageResponse {
+  message: string;
+  algorithm: string;
+  signature: string;
+  encoding?: string | null;
+  compact?: boolean | null;
+  pubkey: string;
+  derivation_path: string;
+  digest_hex?: string | null;
+}
+
 export interface RgbContractDto {
   contract_id: string;
-  asset_id: string; // hex 32 bytes
-  name: string | null;
-  ticker: string | null;
-  precision: number | null; // u8
-  issued_supply: U64 | null; // u64
-  details: string | null;
+  name?: string | null;
+  ticker?: string | null;
+  precision?: number | null; // u8
+  issued_supply?: U64 | null; // u64
+  details?: string | null;
 }
 
 export interface RgbContractsResponse {
   contracts: RgbContractDto[];
 }
 
+export interface RgbInvalidIssuerDto {
+  name: string;
+  error: string;
+}
+
 export interface RgbIssuersResponse {
   issuers: string[];
+  invalid_issuers?: RgbInvalidIssuerDto[];
 }
 
 export interface RgbIssuersImportResponse {
@@ -304,7 +341,6 @@ export interface RgbContractsIssueRequest {
 export interface RgbContractsIssueResponse {
   ok: boolean;
   contract_id: string;
-  asset_id: string; // hex 32 bytes
   issued_supply: U64;
   checks?: HealthCheckDto[];
 }
@@ -333,11 +369,25 @@ export interface RgbContractBalanceResponse {
   balance: RgbContractBalanceDto;
 }
 
+export interface RgbContractKnownResponse {
+  contract_id: string;
+  known: boolean;
+}
+
 export interface RgbLnInvoiceCreateRequest {
-  asset_id: string; // hex
+  contract_id: string;
   asset_amount: U64;
   description: string;
-  expiry_secs: number;
+  expiry_secs?: number | null;
+  btc_carrier_amount_msat: U64;
+}
+
+export interface RgbLnInvoiceCreateForHashRequest {
+  contract_id: string;
+  asset_amount: U64;
+  payment_hash: string;
+  description: string;
+  expiry_secs?: number | null;
   btc_carrier_amount_msat: U64;
 }
 
@@ -352,28 +402,61 @@ export interface RgbLnInvoiceDecodeRequest {
 export interface RgbLnInvoiceDecodeResponse {
   payment_hash: string;
   destination: string;
-  carrier_amount_msat: U64 | null;
-  expiry_secs: number;
-  asset_id?: string | null;
+  carrier_amount_msat?: U64 | null;
+  expiry_secs: U64;
+  contract_id?: string | null;
   asset_amount?: U64 | null;
 }
 
 export interface RgbLnPayRequest {
   invoice: string;
-  asset_id?: string | null;
+  contract_id?: string | null;
   asset_amount?: U64 | null;
 }
 
 export interface RgbOnchainInvoiceCreateRequest {
   contract_id: string;
   amount: U64;
+  expiry_secs?: U64 | null;
   use_witness_utxo?: boolean;
   nonce?: U64 | null;
-  blinding_utxo: string;
+  blinding_utxo?: string | null;
 }
 
 export interface RgbOnchainInvoiceResponse {
   invoice: string;
+  blinding_utxo_used?: string | null;
+}
+
+export interface RgbOnchainInvoiceDecodeRequest {
+  invoice: string;
+}
+
+export interface RgbOnchainInvoiceDecodeResponse {
+  contract_id: string;
+  amount: U64;
+  beneficiary: string;
+  use_witness_utxo: boolean;
+  expiry_unix_secs?: U64 | null;
+}
+
+export interface RgbOnchainPaymentDto {
+  id: string;
+  kind: string;
+  status: string;
+  created_at_unix_secs: U64;
+  latest_update_timestamp: U64;
+  expires_at_unix_secs?: U64 | null;
+  invoice?: string | null;
+  contract_id?: string | null;
+  amount?: U64 | null;
+  txid?: string | null;
+  consignment_key?: string | null;
+  consignment_download_path?: string | null;
+}
+
+export interface RgbOnchainPaymentsResponse {
+  payments: RgbOnchainPaymentDto[];
 }
 
 export interface RgbOnchainSendRequest {
@@ -389,11 +472,70 @@ export interface RgbOnchainSendResponse {
 
 export interface RgbOnchainReceiveRequest {
   consignment_key: string;
+  payment_id?: string | null;
+  invoice?: string | null;
 }
 
 export interface RgbOnchainReceiveResponse {
-  asset_id: string;
+  contract_id: string;
   amount: U64;
+}
+
+export interface RgbAllocationDto {
+  contract_id: string;
+  amount: U64;
+  layer: string;
+}
+
+export interface RgbUtxoAssetAllocationDto {
+  contract_id: string;
+  amount: U64;
+}
+
+export interface RgbUtxoDto {
+  outpoint: string;
+  value_sats: U64;
+  confirmed_height?: number | null;
+  rgb_allocations: RgbAllocationDto[];
+  has_mixed_asset_allocations: boolean;
+  spend_roles: string[];
+}
+
+export interface RgbUtxoSummaryDto {
+  outpoint: string;
+  value_sats?: U64 | null;
+  confirmed_height?: number | null;
+  reserved: boolean;
+  reserved_until_unix_secs?: U64 | null;
+  assets?: RgbUtxoAssetAllocationDto[];
+}
+
+export interface RgbUtxosResponse {
+  utxos: RgbUtxoDto[];
+}
+
+export interface RgbUtxosSummaryResponse {
+  utxos: RgbUtxoSummaryDto[];
+}
+
+export interface RgbUtxosReserveRequest {
+  outpoint?: string | null;
+  ttl_secs?: U64 | null;
+}
+
+export interface RgbUtxosReserveResponse {
+  reservation_id: string;
+  outpoint: string;
+  reserved_until_unix_secs: U64;
+}
+
+export interface RgbUtxosReleaseRequest {
+  reservation_id?: string | null;
+  outpoint?: string | null;
+}
+
+export interface RgbUtxosReleaseResponse {
+  released: boolean;
 }
 
 // ---- BOLT12 (offers + refunds) ----

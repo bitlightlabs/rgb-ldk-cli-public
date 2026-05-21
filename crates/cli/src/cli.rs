@@ -331,7 +331,7 @@ pub struct ChannelOpenArgs {
 	pub private: bool,
 	/// Open an RGB-enabled channel (requires all `--rgb-*` args).
 	#[arg(long)]
-	pub rgb_asset_id: Option<String>,
+	pub rgb_contract_id: Option<String>,
 	#[arg(long)]
 	pub rgb_asset_amount: Option<u64>,
 	#[arg(long)]
@@ -583,7 +583,7 @@ pub enum RgbLnInvoiceCommand {
 #[derive(Args, Debug)]
 pub struct RgbLnInvoiceCreateArgs {
 	#[arg(long)]
-	pub asset_id: String,
+	pub contract_id: String,
 	#[arg(long)]
 	pub asset_amount: u64,
 	#[arg(long)]
@@ -597,7 +597,7 @@ pub struct RgbLnInvoiceCreateArgs {
 #[derive(Args, Debug)]
 pub struct RgbLnInvoiceCreateForHashArgs {
 	#[arg(long)]
-	pub asset_id: String,
+	pub contract_id: String,
 	#[arg(long)]
 	pub asset_amount: u64,
 	/// Payment hash (64 hex chars) provided by caller.
@@ -616,7 +616,7 @@ pub struct RgbLnPayArgs {
 	#[arg(long)]
 	pub invoice: String,
 	#[arg(long)]
-	pub asset_id: Option<String>,
+	pub contract_id: Option<String>,
 	#[arg(long)]
 	pub asset_amount: Option<u64>,
 }

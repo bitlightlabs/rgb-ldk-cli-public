@@ -36,14 +36,17 @@ import {
   PeerDetailsDto,
   PeerDisconnectRequest,
   RgbContractBalanceResponse,
+  RgbContractKnownResponse,
   RgbContractsExportRequest,
   RgbContractsExportResponse,
   RgbContractsIssueRequest,
   RgbContractsIssueResponse,
   RgbContractsResponse,
   RgbContractsImportResponse,
+  RgbDescriptorResponse,
   RgbIssuersImportResponse,
   RgbIssuersResponse,
+  RgbLnInvoiceCreateForHashRequest,
   RgbLnInvoiceCreateRequest,
   RgbLnInvoiceDecodeRequest,
   RgbLnInvoiceDecodeResponse,
@@ -51,11 +54,22 @@ import {
   RgbLnPayRequest,
   RgbNewAddressResponse,
   RgbOnchainInvoiceCreateRequest,
+  RgbOnchainInvoiceDecodeRequest,
+  RgbOnchainInvoiceDecodeResponse,
   RgbOnchainInvoiceResponse,
+  RgbOnchainPaymentsResponse,
   RgbOnchainReceiveRequest,
   RgbOnchainReceiveResponse,
   RgbOnchainSendRequest,
   RgbOnchainSendResponse,
+  RgbSignMessageRequest,
+  RgbSignMessageResponse,
+  RgbUtxosReleaseRequest,
+  RgbUtxosReleaseResponse,
+  RgbUtxosReserveRequest,
+  RgbUtxosReserveResponse,
+  RgbUtxosResponse,
+  RgbUtxosSummaryResponse,
   SendResponse,
   SpontaneousSendRequest,
   LockedStatusDto,
@@ -78,7 +92,12 @@ import {
   decodeRgbContractsResponse,
   decodeRgbContractsIssueResponse,
   decodeRgbLnInvoiceDecodeResponse,
+  decodeRgbOnchainInvoiceDecodeResponse,
+  decodeRgbOnchainPaymentsResponse,
   decodeRgbOnchainReceiveResponse,
+  decodeRgbUtxosReserveResponse,
+  decodeRgbUtxosResponse,
+  decodeRgbUtxosSummaryResponse,
 } from "./codec.js";
 
 export interface RequestOptions {
@@ -286,6 +305,42 @@ export class NodeHttpClient {
     return this.request<RgbNewAddressResponse>("POST", "/rgb/new_address", {}, options) as Promise<RgbNewAddressResponse>;
   }
 
+  // GET /rgb/descriptor
+  rgbDescriptor(options?: RequestOptions): Promise<RgbDescriptorResponse> {
+    return this.request<RgbDescriptorResponse>("GET", "/rgb/descriptor", undefined, options) as Promise<RgbDescriptorResponse>;
+  }
+
+  // POST /rgb/sign_message
+  rgbSignMessage(req: RgbSignMessageRequest, options?: RequestOptions): Promise<RgbSignMessageResponse> {
+    return this.request<RgbSignMessageResponse>("POST", "/rgb/sign_message", req, options) as Promise<RgbSignMessageResponse>;
+  }
+
+  // GET /rgb/utxos
+  rgbUtxos(options?: RequestOptions): Promise<RgbUtxosResponse> {
+    return this.request<unknown>("GET", "/rgb/utxos", undefined, options).then((v) =>
+      decodeRgbUtxosResponse(v)
+    ) as Promise<RgbUtxosResponse>;
+  }
+
+  // GET /rgb/utxos/summary
+  rgbUtxosSummary(options?: RequestOptions): Promise<RgbUtxosSummaryResponse> {
+    return this.request<unknown>("GET", "/rgb/utxos/summary", undefined, options).then((v) =>
+      decodeRgbUtxosSummaryResponse(v)
+    ) as Promise<RgbUtxosSummaryResponse>;
+  }
+
+  // POST /rgb/utxos/reserve
+  rgbUtxosReserve(req: RgbUtxosReserveRequest = {}, options?: RequestOptions): Promise<RgbUtxosReserveResponse> {
+    return this.request<unknown>("POST", "/rgb/utxos/reserve", req, options).then((v) =>
+      decodeRgbUtxosReserveResponse(v)
+    ) as Promise<RgbUtxosReserveResponse>;
+  }
+
+  // POST /rgb/utxos/release
+  rgbUtxosRelease(req: RgbUtxosReleaseRequest, options?: RequestOptions): Promise<RgbUtxosReleaseResponse> {
+    return this.request<RgbUtxosReleaseResponse>("POST", "/rgb/utxos/release", req, options) as Promise<RgbUtxosReleaseResponse>;
+  }
+
   // GET /rgb/contracts
   rgbContracts(options?: RequestOptions): Promise<RgbContractsResponse> {
     return this.request<unknown>("GET", "/rgb/contracts", undefined, options).then((v) => decodeRgbContractsResponse(v));
@@ -368,11 +423,35 @@ export class NodeHttpClient {
     ).then((v) => decodeRgbContractBalanceResponse(v)) as Promise<RgbContractBalanceResponse>;
   }
 
+  // GET /rgb/contract/{contractId}/known
+  rgbContractKnown(contractId: string, options?: RequestOptions): Promise<RgbContractKnownResponse> {
+    if (!contractId) throw new Error("contractId is required");
+    return this.request<RgbContractKnownResponse>(
+      "GET",
+      `/rgb/contract/${encodeURIComponent(contractId)}/known`,
+      undefined,
+      options,
+    ) as Promise<RgbContractKnownResponse>;
+  }
+
   // ---- RGB Lightning ----
 
   // POST /rgb/ln/invoice/create
   rgbLnInvoiceCreate(req: RgbLnInvoiceCreateRequest, options?: RequestOptions): Promise<RgbLnInvoiceResponse> {
     return this.request<RgbLnInvoiceResponse>("POST", "/rgb/ln/invoice/create", req, options) as Promise<RgbLnInvoiceResponse>;
+  }
+
+  // POST /rgb/ln/invoice/create_for_hash
+  rgbLnInvoiceCreateForHash(
+    req: RgbLnInvoiceCreateForHashRequest,
+    options?: RequestOptions,
+  ): Promise<RgbLnInvoiceResponse> {
+    return this.request<RgbLnInvoiceResponse>(
+      "POST",
+      "/rgb/ln/invoice/create_for_hash",
+      req,
+      options,
+    ) as Promise<RgbLnInvoiceResponse>;
   }
 
   // POST /rgb/ln/invoice/decode
@@ -392,6 +471,24 @@ export class NodeHttpClient {
   // POST /rgb/onchain/invoice/create
   rgbOnchainInvoiceCreate(req: RgbOnchainInvoiceCreateRequest, options?: RequestOptions): Promise<RgbOnchainInvoiceResponse> {
     return this.request<RgbOnchainInvoiceResponse>("POST", "/rgb/onchain/invoice/create", req, options) as Promise<RgbOnchainInvoiceResponse>;
+  }
+
+  // POST /rgb/onchain/invoice/decode
+  rgbOnchainInvoiceDecode(
+    req: RgbOnchainInvoiceDecodeRequest,
+    options?: RequestOptions,
+  ): Promise<RgbOnchainInvoiceDecodeResponse> {
+    return this.request<unknown>("POST", "/rgb/onchain/invoice/decode", req, options).then((v) =>
+      decodeRgbOnchainInvoiceDecodeResponse(v)
+    ) as Promise<RgbOnchainInvoiceDecodeResponse>;
+  }
+
+  // GET /rgb/onchain/payments
+  rgbOnchainPayments(contractId?: string, options?: RequestOptions): Promise<RgbOnchainPaymentsResponse> {
+    const q = contractId ? `?contract_id=${encodeURIComponent(contractId)}` : "";
+    return this.request<unknown>("GET", `/rgb/onchain/payments${q}`, undefined, options).then((v) =>
+      decodeRgbOnchainPaymentsResponse(v)
+    ) as Promise<RgbOnchainPaymentsResponse>;
   }
 
   // POST /rgb/onchain/send

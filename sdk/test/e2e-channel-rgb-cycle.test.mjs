@@ -535,7 +535,7 @@ test(
         { timeoutMs: 120_000, intervalMs: 1000 },
       );
       assert.equal(issue.ok, true);
-      const { contract_id: contractId, asset_id: assetId } = issue;
+      const { contract_id: contractId } = issue;
 
       await nodeA.api.rgbSync();
 
@@ -569,7 +569,7 @@ test(
         channel_amount_sats: u64(1_000_000),
         announce: false,
         rgb: {
-          asset_id: assetId,
+          contract_id: contractId,
           asset_amount: u64(500),
           color_context_data: colorContext,
         },
@@ -647,7 +647,7 @@ test(
         await nodeB.api.rgbSync();
 
         const inv = await nodeB.api.rgbLnInvoiceCreate({
-          asset_id: assetId,
+          contract_id: contractId,
           asset_amount: u64(Number(amt)),
           description: `rgb ln ${amt.toString()}`,
           expiry_secs: 3600,
@@ -660,7 +660,7 @@ test(
         ]);
         assert.equal(outcome.type, "PaymentSuccessful");
         assert.ok(recvEv.data.rgb, "expected rgb context on PaymentReceived");
-        assert.equal(recvEv.data.rgb.asset_id, assetId);
+        assert.equal(recvEv.data.rgb.contract_id, contractId);
         sentTotal += amt;
 
         await nodeA.api.rgbSync();

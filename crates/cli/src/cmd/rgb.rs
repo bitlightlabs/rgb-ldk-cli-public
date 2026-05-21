@@ -8,8 +8,7 @@ use rgbldk_http_dto::{
 	RgbOnchainInvoiceDecodeResponse, RgbOnchainInvoiceResponse, RgbOnchainPaymentsResponse,
 	RgbOnchainReceiveRequest, RgbOnchainReceiveResponse, RgbOnchainSendRequest,
 	RgbOnchainSendResponse, RgbUtxosReleaseRequest, RgbUtxosReleaseResponse,
-	RgbUtxosReserveRequest, RgbUtxosReserveResponse, RgbUtxosResponse, RgbUtxosSummaryResponse,
-	SendResponse,
+	RgbUtxosReserveRequest, RgbUtxosReserveResponse, RgbUtxosSummaryResponse, SendResponse,
 };
 
 use crate::app::App;
@@ -58,6 +57,59 @@ fn write_bytes_or_die(out: &str, body: &[u8]) {
 	std::fs::write(out, body).unwrap_or_else(|e| die(format!("failed to write {out}: {e}")));
 }
 
+fn format_json_u64(value: Option<&serde_json::Value>) -> String {
+	match value {
+		Some(serde_json::Value::String(s)) => {
+			s.parse::<u64>().map(ui::format_u64_with_commas).unwrap_or_else(|_| s.clone())
+		},
+		Some(serde_json::Value::Number(n)) => {
+			n.as_u64().map(ui::format_u64_with_commas).unwrap_or_else(|| n.to_string())
+		},
+		_ => "-".into(),
+	}
+}
+
+fn format_json_string(value: Option<&serde_json::Value>) -> String {
+	value.and_then(|v| v.as_str()).unwrap_or("-").to_string()
+}
+
+fn format_json_bool(value: Option<&serde_json::Value>) -> String {
+	value.and_then(|v| v.as_bool()).map(|b| b.to_string()).unwrap_or_else(|| "-".into())
+}
+
+fn format_rgb_allocations(value: Option<&serde_json::Value>) -> String {
+	let Some(allocations) = value.and_then(|v| v.as_array()) else {
+		return "-".into();
+	};
+	if allocations.is_empty() {
+		return "-".into();
+	}
+	allocations
+		.iter()
+		.map(|a| {
+			format!(
+				"{}:{}:{}",
+				format_json_string(a.get("contract_id")),
+				format_json_u64(a.get("amount")),
+				format_json_string(a.get("layer"))
+			)
+		})
+		.collect::<Vec<_>>()
+		.join(",")
+}
+
+fn format_string_list(value: Option<&serde_json::Value>) -> String {
+	let Some(values) = value.and_then(|v| v.as_array()) else {
+		return "-".into();
+	};
+	let values = values.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>();
+	if values.is_empty() {
+		"-".into()
+	} else {
+		values.join(",")
+	}
+}
+
 pub(crate) async fn handle(app: &App, command: &RgbCommand) {
 	match command {
 		RgbCommand::Sync => {
@@ -86,14 +138,54 @@ pub(crate) async fn handle(app: &App, command: &RgbCommand) {
 		RgbCommand::Utxos { command } => match command {
 			RgbUtxosCommand::Ls => {
 				let url = join_url(&app.base, "/api/v1/rgb/utxos");
-				let resp: RgbUtxosResponse =
+				let resp: serde_json::Value =
 					send_json(app.client.get(url)).await.unwrap_or_else(|e| die(e));
 				match app.output {
 					ui::OutputMode::Json => print_json(&resp, app.pretty),
 					ui::OutputMode::Text => {
-						for u in resp.utxos {
-							println!("{u}");
-						}
+						let utxos =
+							resp.get("utxos").and_then(|v| v.as_array()).unwrap_or_else(|| {
+								die("invalid /rgb/utxos response: expected utxos array")
+							});
+						let rows = resp
+							.get("utxos")
+							.and_then(|v| v.as_array())
+							.unwrap_or(utxos)
+							.iter()
+							.map(|u| {
+								if let Some(outpoint) = u.as_str() {
+									return vec![
+										outpoint.to_string(),
+										"-".into(),
+										"-".into(),
+										"-".into(),
+										"-".into(),
+										"-".into(),
+									];
+								}
+								vec![
+									format_json_string(u.get("outpoint")),
+									format_json_u64(u.get("value_sats")),
+									format_json_u64(u.get("confirmed_height")),
+									format_rgb_allocations(u.get("rgb_allocations")),
+									format_json_bool(u.get("has_mixed_asset_allocations")),
+									format_string_list(u.get("spend_roles")),
+								]
+							})
+							.collect::<Vec<_>>();
+						ui::print_table_with_right_align(
+							app.theme,
+							&[
+								"outpoint",
+								"value_sats",
+								"confirmed_height",
+								"rgb_allocations",
+								"mixed",
+								"spend_roles",
+							],
+							rows,
+							&[1, 2],
+						);
 					},
 				}
 			},
@@ -229,21 +321,13 @@ pub(crate) async fn handle(app: &App, command: &RgbCommand) {
 									c.issued_supply
 										.map(ui::format_u64_with_commas)
 										.unwrap_or_else(|| "-".into()),
-									c.asset_id,
 									c.contract_id,
 								]
 							})
 							.collect::<Vec<_>>();
 						ui::print_table_with_right_align(
 							app.theme,
-							&[
-								"name",
-								"ticker",
-								"precision",
-								"issued_supply",
-								"asset_id",
-								"contract_id",
-							],
+							&["name", "ticker", "precision", "issued_supply", "contract_id"],
 							rows,
 							&[2, 3],
 						);
@@ -331,7 +415,6 @@ pub(crate) async fn handle(app: &App, command: &RgbCommand) {
 					ui::OutputMode::Text => {
 						ui::print_checks(app.theme, "RGB contract issue", resp.ok, &resp.checks);
 						println!("contract_id={}", resp.contract_id);
-						println!("asset_id={}", resp.asset_id);
 						println!(
 							"issued_supply={}",
 							ui::format_u64_with_commas(resp.issued_supply)
@@ -477,7 +560,7 @@ pub(crate) async fn handle(app: &App, command: &RgbCommand) {
 				RgbLnInvoiceCommand::Create(args) => {
 					let url = join_url(&app.base, "/api/v1/rgb/ln/invoice/create");
 					let req = RgbLnInvoiceCreateRequest {
-						asset_id: args.asset_id.clone(),
+						contract_id: args.contract_id.clone(),
 						asset_amount: args.asset_amount,
 						description: args.desc.clone(),
 						expiry_secs: Some(args.expiry_secs),
@@ -493,7 +576,7 @@ pub(crate) async fn handle(app: &App, command: &RgbCommand) {
 				RgbLnInvoiceCommand::CreateForHash(args) => {
 					let url = join_url(&app.base, "/api/v1/rgb/ln/invoice/create_for_hash");
 					let req = RgbLnInvoiceCreateForHashRequest {
-						asset_id: args.asset_id.clone(),
+						contract_id: args.contract_id.clone(),
 						asset_amount: args.asset_amount,
 						payment_hash: args.payment_hash.clone(),
 						description: args.desc.clone(),
@@ -526,8 +609,8 @@ pub(crate) async fn handle(app: &App, command: &RgbCommand) {
 								],
 								vec!["expiry_secs".into(), resp.expiry_secs.to_string()],
 								vec![
-									"asset_id".into(),
-									resp.asset_id.unwrap_or_else(|| "-".into()),
+									"contract_id".into(),
+									resp.contract_id.unwrap_or_else(|| "-".into()),
 								],
 								vec![
 									"asset_amount".into(),
@@ -545,7 +628,7 @@ pub(crate) async fn handle(app: &App, command: &RgbCommand) {
 				let url = join_url(&app.base, "/api/v1/rgb/ln/pay");
 				let req = RgbLnPayRequest {
 					invoice: args.invoice.clone(),
-					asset_id: args.asset_id.clone(),
+					contract_id: args.contract_id.clone(),
 					asset_amount: args.asset_amount,
 				};
 				let resp: SendResponse =
@@ -624,7 +707,6 @@ pub(crate) async fn handle(app: &App, command: &RgbCommand) {
 									p.id,
 									p.status,
 									p.contract_id.unwrap_or_else(|| "-".into()),
-									p.asset_id.unwrap_or_else(|| "-".into()),
 									p.amount
 										.map(ui::format_u64_with_commas)
 										.unwrap_or_else(|| "-".into()),
@@ -639,7 +721,6 @@ pub(crate) async fn handle(app: &App, command: &RgbCommand) {
 								"payment_id",
 								"status",
 								"contract_id",
-								"asset_id",
 								"amount",
 								"txid",
 								"consignment_key",
@@ -707,7 +788,7 @@ pub(crate) async fn handle(app: &App, command: &RgbCommand) {
 				match app.output {
 					ui::OutputMode::Json => print_json(&resp, app.pretty),
 					ui::OutputMode::Text => {
-						println!("asset_id={}", resp.asset_id);
+						println!("contract_id={}", resp.contract_id);
 						println!("amount={}", ui::format_u64_with_commas(resp.amount));
 					},
 				}

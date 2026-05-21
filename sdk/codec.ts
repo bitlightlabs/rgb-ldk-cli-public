@@ -13,7 +13,12 @@ import type {
   RgbContractsResponse,
   RgbContractsIssueResponse,
   RgbLnInvoiceDecodeResponse,
+  RgbOnchainInvoiceDecodeResponse,
+  RgbOnchainPaymentsResponse,
   RgbOnchainReceiveResponse,
+  RgbUtxosReserveResponse,
+  RgbUtxosResponse,
+  RgbUtxosSummaryResponse,
 } from "./types.js";
 import { U64 } from "./u64.js";
 
@@ -124,14 +129,74 @@ export function decodeRgbContractBalanceResponse(value: unknown): RgbContractBal
 export function decodeRgbLnInvoiceDecodeResponse(value: unknown): RgbLnInvoiceDecodeResponse {
   const v = asRecord(value);
   v.carrier_amount_msat = decodeU64Nullable(v.carrier_amount_msat);
+  v.expiry_secs = decodeU64(v.expiry_secs);
   if (v.asset_amount !== null && v.asset_amount !== undefined) v.asset_amount = decodeU64(v.asset_amount);
   return v as RgbLnInvoiceDecodeResponse;
+}
+
+export function decodeRgbOnchainInvoiceDecodeResponse(value: unknown): RgbOnchainInvoiceDecodeResponse {
+  const v = asRecord(value);
+  v.amount = decodeU64(v.amount);
+  v.expiry_unix_secs = decodeU64Nullable(v.expiry_unix_secs);
+  return v as RgbOnchainInvoiceDecodeResponse;
+}
+
+export function decodeRgbOnchainPaymentsResponse(value: unknown): RgbOnchainPaymentsResponse {
+  const v = asRecord(value);
+  v.payments = asArray(v.payments).map((payment) => {
+    const p = asRecord(payment);
+    p.created_at_unix_secs = decodeU64(p.created_at_unix_secs);
+    p.latest_update_timestamp = decodeU64(p.latest_update_timestamp);
+    p.expires_at_unix_secs = decodeU64Nullable(p.expires_at_unix_secs);
+    p.amount = decodeU64Nullable(p.amount);
+    return p;
+  });
+  return v as RgbOnchainPaymentsResponse;
 }
 
 export function decodeRgbOnchainReceiveResponse(value: unknown): RgbOnchainReceiveResponse {
   const v = asRecord(value);
   v.amount = decodeU64(v.amount);
   return v as RgbOnchainReceiveResponse;
+}
+
+export function decodeRgbUtxosResponse(value: unknown): RgbUtxosResponse {
+  const v = asRecord(value);
+  v.utxos = asArray(v.utxos).map((utxo) => {
+    const u = asRecord(utxo);
+    u.value_sats = decodeU64(u.value_sats);
+    u.rgb_allocations = asArray(u.rgb_allocations).map((allocation) => {
+      const a = asRecord(allocation);
+      a.amount = decodeU64(a.amount);
+      return a;
+    });
+    return u;
+  });
+  return v as RgbUtxosResponse;
+}
+
+export function decodeRgbUtxosSummaryResponse(value: unknown): RgbUtxosSummaryResponse {
+  const v = asRecord(value);
+  v.utxos = asArray(v.utxos).map((utxo) => {
+    const u = asRecord(utxo);
+    u.value_sats = decodeU64Nullable(u.value_sats);
+    u.reserved_until_unix_secs = decodeU64Nullable(u.reserved_until_unix_secs);
+    if (Array.isArray(u.assets)) {
+      u.assets = u.assets.map((asset) => {
+        const a = asRecord(asset);
+        a.amount = decodeU64(a.amount);
+        return a;
+      });
+    }
+    return u;
+  });
+  return v as RgbUtxosSummaryResponse;
+}
+
+export function decodeRgbUtxosReserveResponse(value: unknown): RgbUtxosReserveResponse {
+  const v = asRecord(value);
+  v.reserved_until_unix_secs = decodeU64(v.reserved_until_unix_secs);
+  return v as RgbUtxosReserveResponse;
 }
 
 export function decodePaymentDetailsDto(value: unknown): PaymentDetailsDto {

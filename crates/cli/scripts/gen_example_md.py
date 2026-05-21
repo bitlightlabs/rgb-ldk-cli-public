@@ -14,6 +14,7 @@ import sys
 import tempfile
 import threading
 import time
+import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
@@ -152,6 +153,32 @@ def start_http_mux_proxy(*, bitcoind: str, esplora: str) -> tuple[_ThreadingHTTP
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
     return httpd, thread, int(httpd.server_address[1])
+
+
+def wait_for_esplora_ready(base_url: str, *, timeout_s: float) -> None:
+    parsed = urllib.parse.urlparse(base_url)
+    if parsed.scheme != "http" or not parsed.hostname:
+        raise RuntimeError(f"Unsupported Esplora URL for readiness check: {base_url}")
+
+    port = parsed.port or 80
+    deadline = time.time() + timeout_s
+    last_err = ""
+    while time.time() < deadline:
+        conn = http.client.HTTPConnection(parsed.hostname, port, timeout=5)
+        try:
+            conn.request("GET", "/blocks/tip/height")
+            resp = conn.getresponse()
+            body = resp.read().decode("utf-8", errors="replace").strip()
+            if resp.status == 200 and body.isdigit():
+                return
+            last_err = f"status={resp.status} body={body!r}"
+        except Exception as e:
+            last_err = str(e)
+        finally:
+            conn.close()
+        time.sleep(0.5)
+
+    raise RuntimeError(f"Timed out waiting for Esplora at {base_url}: {last_err}")
 
 
 def indent_quote_block(lines: list[str]) -> list[str]:
@@ -480,8 +507,8 @@ def main() -> int:
         node_b_p2p = f"127.0.0.1:{node_b_p2p_port}"
         issuer_fixture = rgb_ldk_node_dir / "tests" / "issuers" / "RGB20-Simplest-v0-rLosfg.issuer"
         demo_export_dir = REPO_ROOT / "target" / "rgbldk-example"
+        passphrase = "example-passphrase"
         contract_id: Optional[str] = None
-        asset_id: Optional[str] = None
         node_id_a: Optional[str] = None
         node_id_b: Optional[str] = None
 
@@ -509,8 +536,8 @@ def main() -> int:
             "shows the endpoints you will use in the rest of the examples.\n\n"
             "In source mode, docker-compose starts bitcoind + esplora, and the script starts the two `rgbldkd` daemons "
             "locally. In docker-image mode, docker-compose starts all services (including `node-a` and `node-b`).\n\n"
-            "Note: Starting from Phase 0, `rgbldkd` starts locked. This generator initializes a local keystore and "
-            "unlocks the daemons (source mode only) before running the rest of the commands.\n"
+            "Note: this generator starts local source-mode `rgbldkd` daemons with temporary passphrase files, "
+            "`--auto-init-keystore`, and `--auto-unlock` before running the rest of the commands.\n"
         )
         md.heading(3, "Commands")
 
@@ -545,6 +572,11 @@ def main() -> int:
             if not args.skip_docker_up:
                 _progress(docker_up_cmd_display)
                 runner.run(docker_up_cmd, timeout_s=clamp_timeout(1800.0, "docker compose up"))
+                _progress(f"waiting for Esplora at {esplora}")
+                wait_for_esplora_ready(
+                    esplora,
+                    timeout_s=clamp_timeout(120.0, "esplora ready") or 120.0,
+                )
 
             if use_src:
                 build_daemon_cmd = f"(cd {rgb_ldk_node_dir} && cargo build -p ldk-node --bin rgbldkd)"
@@ -560,6 +592,10 @@ def main() -> int:
                 data_dir_b = Path(tmpdir) / "rgbldkd-node-b"
                 data_dir_a.mkdir(parents=True, exist_ok=True)
                 data_dir_b.mkdir(parents=True, exist_ok=True)
+                passphrase_file_a = data_dir_a / "keystore.pass"
+                passphrase_file_b = data_dir_b / "keystore.pass"
+                passphrase_file_a.write_text(passphrase + "\n", encoding="utf-8")
+                passphrase_file_b.write_text(passphrase + "\n", encoding="utf-8")
 
                 rgbldkd_bin = rgb_ldk_node_dir / "target" / "debug" / "rgbldkd"
                 if not rgbldkd_bin.exists():
@@ -567,24 +603,30 @@ def main() -> int:
 
                 _progress("starting local rgbldkd node-a/node-b")
                 cmd_a = (
-                    f"{rgbldkd_bin} server "
+                    f"{rgbldkd_bin} run "
                     f"--listen 127.0.0.1:{node_a_http_port} "
                     f"--ldk-listen {node_a_p2p} "
                     f"--network regtest "
                     f"--rgb-enabled "
                     f"--esplora-url {esplora} "
                     f"--data-dir {data_dir_a} "
+                    f"--keystore-passphrase-file {passphrase_file_a} "
+                    f"--auto-init-keystore "
+                    f"--auto-unlock "
                     f"--node-alias node-a "
                     f"--log-to-stdout --log-level info"
                 )
                 cmd_b = (
-                    f"{rgbldkd_bin} server "
+                    f"{rgbldkd_bin} run "
                     f"--listen 127.0.0.1:{node_b_http_port} "
                     f"--ldk-listen {node_b_p2p} "
                     f"--network regtest "
                     f"--rgb-enabled "
                     f"--esplora-url {esplora} "
                     f"--data-dir {data_dir_b} "
+                    f"--keystore-passphrase-file {passphrase_file_b} "
+                    f"--auto-init-keystore "
+                    f"--auto-unlock "
                     f"--node-alias node-b "
                     f"--log-to-stdout --log-level info"
                 )
@@ -822,22 +864,7 @@ def main() -> int:
                     timeout_s=clamp_timeout(DEFAULT_STEP_TIMEOUT_S, "node health (node-a)"),
                 )
 
-            # Phase 0: initialize keystores and unlock daemons (do not include in the markdown).
-            passphrase = "example-passphrase"
-            for dd in (data_dir_a, data_dir_b):
-                ensure_within_runtime("keystore init/unlock")
-                runner.run(
-                    f"printf '%s\\n' '{passphrase}' | rgbldk --output text --color never --yes --data-dir {dd} keystore init --mode generate-mnemonic --passphrase-stdin",
-                    timeout_s=clamp_timeout(DEFAULT_STEP_TIMEOUT_S, "keystore init"),
-                )
-                runner.run(
-                    f"printf '%s\\n' '{passphrase}' | rgbldk --output json --pretty --color never --data-dir {dd} node unlock --passphrase-stdin",
-                    retries=30,
-                    retry_sleep_s=1.0,
-                    timeout_s=clamp_timeout(DEFAULT_STEP_TIMEOUT_S, "node unlock"),
-                )
-
-            # Wait until the real HTTP API is up after unlock.
+            # Wait until the runtime is initialized and unlocked.
             runner.run(
                 normalize_rgbldk_cmd(f"rgbldk --connect {node_a} node ready"),
                 retries=60,
@@ -1118,11 +1145,8 @@ def main() -> int:
                     if issued.get("ok") is not True:
                         raise RuntimeError(f"RGB contract issue failed: {issued}")
                     contract_id = issued.get("contract_id")
-                    asset_id = issued.get("asset_id")
                     if not isinstance(contract_id, str) or not contract_id:
                         raise RuntimeError(f"Invalid contract_id in issue response: {issued}")
-                    if not isinstance(asset_id, str) or not asset_id:
-                        raise RuntimeError(f"Invalid asset_id in issue response: {issued}")
 
                     run_step("rgbldk rgb contracts ls")
                     run_step(f"rgbldk rgb contracts balance {contract_id}")
@@ -1252,7 +1276,7 @@ def main() -> int:
             md.paragraph(
                 "Open a private Lightning channel from node-a to node-b and wait for confirmations so the channel becomes usable.\n"
             )
-            if asset_id:
+            if contract_id:
                 md.paragraph(
                     "If you provide `--rgb-context` when opening the channel, the daemon will share it with the "
                     "counterparty as `color_context_data`. In a cross-host setup, this is typically an `http(s)` URL "
@@ -1282,11 +1306,11 @@ def main() -> int:
                             if isinstance(cid, str) and cid:
                                 existing_channel_ids.add(cid)
 
-            if asset_id:
+            if contract_id:
                 rgb_context = f"{node_a}/api/v1/rgb/consignments/{{txid}}?format=zip"
                 chan_100k = run_step_json(
-                    f"rgbldk channel open --node-id {node_id_b} --addr {node_b_p2p} --amount-sats 100000 --push-msat 20000000 --private --rgb-asset-id {asset_id} --rgb-asset-amount 10 --rgb-context '{rgb_context}'",
-                    display_cmd="rgbldk channel open --node-id <node_id_b> --addr <node_b_p2p> --amount-sats 100000 --push-msat 20000000 --private --rgb-asset-id <asset_id_hex> --rgb-asset-amount 10 --rgb-context 'http://<A_HOST>:8501/api/v1/rgb/consignments/{txid}?format=zip'",
+                    f"rgbldk channel open --node-id {node_id_b} --addr {node_b_p2p} --amount-sats 100000 --push-msat 20000000 --private --rgb-contract-id {contract_id} --rgb-asset-amount 10 --rgb-context '{rgb_context}'",
+                    display_cmd="rgbldk channel open --node-id <node_id_b> --addr <node_b_p2p> --amount-sats 100000 --push-msat 20000000 --private --rgb-contract-id <contract_id> --rgb-asset-amount 10 --rgb-context 'http://<A_HOST>:8501/api/v1/rgb/consignments/{txid}?format=zip'",
                     retries=30,
                     retry_sleep_s=1.0,
                 ).get("user_channel_id")
@@ -1307,7 +1331,7 @@ def main() -> int:
             run_step("rgbldk wallet sync")
             run_step(f"rgbldk --connect {node_b} wallet sync")
 
-            if asset_id:
+            if contract_id:
                 # Prove the "consignment over HTTP via context data" flow without requiring the user to manually
                 # download/transfer a file. Node-b should have fetched the funding consignment automatically.
                 deadline = time.time() + 60.0
@@ -1546,15 +1570,15 @@ def main() -> int:
             md.heading(3, "Payments list")
             run_step("rgbldk pay ls")
 
-            if asset_id:
+            if contract_id:
                 md.heading(3, "RGB Lightning transfer (L2, node-a → node-b)")
                 md.paragraph(
                     "Create an RGB LN invoice on node-b and pay it from node-a over the RGB-enabled channel.\n"
                 )
                 run_step("rgbldk ctx use node-b")
                 rgb_inv = run_step_json(
-                    f"rgbldk rgb ln invoice create --asset-id {asset_id} --asset-amount 5 --desc \"rgb ln demo\" --btc-carrier-amount-msat 5000000",
-                    display_cmd="rgbldk --color never --output json --pretty rgb ln invoice create --asset-id <asset_id_hex> --asset-amount 5 --desc \"rgb ln demo\" --btc-carrier-amount-msat 5000000",
+                    f"rgbldk rgb ln invoice create --contract-id {contract_id} --asset-amount 5 --desc \"rgb ln demo\" --btc-carrier-amount-msat 5000000",
+                    display_cmd="rgbldk --color never --output json --pretty rgb ln invoice create --contract-id <contract_id> --asset-amount 5 --desc \"rgb ln demo\" --btc-carrier-amount-msat 5000000",
                     retries=10,
                     retry_sleep_s=1.0,
                 ).get("invoice")
@@ -1579,8 +1603,8 @@ def main() -> int:
                 md.heading(4, "RGB Lightning transfer (L2, node-b → node-a)")
                 run_step("rgbldk ctx use node-a")
                 rgb_inv2 = run_step_json(
-                    f"rgbldk rgb ln invoice create --asset-id {asset_id} --asset-amount 3 --desc \"rgb ln demo back\" --btc-carrier-amount-msat 4000000",
-                    display_cmd="rgbldk --color never --output json --pretty rgb ln invoice create --asset-id <asset_id_hex> --asset-amount 3 --desc \"rgb ln demo back\" --btc-carrier-amount-msat 4000000",
+                    f"rgbldk rgb ln invoice create --contract-id {contract_id} --asset-amount 3 --desc \"rgb ln demo back\" --btc-carrier-amount-msat 4000000",
+                    display_cmd="rgbldk --color never --output json --pretty rgb ln invoice create --contract-id <contract_id> --asset-amount 3 --desc \"rgb ln demo back\" --btc-carrier-amount-msat 4000000",
                     retries=10,
                     retry_sleep_s=1.0,
                 ).get("invoice")

@@ -91,11 +91,11 @@ pub fn print_event_text(ev: &EventDto, no_truncate: bool) {
 		EventDto::PaymentReceived { payment_id, payment_hash, amount_msat, rgb, .. } => {
 			let pid = payment_id.as_deref().unwrap_or("-");
 			let rgb_summary = rgb.as_ref().map(|r| {
-				let asset_id =
-					if no_truncate { r.asset_id.clone() } else { truncate_id(&r.asset_id) };
+				let contract_id =
+					if no_truncate { r.contract_id.clone() } else { truncate_id(&r.contract_id) };
 				format!(
-					" rgb={{asset_id={} asset_amount={} dir={} swap={}}}",
-					asset_id,
+					" rgb={{contract_id={} asset_amount={} dir={} swap={}}}",
+					contract_id,
 					format_u64_with_commas(r.asset_amount),
 					r.direction,
 					r.is_swap

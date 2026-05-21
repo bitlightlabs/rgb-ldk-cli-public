@@ -87,7 +87,7 @@ fn decode_archive(format: DebugConsignmentFormat, bytes: &[u8]) -> Vec<u8> {
 		DebugConsignmentFormat::Zip => {
 			let cur = std::io::Cursor::new(bytes);
 			let mut zip = ZipArchive::new(cur).unwrap_or_else(|e| die(format!("zip decode: {e}")));
-			if zip.len() == 0 {
+			if zip.is_empty() {
 				die("zip archive is empty");
 			}
 
@@ -180,14 +180,14 @@ fn index_consignment_seals(bytes: &[u8]) -> (String, SealIndex) {
 	}
 
 	let mut index = SealIndex::default();
-	for (_, seal) in header.genesis_seals.iter() {
+	for seal in header.genesis_seals.values() {
 		index_seal(&mut index, seal);
 	}
 
 	for _ in 0..header.op_count {
 		let op = OperationSeals::<TxoSeal>::strict_decode(&mut reader)
 			.unwrap_or_else(|e| die(format!("consignment op decode: {e}")));
-		for (_, seal) in op.defined_seals.iter() {
+		for seal in op.defined_seals.values() {
 			index_seal(&mut index, seal);
 		}
 		for cell in op.operation.destructible_out.iter() {

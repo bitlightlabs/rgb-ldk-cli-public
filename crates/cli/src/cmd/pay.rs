@@ -97,7 +97,7 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 					serde_json::from_value(v).unwrap_or_else(|e| die(e.to_string()));
 				print_json_or_text(app, &resp, || {
 					ui::print_checks(app.theme, "Payment wait", resp.ok, &resp.checks);
-					println!("{}", &resp.payment.id);
+					println!("{}", resp.payment.id);
 				});
 			} else {
 				match app.output {
@@ -200,7 +200,7 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 				}
 				let resp: Bolt11ReceiveResponse =
 					send_json(app.client.post(url).json(&body)).await.unwrap_or_else(|e| die(e));
-				print_json_or_text(app, &resp, || println!("{}", &resp.invoice));
+				print_json_or_text(app, &resp, || println!("{}", resp.invoice));
 			},
 			InvoiceCommand::CreateForHash(args) => {
 				let url = join_url(&app.base, "/api/v1/bolt11/receive_for_hash");
@@ -212,7 +212,7 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 				};
 				let resp: Bolt11ReceiveResponse =
 					send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
-				print_json_or_text(app, &resp, || println!("{}", &resp.invoice));
+				print_json_or_text(app, &resp, || println!("{}", resp.invoice));
 			},
 			InvoiceCommand::Decode { invoice } => {
 				let url = join_url(&app.base, "/api/v1/bolt11/decode");
@@ -273,14 +273,14 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 				let url = join_url(&app.base, "/api/v1/bolt11/pay");
 				let resp: Bolt11PayResponse =
 					send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
-				print_json_or_text(app, &resp, || println!("{}", &resp.payment_id));
+				print_json_or_text(app, &resp, || println!("{}", resp.payment_id));
 			},
 			InvoiceCommand::Send { invoice } => {
 				let url = join_url(&app.base, "/api/v1/bolt11/send");
 				let req = Bolt11SendRequest { invoice: invoice.clone() };
 				let resp: SendResponse =
 					send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
-				print_json_or_text(app, &resp, || println!("{}", &resp.payment_id));
+				print_json_or_text(app, &resp, || println!("{}", resp.payment_id));
 			},
 			InvoiceCommand::SendUsingAmount(args) => {
 				let url = join_url(&app.base, "/api/v1/bolt11/send_using_amount");
@@ -290,7 +290,7 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 				};
 				let resp: SendResponse =
 					send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
-				print_json_or_text(app, &resp, || println!("{}", &resp.payment_id));
+				print_json_or_text(app, &resp, || println!("{}", resp.payment_id));
 			},
 		},
 		PayCommand::Offer { command } => match command {
@@ -319,7 +319,7 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 				};
 				let resp: Bolt12OfferResponse =
 					send_json(app.client.post(url).json(&body)).await.unwrap_or_else(|e| die(e));
-				print_json_or_text(app, &resp, || println!("{}", &resp.offer));
+				print_json_or_text(app, &resp, || println!("{}", resp.offer));
 			},
 			OfferCommand::Decode { offer } => {
 				let url = join_url(&app.base, "/api/v1/bolt12/offer/decode");
@@ -370,7 +370,7 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 				};
 				let resp: SendResponse =
 					send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
-				print_json_or_text(app, &resp, || println!("{}", &resp.payment_id));
+				print_json_or_text(app, &resp, || println!("{}", resp.payment_id));
 			},
 		},
 		PayCommand::Refund { command } => match command {
@@ -385,8 +385,8 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 				let resp: Bolt12RefundInitiateResponse =
 					send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
 				print_json_or_text(app, &resp, || {
-					println!("{}", &resp.refund);
-					eprintln!("payment_id: {}", &resp.payment_id);
+					println!("{}", resp.refund);
+					eprintln!("payment_id: {}", resp.payment_id);
 				});
 			},
 			RefundCommand::Decode { refund } => {
@@ -432,8 +432,8 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 				let resp: Bolt12RefundRequestPaymentResponse =
 					send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
 				print_json_or_text(app, &resp, || {
-					println!("{}", &resp.invoice);
-					eprintln!("payment_id: {}", &resp.payment_id);
+					println!("{}", resp.invoice);
+					eprintln!("payment_id: {}", resp.payment_id);
 				});
 			},
 		},
@@ -453,7 +453,7 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 				let url = join_url(&app.base, "/api/v1/spontaneous/send");
 				let resp: SendResponse =
 					send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
-				print_json_or_text(app, &resp, || println!("{}", &resp.payment_id));
+				print_json_or_text(app, &resp, || println!("{}", resp.payment_id));
 			},
 		},
 	}

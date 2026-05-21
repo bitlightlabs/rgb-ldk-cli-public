@@ -22,11 +22,7 @@ fn summarize_error_bytes(status: reqwest::StatusCode, bytes: &[u8]) -> String {
 		return parts.join("\n");
 	}
 
-	format!(
-		"HTTP {}: {}",
-		status.as_u16(),
-		String::from_utf8_lossy(bytes).trim()
-	)
+	format!("HTTP {}: {}", status.as_u16(), String::from_utf8_lossy(bytes).trim())
 }
 
 pub fn join_url(base: &str, path: &str) -> String {

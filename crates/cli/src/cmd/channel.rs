@@ -30,12 +30,12 @@ pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
 							];
 							if show_rgb {
 								if let Some(rgb) = c.rgb_balance {
-									let asset = if app.no_truncate {
-										rgb.asset_id
+									let contract = if app.no_truncate {
+										rgb.contract_id
 									} else {
-										crate::ui::truncate_id(&rgb.asset_id)
+										crate::ui::truncate_id(&rgb.contract_id)
 									};
-									row.push(asset);
+									row.push(contract);
 									row.push(crate::ui::format_u64_with_commas(rgb.local_amount));
 									row.push(crate::ui::format_u64_with_commas(rgb.remote_amount));
 								} else {
@@ -60,24 +60,24 @@ pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
 						"Usable",
 					];
 					if show_rgb {
-						headers.extend(["RGB Asset", "RGB Local", "RGB Remote"]);
+						headers.extend(["RGB Contract", "RGB Local", "RGB Remote"]);
 					}
 					crate::ui::print_table(app.theme, &headers, rows);
 				},
 			}
 		},
 		ChannelCommand::Open(args) => {
-			let rgb = match (&args.rgb_asset_id, args.rgb_asset_amount, &args.rgb_context) {
+			let rgb = match (&args.rgb_contract_id, args.rgb_asset_amount, &args.rgb_context) {
 				(None, None, None) => None,
-				(Some(asset_id), Some(asset_amount), Some(color_context_data)) => Some(
+				(Some(contract_id), Some(asset_amount), Some(color_context_data)) => Some(
 					RgbOpenChannelRequest {
-						asset_id: asset_id.clone(),
+						contract_id: contract_id.clone(),
 						asset_amount,
 						color_context_data: color_context_data.clone(),
 					},
 				),
 				_ => die(
-					"invalid rgb channel args: require --rgb-asset-id, --rgb-asset-amount, and --rgb-context together",
+					"invalid rgb channel args: require --rgb-contract-id, --rgb-asset-amount, and --rgb-context together",
 				),
 			};
 			let req = OpenChannelRequest {
