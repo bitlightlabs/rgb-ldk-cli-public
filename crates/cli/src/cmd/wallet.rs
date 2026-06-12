@@ -1,4 +1,4 @@
-use rgbldk_http_dto::BalancesDto;
+use rgbldk_http_client::dto::{BalancesDto, WalletUtxosResponse};
 
 use crate::app::App;
 use crate::cli::WalletCommand;
@@ -154,6 +154,69 @@ pub(crate) async fn handle(app: &App, command: &WalletCommand) {
 						fmt_delta(dl)
 					);
 				}
+			}
+		},
+		WalletCommand::Utxos => {
+			let url = join_url(&app.base, "/api/v1/wallet/utxos");
+			let resp: WalletUtxosResponse =
+				send_json(app.client.get(url)).await.unwrap_or_else(|e| die(e));
+			match app.output {
+				crate::ui::OutputMode::Json => print_json(&resp, app.pretty),
+				crate::ui::OutputMode::Text => {
+					let rows = resp
+						.utxos
+						.into_iter()
+						.map(|u| {
+							let status = match u.confirmation.status {
+								rgbldk_http_client::dto::WalletUtxoConfirmationStatusDto::Confirmed =>
+									"Confirmed".to_string(),
+								rgbldk_http_client::dto::WalletUtxoConfirmationStatusDto::Mempool =>
+									"In mempool".to_string(),
+							};
+							let lock_state = if u.lock.locked {
+								match u.lock.kind {
+									rgbldk_http_client::dto::WalletUtxoLockKindDto::ManualReservation =>
+										"Reserved".to_string(),
+									rgbldk_http_client::dto::WalletUtxoLockKindDto::Operation =>
+										"In use".to_string(),
+									rgbldk_http_client::dto::WalletUtxoLockKindDto::None =>
+										"Locked".to_string(),
+								}
+							} else {
+								"Available".to_string()
+							};
+							vec![
+								u.outpoint,
+								crate::ui::format_u64_with_commas(u.value_sats),
+								status,
+								u.confirmation
+									.height
+									.map(|h| h.to_string())
+									.unwrap_or_else(|| "-".into()),
+								lock_state,
+								u.lock.operation_id.unwrap_or_else(|| "-".into()),
+								u.lock
+									.expires_at_unix_secs
+									.map(|t| t.to_string())
+									.unwrap_or_else(|| "-".into()),
+							]
+						})
+						.collect::<Vec<_>>();
+					crate::ui::print_table_with_right_align(
+						app.theme,
+						&[
+							"Outpoint",
+							"Value (sats)",
+							"Status",
+							"Height",
+							"Availability",
+							"Lock Ref",
+							"Locked Until",
+						],
+						rows,
+						&[1, 3, 6],
+					);
+				},
 			}
 		},
 	}

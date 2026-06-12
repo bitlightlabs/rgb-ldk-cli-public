@@ -36,6 +36,7 @@ async fn main() {
 			| Command::Rgb { .. }
 			| Command::Peer { .. }
 			| Command::Channel { .. }
+			| Command::Graph { .. }
 			| Command::Pay { .. }
 			| Command::Events { .. }
 	);
@@ -107,6 +108,10 @@ async fn main() {
 
 		Command::Channel { ref command } => {
 			cmd::channel::handle(&app, command).await;
+		},
+
+		Command::Graph { ref command } => {
+			cmd::graph::handle(&app, command).await;
 		},
 
 		Command::Pay { ref command } => {

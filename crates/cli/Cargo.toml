@@ -14,7 +14,6 @@ path = "src/nmh.rs"
 
 [dependencies]
 clap = { version = "4.5.27", features = ["derive", "env"] }
-rgbldk_http_dto = { git = "https://github.com/bitlightlabs/rgb-ldk-api-public.git", branch = "main" }
 rgbldk_http_client = { git = "https://github.com/bitlightlabs/rgb-ldk-api-public.git", branch = "main" }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1.0", default-features = false, features = ["std", "derive"] }

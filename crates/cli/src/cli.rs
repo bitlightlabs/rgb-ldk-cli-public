@@ -109,6 +109,11 @@ pub enum Command {
 		#[command(subcommand)]
 		command: ChannelCommand,
 	},
+	/// Network graph inspection.
+	Graph {
+		#[command(subcommand)]
+		command: GraphCommand,
+	},
 	/// Payments (BOLT11 invoices, BOLT12 offers/refunds, keysend).
 	Pay {
 		#[command(subcommand)]
@@ -284,6 +289,7 @@ pub enum WalletCommand {
 	Balance(WalletBalanceArgs),
 	Address,
 	Sync,
+	Utxos,
 }
 
 #[derive(Args, Debug, Default)]
@@ -314,6 +320,8 @@ pub enum ChannelCommand {
 	Open(ChannelOpenArgs),
 	Close(ChannelCloseArgs),
 	ForceClose(ChannelCloseArgs),
+	SpliceIn(ChannelSpliceInArgs),
+	SpliceOut(ChannelSpliceOutArgs),
 }
 
 #[derive(Args, Debug)]
@@ -346,6 +354,40 @@ pub struct ChannelCloseArgs {
 	pub counterparty_node_id: String,
 }
 
+#[derive(Args, Debug)]
+pub struct ChannelSpliceInArgs {
+	#[arg(long)]
+	pub user_channel_id: String,
+	#[arg(long)]
+	pub counterparty_node_id: String,
+	#[arg(long)]
+	pub splice_amount_sats: u64,
+}
+
+#[derive(Args, Debug)]
+pub struct ChannelSpliceOutArgs {
+	#[arg(long)]
+	pub user_channel_id: String,
+	#[arg(long)]
+	pub counterparty_node_id: String,
+	#[arg(long)]
+	pub address: String,
+	#[arg(long)]
+	pub splice_amount_sats: u64,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum GraphCommand {
+	/// List node ids currently known in the network graph.
+	Nodes,
+	/// Show one node from the network graph.
+	Node { node_id_hex: String },
+	/// List short channel ids currently known in the network graph.
+	Channels,
+	/// Show one channel from the network graph.
+	Channel { scid: u64 },
+}
+
 #[derive(Subcommand, Debug)]
 pub enum PayCommand {
 	/// BOLT11 invoice operations (create/pay).
@@ -372,6 +414,12 @@ pub enum PayCommand {
 		command: KeysendCommand,
 	},
 
+	/// Experimental BOLT12 async-payment operations.
+	Async {
+		#[command(subcommand)]
+		command: AsyncPaymentsCommand,
+	},
+
 	/// List known payments.
 	Ls,
 
@@ -386,11 +434,37 @@ pub enum PayCommand {
 }
 
 #[derive(Subcommand, Debug)]
+pub enum AsyncPaymentsCommand {
+	/// Return the async-payment offer currently available on this node.
+	ReceiveOffer,
+	/// Configure blinded paths for the static-invoice server handshake.
+	SetStaticInvoiceServerPaths(AsyncSetStaticInvoiceServerPathsArgs),
+	/// Compute blinded paths for a recipient id.
+	BlindedPathsForRecipient(AsyncBlindedPathsArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct AsyncSetStaticInvoiceServerPathsArgs {
+	#[arg(long)]
+	pub paths_hex: String,
+}
+
+#[derive(Args, Debug)]
+pub struct AsyncBlindedPathsArgs {
+	#[arg(long)]
+	pub recipient_id_hex: String,
+}
+
+#[derive(Subcommand, Debug)]
 pub enum RgbCommand {
 	/// Sync RGB wallet state with the indexer.
 	Sync,
 	/// Get a new RGB wallet address.
 	Address,
+	/// Show the RGB wallet descriptor and derived public descriptors.
+	Descriptor,
+	/// Sign a message with the RGB wallet key.
+	SignMessage(RgbSignMessageArgs),
 	/// RGB wallet UTXO operations (list/reserve/release).
 	Utxos {
 		#[command(subcommand)]
@@ -433,6 +507,12 @@ pub enum RgbUtxosCommand {
 	Reserve(RgbUtxosReserveArgs),
 	/// Release a reservation by id or outpoint.
 	Release(RgbUtxosReleaseArgs),
+	/// Create empty RGB wallet outputs from explicit BTC wallet inputs.
+	Fund(RgbUtxosFundArgs),
+	/// Sweep one empty RGB UTXO back to the BTC wallet.
+	Sweep(RgbUtxosSweepArgs),
+	/// Increase the BTC capacity of one RGB UTXO.
+	TopUp(RgbUtxosTopUpArgs),
 }
 
 #[derive(Args, Debug)]
@@ -453,6 +533,98 @@ pub struct RgbUtxosReleaseArgs {
 	/// Release by outpoint (`txid:vout`).
 	#[arg(long, conflicts_with = "reservation_id")]
 	pub outpoint: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct AddressValueArg {
+	pub address: String,
+	pub value_sats: u64,
+}
+
+impl std::str::FromStr for AddressValueArg {
+	type Err = String;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		let (address, value_sats) = s
+			.rsplit_once(':')
+			.ok_or_else(|| "invalid value (expected <address>:<value_sats>)".to_string())?;
+		let value_sats = value_sats.parse::<u64>().map_err(|_| "invalid value_sats".to_string())?;
+		if address.is_empty() {
+			return Err("address must not be empty".to_string());
+		}
+		Ok(Self { address: address.to_string(), value_sats })
+	}
+}
+
+#[derive(Args, Debug)]
+pub struct RgbUtxosFundArgs {
+	/// Explicit BTC wallet inputs from `wallet utxos`.
+	#[arg(long, required = true)]
+	pub input: Vec<String>,
+	/// RGB outputs as `<address>:<value_sats>`.
+	#[arg(long, required = true)]
+	pub output: Vec<AddressValueArg>,
+	/// BTC wallet change address from `wallet address`.
+	#[arg(long)]
+	pub change_address: String,
+	#[arg(long)]
+	pub fee_rate_sats_per_vb: f32,
+}
+
+#[derive(Args, Debug)]
+pub struct RgbUtxosSweepArgs {
+	/// RGB wallet outpoint to sweep.
+	#[arg(long)]
+	pub outpoint: String,
+	/// BTC wallet destination address.
+	#[arg(long)]
+	pub destination_address: String,
+	#[arg(long)]
+	pub fee_rate_sats_per_vb: f32,
+}
+
+#[derive(Args, Debug)]
+pub struct RgbUtxosTopUpArgs {
+	/// RGB wallet outpoint to replace.
+	#[arg(long)]
+	pub rgb_outpoint: String,
+	/// Extra BTC wallet inputs from `wallet utxos`.
+	#[arg(long, required = true)]
+	pub l1_input: Vec<String>,
+	/// Replacement RGB wallet address from `rgb address`.
+	#[arg(long)]
+	pub rgb_address: String,
+	#[arg(long)]
+	pub target_value_sats: u64,
+	/// BTC wallet change address from `wallet address`.
+	#[arg(long)]
+	pub change_address: String,
+	#[arg(long)]
+	pub fee_rate_sats_per_vb: f32,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum RgbSignMessageAlgorithmOpt {
+	BitcoinSignedMessage,
+	Ecdsa,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum RgbSignMessageEncodingOpt {
+	Hex,
+	Base64,
+}
+
+#[derive(Args, Debug)]
+pub struct RgbSignMessageArgs {
+	#[arg(long)]
+	pub message: String,
+	#[arg(long, value_enum)]
+	pub algorithm: Option<RgbSignMessageAlgorithmOpt>,
+	#[arg(long)]
+	pub compact: bool,
+	#[arg(long, value_enum)]
+	pub encoding: Option<RgbSignMessageEncodingOpt>,
 }
 
 #[derive(Subcommand, Debug)]

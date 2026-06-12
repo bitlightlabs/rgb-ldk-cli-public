@@ -7,6 +7,7 @@ import http.client
 import http.server
 import json
 import os
+import shlex
 import socket
 import socketserver
 import subprocess
@@ -27,6 +28,173 @@ DEFAULT_RGB_LDK_NODE_DIR = (REPO_ROOT / "../rgb-ldk-node").resolve()
 
 DEFAULT_STEP_TIMEOUT_S = 60.0
 DEFAULT_MAX_RUNTIME_SECS = 15 * 60.0
+
+GLOBAL_RGBLDK_FLAGS = {
+    "--token-stdin",
+    "--pretty",
+    "--yes",
+    "--no-truncate",
+}
+
+GLOBAL_RGBLDK_OPTS_WITH_VALUE = {
+    "--connect",
+    "--token",
+    "--token-file",
+    "--data-dir",
+    "--control-socket",
+    "--output",
+    "--color",
+}
+
+COMMAND_TREE: dict[str, Any] = {
+    "ctx": {"ls": None, "show": None, "add": None, "use": None, "rm": None},
+    "keystore": {"init": None, "migrate": None},
+    "node": {
+        "health": None,
+        "ready": None,
+        "status": None,
+        "id": None,
+        "listen": None,
+        "version": None,
+        "lock": None,
+        "unlock": None,
+        "unlock-hosted": None,
+    },
+    "wallet": {"balance": None, "address": None, "sync": None, "utxos": None},
+    "rgb": {
+        "sync": None,
+        "address": None,
+        "descriptor": None,
+        "sign-message": None,
+        "utxos": {
+            "ls": None,
+            "summary": None,
+            "reserve": None,
+            "release": None,
+            "fund": None,
+            "sweep": None,
+            "top-up": None,
+        },
+        "issuers": {"ls": None, "import": None},
+        "contracts": {
+            "ls": None,
+            "balance": None,
+            "known": None,
+            "import": None,
+            "issue": None,
+            "export": None,
+        },
+        "consignments": {"download": None},
+        "ln": {
+            "invoice": {
+                "create": None,
+                "create-for-hash": None,
+                "decode": None,
+            },
+            "pay": None,
+        },
+        "onchain": {
+            "invoice-create": None,
+            "invoice-decode": None,
+            "payments": None,
+            "send": None,
+            "receive": None,
+        },
+    },
+    "peer": {"ls": None, "connect": None, "disconnect": None},
+    "channel": {
+        "ls": None,
+        "open": None,
+        "close": None,
+        "force-close": None,
+        "splice-in": None,
+        "splice-out": None,
+    },
+    "graph": {"nodes": None, "node": None, "channels": None, "channel": None},
+    "pay": {
+        "invoice": {
+            "create": None,
+            "create-for-hash": None,
+            "decode": None,
+            "fail-for-hash": None,
+            "claim-for-hash": None,
+            "pay": None,
+            "send": None,
+            "send-using-amount": None,
+        },
+        "offer": {"create": None, "decode": None, "pay": None},
+        "refund": {"initiate": None, "decode": None, "request-payment": None},
+        "keysend": {"send": None},
+        "async": {
+            "receive-offer": None,
+            "set-static-invoice-server-paths": None,
+            "blinded-paths-for-recipient": None,
+        },
+        "ls": None,
+        "wait": None,
+        "abandon": None,
+        "get": None,
+    },
+    "events": {"next": None, "handled": None, "watch": None},
+    "debug": {"invoice": None, "consignment": None},
+}
+
+
+def _flatten_leaf_commands(tree: dict[str, Any], prefix: tuple[str, ...] = ()) -> set[str]:
+    out: set[str] = set()
+    for token, child in tree.items():
+        path = prefix + (token,)
+        if child is None:
+            out.add(" ".join(path))
+        else:
+            out.update(_flatten_leaf_commands(child, path))
+    return out
+
+
+EXPECTED_LEAF_COMMANDS = _flatten_leaf_commands(COMMAND_TREE)
+
+
+def extract_rgbldk_leaf_command(shell_cmd: str) -> Optional[str]:
+    try:
+        tokens = shlex.split(shell_cmd)
+    except ValueError as e:
+        raise RuntimeError(f"failed to parse command for coverage tracking: {shell_cmd!r}: {e}") from e
+
+    try:
+        rgbldk_idx = tokens.index("rgbldk")
+    except ValueError:
+        return None
+
+    tokens = tokens[rgbldk_idx + 1 :]
+    idx = 0
+    while idx < len(tokens):
+        token = tokens[idx]
+        opt_name = token.split("=", 1)[0]
+        if opt_name in GLOBAL_RGBLDK_FLAGS:
+            idx += 1
+            continue
+        if opt_name in GLOBAL_RGBLDK_OPTS_WITH_VALUE:
+            if "=" in token:
+                idx += 1
+            else:
+                idx += 2
+            continue
+        break
+
+    node: dict[str, Any] = COMMAND_TREE
+    path: list[str] = []
+    while idx < len(tokens):
+        token = tokens[idx]
+        child = node.get(token)
+        if child is None and token not in node:
+            break
+        path.append(token)
+        if child is None:
+            return " ".join(path)
+        node = child
+        idx += 1
+
+    return None
 
 
 def _progress(msg: str) -> None:
@@ -482,6 +650,7 @@ def main() -> int:
 
         runner = Runner(cwd=REPO_ROOT, env=env, verbose=args.verbose)
         md = Markdown()
+        covered_leaf_commands: set[str] = set()
 
         used_ports: set[int] = set()
 
@@ -579,9 +748,9 @@ def main() -> int:
                 )
 
             if use_src:
-                build_daemon_cmd = f"(cd {rgb_ldk_node_dir} && cargo build -p ldk-node --bin rgbldkd)"
+                build_daemon_cmd = f"(cd {rgb_ldk_node_dir} && cargo build --bin rgbldkd)"
                 build_daemon_cmd_display = (
-                    f"(cd {rgb_ldk_node_dir_display} && cargo build -p ldk-node --bin rgbldkd)"
+                    f"(cd {rgb_ldk_node_dir_display} && cargo build --bin rgbldkd)"
                 )
                 md.command_only(build_daemon_cmd_display)
                 if not args.skip_daemon_build:
@@ -680,7 +849,13 @@ def main() -> int:
                 timeout_s: Optional[float] = None,
             ) -> RunResult:
                 ensure_within_runtime(f"run_step: {cmd.splitlines()[0][:120]}")
-                md.run_block(display_cmd or cmd)
+                shown_cmd = display_cmd or cmd
+                leaf_command = extract_rgbldk_leaf_command(shown_cmd)
+                if shown_cmd.strip().startswith("rgbldk ") or " rgbldk " in shown_cmd:
+                    if leaf_command is None:
+                        raise RuntimeError(f"failed to classify rgbldk command for coverage: {shown_cmd}")
+                    covered_leaf_commands.add(leaf_command)
+                md.run_block(shown_cmd)
                 if timeout_s is None:
                     timeout_s = DEFAULT_STEP_TIMEOUT_S
                 timeout_s = clamp_timeout(timeout_s, f"run_step: {cmd.splitlines()[0][:120]}")
@@ -725,6 +900,27 @@ def main() -> int:
                         f"Invalid JSON shape (expected object) for: {cmd_json}\n{rr.stdout}"
                     )
                 return obj
+
+            def run_hidden_json(
+                cmd: str,
+                *,
+                retries: int = 0,
+                retry_sleep_s: float = 1.0,
+                check: bool = True,
+                timeout_s: Optional[float] = None,
+            ) -> Any:
+                ensure_within_runtime(f"run_hidden_json: {cmd.splitlines()[0][:120]}")
+                if timeout_s is None:
+                    timeout_s = DEFAULT_STEP_TIMEOUT_S
+                timeout_s = clamp_timeout(timeout_s, f"run_hidden_json: {cmd.splitlines()[0][:120]}")
+                rr = runner.run(
+                    normalize_rgbldk_json_cmd(cmd),
+                    retries=retries,
+                    retry_sleep_s=retry_sleep_s,
+                    check=check,
+                    timeout_s=timeout_s,
+                )
+                return json.loads(rr.stdout)
 
             def bitcoind_cli(cmd: str, *, include_result: bool = True) -> RunResult:
                 return run_step(
@@ -809,6 +1005,164 @@ def main() -> int:
                     f"Try re-running after `docker compose -f {compose_file_display} down -v`."
                 )
 
+            def wait_for_reservable_rgb_utxo(connect: str, *, timeout_s: float = 60.0) -> dict[str, Any]:
+                """
+                Poll the RGB wallet until it exposes an unlocked, allocation-free blinding target.
+
+                Not included in markdown (used to make example generation robust against RGB sync/indexing delays).
+                """
+                deadline = time.time() + timeout_s
+                last_err: Optional[str] = None
+                last_obj: Any = None
+                while time.time() < deadline:
+                    ensure_within_runtime(f"wait_for_reservable_rgb_utxo({connect})")
+
+                    sync_rr = runner.run(
+                        normalize_rgbldk_cmd(f"rgbldk --connect {connect} rgb sync"),
+                        retries=3,
+                        retry_sleep_s=1.0,
+                        check=False,
+                        timeout_s=clamp_timeout(DEFAULT_STEP_TIMEOUT_S, f"rgb sync ({connect})"),
+                    )
+                    if sync_rr.returncode != 0:
+                        last_err = (sync_rr.stdout + "\n" + sync_rr.stderr).strip()
+                        time.sleep(1.0)
+                        continue
+
+                    rr = runner.run(
+                        f"rgbldk --color never --output json --connect {connect} rgb utxos ls",
+                        retries=1,
+                        retry_sleep_s=1.0,
+                        check=False,
+                        timeout_s=clamp_timeout(DEFAULT_STEP_TIMEOUT_S, f"rgb utxos ls ({connect})"),
+                    )
+                    if rr.returncode != 0:
+                        last_err = (rr.stdout + "\n" + rr.stderr).strip()
+                        time.sleep(1.0)
+                        continue
+
+                    try:
+                        obj = json.loads(rr.stdout)
+                    except json.JSONDecodeError as e:
+                        last_err = f"failed to parse rgb utxos ls JSON: {e}: {rr.stdout!r}"
+                        time.sleep(1.0)
+                        continue
+
+                    last_obj = obj
+                    utxos = obj.get("utxos") if isinstance(obj, dict) else None
+                    if isinstance(utxos, list):
+                        for utxo in utxos:
+                            if not isinstance(utxo, dict):
+                                continue
+                            outpoint = utxo.get("outpoint")
+                            lock = utxo.get("lock")
+                            rgb = utxo.get("rgb")
+                            if not isinstance(outpoint, str) or not outpoint:
+                                continue
+                            if isinstance(lock, dict) and lock.get("locked") is True:
+                                continue
+                            if not isinstance(rgb, dict):
+                                continue
+                            allocations = rgb.get("allocations")
+                            roles = rgb.get("spend_roles")
+                            if isinstance(allocations, list) and allocations:
+                                continue
+                            if isinstance(roles, list) and "BlindingTarget" in roles:
+                                return utxo
+
+                    time.sleep(1.0)
+
+                raise RuntimeError(
+                    f"Timed out waiting for a reservable RGB wallet UTXO on {connect}. "
+                    f"Last error: {last_err!r}. Last response: {last_obj!r}"
+                )
+
+            def wait_for_allocated_rgb_utxo(
+                connect: str,
+                contract_id: str,
+                *,
+                timeout_s: float = 60.0,
+            ) -> dict[str, Any]:
+                """
+                Poll the RGB wallet until it exposes an unlocked UTXO carrying the contract state.
+
+                Not included in markdown (used to pick a valid input for rgb utxos top-up).
+                """
+                deadline = time.time() + timeout_s
+                last_err: Optional[str] = None
+                last_obj: Any = None
+                while time.time() < deadline:
+                    ensure_within_runtime(f"wait_for_allocated_rgb_utxo({connect})")
+
+                    sync_rr = runner.run(
+                        normalize_rgbldk_cmd(f"rgbldk --connect {connect} rgb sync"),
+                        retries=3,
+                        retry_sleep_s=1.0,
+                        check=False,
+                        timeout_s=clamp_timeout(DEFAULT_STEP_TIMEOUT_S, f"rgb sync ({connect})"),
+                    )
+                    if sync_rr.returncode != 0:
+                        last_err = (sync_rr.stdout + "\n" + sync_rr.stderr).strip()
+                        time.sleep(1.0)
+                        continue
+
+                    rr = runner.run(
+                        f"rgbldk --color never --output json --connect {connect} rgb utxos ls",
+                        retries=1,
+                        retry_sleep_s=1.0,
+                        check=False,
+                        timeout_s=clamp_timeout(DEFAULT_STEP_TIMEOUT_S, f"rgb utxos ls ({connect})"),
+                    )
+                    if rr.returncode != 0:
+                        last_err = (rr.stdout + "\n" + rr.stderr).strip()
+                        time.sleep(1.0)
+                        continue
+
+                    try:
+                        obj = json.loads(rr.stdout)
+                    except json.JSONDecodeError as e:
+                        last_err = f"failed to parse rgb utxos ls JSON: {e}: {rr.stdout!r}"
+                        time.sleep(1.0)
+                        continue
+
+                    last_obj = obj
+                    utxos = obj.get("utxos") if isinstance(obj, dict) else None
+                    if isinstance(utxos, list):
+                        for utxo in utxos:
+                            if not isinstance(utxo, dict):
+                                continue
+                            outpoint = utxo.get("outpoint")
+                            lock = utxo.get("lock")
+                            rgb = utxo.get("rgb")
+                            if not isinstance(outpoint, str) or not outpoint:
+                                continue
+                            if isinstance(lock, dict) and lock.get("locked") is True:
+                                continue
+                            if not isinstance(rgb, dict):
+                                continue
+                            allocations = rgb.get("allocations")
+                            if not isinstance(allocations, list):
+                                continue
+                            for allocation in allocations:
+                                if not isinstance(allocation, dict):
+                                    continue
+                                if allocation.get("contract_id") == contract_id:
+                                    return utxo
+
+                    time.sleep(1.0)
+
+                raise RuntimeError(
+                    f"Timed out waiting for an allocated RGB wallet UTXO for {contract_id} on {connect}. "
+                    f"Last error: {last_err!r}. Last response: {last_obj!r}"
+                )
+
+            def parse_sats(value: Any, *, field: str) -> int:
+                if isinstance(value, int):
+                    return value
+                if isinstance(value, str) and value.strip().isdigit():
+                    return int(value.strip())
+                raise RuntimeError(f"Invalid {field} value: {value!r}")
+
             def wait_for_usable_channel(connect: str, *, timeout_s: float = 60.0) -> None:
                 """
                 Wait until at least one channel is usable on `connect`.
@@ -853,6 +1207,28 @@ def main() -> int:
                     time.sleep(1.0)
 
                 raise RuntimeError(f"Timed out waiting for a usable channel on {connect}. Last error: {last_err!r}")
+
+            def wait_for_payment_status(
+                connect: str, payment_id: str, status: str, *, timeout_s: float = 60.0,
+            ) -> dict[str, Any]:
+                deadline = time.time() + timeout_s
+                last_obj: Any = None
+                while time.time() < deadline:
+                    ensure_within_runtime(f"wait_for_payment_status({connect}, {payment_id}, {status})")
+                    obj = run_hidden_json(
+                        f"rgbldk --connect {connect} pay get {payment_id}",
+                        check=False,
+                        timeout_s=10.0,
+                    )
+                    last_obj = obj
+                    if isinstance(obj, dict) and obj.get("status") == status:
+                        return obj
+                    time.sleep(1.0)
+
+                raise RuntimeError(
+                    f"Timed out waiting for payment {payment_id} on {connect} to reach status {status}. "
+                    f"Last response: {last_obj!r}"
+                )
 
             # Give daemons a moment after docker up (do not include in the markdown).
             if not args.skip_docker_up:
@@ -1044,21 +1420,24 @@ def main() -> int:
             run_step(f"rgbldk --connect {node_b} wallet sync")
             run_step("rgbldk wallet balance")
             run_step("rgbldk wallet balance --sats")
+            run_step("rgbldk wallet utxos")
             run_step(f"rgbldk --connect {node_b} wallet balance")
             run_step(f"rgbldk --connect {node_b} wallet balance --sats")
 
             md.heading(2, "5) BTC on-chain settlement (L1, node-b → node-a via channel push+close)")
             md.paragraph(
                 "This demonstrates a BTC L1 transfer between the two nodes by using a channel open with `--push-msat` "
-                "(gives the receiver an initial balance) and then a cooperative `channel close` to settle on-chain.\n"
+                "(gives the receiver an initial balance), inspecting the public network graph once the channel confirms, "
+                "trying both splice directions on the pure-BTC channel, and then using a cooperative `channel close` "
+                "to settle on-chain.\n"
             )
             md.heading(3, "Commands")
             if not node_id_a:
                 raise RuntimeError("missing node_id_a (expected it to be set in the node basics section)")
             run_step("rgbldk ctx use node-b")
             chan_b_to_a = run_step_json(
-                f"rgbldk channel open --node-id {node_id_a} --addr {node_a_p2p} --amount-sats 60000 --push-msat 2000000 --private",
-                display_cmd="rgbldk channel open --node-id <node_id_a> --addr <node_a_p2p> --amount-sats 60000 --push-msat 2000000 --private",
+                f"rgbldk channel open --node-id {node_id_a} --addr {node_a_p2p} --amount-sats 120000 --push-msat 30000000",
+                display_cmd="rgbldk channel open --node-id <node_id_a> --addr <node_a_p2p> --amount-sats 120000 --push-msat 30000000",
                 retries=30,
                 retry_sleep_s=1.0,
             ).get("user_channel_id")
@@ -1066,6 +1445,89 @@ def main() -> int:
                 raise RuntimeError(f"Invalid user_channel_id from channel open: {chan_b_to_a}")
             bitcoind_cli(f"generatetoaddress 6 {miner_addr}")
             wait_for_usable_channel(node_b, timeout_s=90.0)
+            run_step("rgbldk channel ls")
+            run_step("rgbldk ctx use node-a")
+            chans_a = run_hidden_json(
+                "rgbldk channel ls",
+                retries=10,
+                retry_sleep_s=1.0,
+                timeout_s=30.0,
+            )
+            if not isinstance(chans_a, list):
+                raise RuntimeError(f"Invalid channel ls JSON on node-a (expected array): {chans_a}")
+            chan_a_to_b = next(
+                (
+                    ch.get("user_channel_id")
+                    for ch in chans_a
+                    if isinstance(ch, dict) and ch.get("counterparty_node_id") == node_id_b
+                ),
+                None,
+            )
+            if not isinstance(chan_a_to_b, str) or not chan_a_to_b:
+                raise RuntimeError(f"Could not find node-a view of the BTC channel: {chans_a}")
+            run_step("rgbldk channel ls")
+
+            graph_scid: Optional[int] = None
+            deadline = time.time() + 90.0
+            while time.time() < deadline:
+                graph_channels = run_hidden_json(
+                    "rgbldk graph channels",
+                    check=False,
+                    timeout_s=10.0,
+                )
+                if isinstance(graph_channels, dict):
+                    channels = graph_channels.get("channels")
+                    if isinstance(channels, list) and channels:
+                        first_scid = channels[0]
+                        if isinstance(first_scid, int):
+                            graph_scid = first_scid
+                            break
+                        if isinstance(first_scid, str) and first_scid.isdigit():
+                            graph_scid = int(first_scid)
+                            break
+                time.sleep(1.0)
+            if graph_scid is None:
+                raise RuntimeError("Timed out waiting for a public channel to appear in graph channels")
+
+            md.heading(4, "Network graph")
+            run_step("rgbldk graph nodes")
+            run_step(
+                f"rgbldk graph node {node_id_b}",
+                display_cmd="rgbldk graph node <node_id_b>",
+            )
+            run_step("rgbldk graph channels")
+            run_step(
+                f"rgbldk graph channel {graph_scid}",
+                display_cmd="rgbldk graph channel <scid>",
+            )
+
+            md.heading(4, "Splice commands")
+            md.paragraph(
+                "These local source-mode daemons run with `--rgb-enabled`, so the channel above is treated as an "
+                "RGB channel. Current node behavior rejects splicing RGB channels, so the two commands below are "
+                "shown as controlled examples of the current API error instead of successful mutations.\n"
+            )
+            run_step("rgbldk ctx use node-b")
+            run_step(
+                f"rgbldk channel splice-in --user-channel-id {chan_b_to_a} --counterparty-node-id {node_id_a} --splice-amount-sats 20000",
+                display_cmd="rgbldk channel splice-in --user-channel-id <user_channel_id> --counterparty-node-id <node_id_a> --splice-amount-sats 20000",
+                check=False,
+            )
+            run_step("rgbldk ctx use node-a")
+            wait_for_usable_channel(node_a, timeout_s=90.0)
+            splice_out_addr = run_step_json("rgbldk wallet address").get("address")
+            if not isinstance(splice_out_addr, str) or not splice_out_addr:
+                raise RuntimeError(f"Invalid splice-out wallet address on node-a: {splice_out_addr}")
+            run_step(
+                f"rgbldk channel splice-out --user-channel-id {chan_a_to_b} --counterparty-node-id {node_id_b} --address {splice_out_addr} --splice-amount-sats 10000",
+                display_cmd="rgbldk channel splice-out --user-channel-id <user_channel_id> --counterparty-node-id <node_id_b> --address <wallet_address> --splice-amount-sats 10000",
+                check=False,
+            )
+            run_step("rgbldk channel ls")
+            run_step("rgbldk ctx use node-b")
+            run_step("rgbldk channel ls")
+            wait_for_usable_channel(node_b, timeout_s=90.0)
+
             run_step(
                 f"rgbldk channel close --user-channel-id {chan_b_to_a} --counterparty-node-id {node_id_a}",
                 display_cmd="rgbldk channel close --user-channel-id <user_channel_id> --counterparty-node-id <node_id_a>",
@@ -1096,6 +1558,11 @@ def main() -> int:
                 rgb_addr_a = run_step_json("rgbldk rgb address").get("address")
                 if not isinstance(rgb_addr_a, str) or not rgb_addr_a:
                     raise RuntimeError(f"Invalid RGB wallet address for node-a: {rgb_addr_a}")
+                run_step("rgbldk rgb descriptor")
+                run_step(
+                    "rgbldk rgb sign-message --message 7267626c646b206578616d706c65 --algorithm ecdsa --encoding hex",
+                    display_cmd="rgbldk rgb sign-message --message 7267626c646b206578616d706c65 --algorithm ecdsa --encoding hex",
+                )
                 run_step("rgbldk rgb issuers ls")
                 run_step("rgbldk rgb contracts ls")
                 run_step("rgbldk rgb utxos ls")
@@ -1108,22 +1575,37 @@ def main() -> int:
                     contract_name = "DemoAsset"
 
                     md.paragraph(
-                        "Issuing a contract requires the RGB wallet to have a spendable UTXO. Fund the RGB wallet "
-                        "address and sync before issuing.\n"
+                        "Issuing a contract requires the RGB wallet to have spendable UTXOs. Fund two RGB wallet "
+                        "addresses and sync before issuing.\n"
                     )
+                    rgb_addr_a_2 = run_step_json("rgbldk rgb address").get("address")
+                    if not isinstance(rgb_addr_a_2, str) or not rgb_addr_a_2:
+                        raise RuntimeError(f"Invalid second RGB wallet address for node-a: {rgb_addr_a_2}")
                     run_step(
                         f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress {rgb_addr_a} 0.1",
-                        display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress <rgb_address> 0.1",
+                        display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress <rgb_address_1> 0.1",
+                    )
+                    run_step(
+                        f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress {rgb_addr_a_2} 0.0011",
+                        display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress <rgb_address_2> 0.0011",
                     )
                     run_step(
                         f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
                         display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
                     )
                     run_step("rgbldk rgb sync", retries=10, retry_sleep_s=1.0)
+                    reservable_rgb_utxo = wait_for_reservable_rgb_utxo(node_a, timeout_s=90.0)
+                    reservable_rgb_outpoint = reservable_rgb_utxo.get("outpoint")
+                    if not isinstance(reservable_rgb_outpoint, str) or not reservable_rgb_outpoint:
+                        raise RuntimeError(f"Invalid reservable RGB outpoint: {reservable_rgb_utxo}")
 
                     md.heading(4, "UTXOs (reserve/release)")
+                    run_step("rgbldk rgb utxos ls")
                     run_step("rgbldk rgb utxos summary")
-                    resv = run_step_json("rgbldk rgb utxos reserve --ttl-secs 60").get("reservation_id")
+                    resv = run_step_json(
+                        f"rgbldk rgb utxos reserve --outpoint {reservable_rgb_outpoint} --ttl-secs 60",
+                        display_cmd="rgbldk rgb utxos reserve --outpoint <rgb_outpoint> --ttl-secs 60",
+                    ).get("reservation_id")
                     if not isinstance(resv, str) or not resv:
                         raise RuntimeError(f"Invalid reservation_id from rgb utxos reserve: {resv}")
                     run_step(
@@ -1199,6 +1681,127 @@ def main() -> int:
                     )
                     run_step("rgbldk rgb contracts ls")
                     run_step(f"rgbldk rgb contracts balance {contract_id}")
+                    run_step(
+                        f"rgbldk rgb contracts known {contract_id}",
+                        display_cmd="rgbldk rgb contracts known <contract_id>",
+                    )
+
+                    md.heading(4, "RGB UTXO lifecycle (fund/top-up/sweep)")
+                    md.paragraph(
+                        "`fund` creates empty RGB wallet outputs, `top-up` increases a single-asset RGB UTXO's bitcoin "
+                        "capacity, and `sweep` spends an empty RGB wallet output back to the BTC wallet. These low-level "
+                        "UTXO tools are different from `rgb onchain send`, which moves contract allocations between wallets.\n"
+                    )
+                    run_step("rgbldk ctx use node-a")
+                    top_up_rgb_utxo = wait_for_allocated_rgb_utxo(node_a, contract_id, timeout_s=90.0)
+                    top_up_rgb_outpoint = top_up_rgb_utxo.get("outpoint")
+                    top_up_old_value_sats = parse_sats(
+                        top_up_rgb_utxo.get("value_sats"), field="allocated RGB UTXO value_sats"
+                    )
+                    if not isinstance(top_up_rgb_outpoint, str) or not top_up_rgb_outpoint:
+                        raise RuntimeError(f"Invalid allocated RGB outpoint for rgb utxos top-up: {top_up_rgb_utxo}")
+                    top_up_target_value_sats = top_up_old_value_sats + 40_000
+
+                    fund_l1_addr = run_step_json("rgbldk wallet address").get("address")
+                    if not isinstance(fund_l1_addr, str) or not fund_l1_addr:
+                        raise RuntimeError(f"Invalid wallet address for rgb utxos fund input: {fund_l1_addr}")
+                    fund_txid = first_nonempty_line(
+                        run_step(
+                            f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress {fund_l1_addr} 0.01",
+                            display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress <wallet_address> 0.01",
+                        ).stdout
+                    )
+                    run_step(
+                        f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
+                        display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
+                    )
+                    run_step("rgbldk wallet sync")
+                    fund_input_outpoint = tx_outpoint_for_address(fund_txid, fund_l1_addr)
+                    fund_rgb_addr_1 = run_step_json("rgbldk rgb address").get("address")
+                    fund_rgb_addr_2 = run_step_json("rgbldk rgb address").get("address")
+                    fund_change_addr = run_step_json("rgbldk wallet address").get("address")
+                    if not isinstance(fund_rgb_addr_1, str) or not isinstance(fund_rgb_addr_2, str):
+                        raise RuntimeError("Invalid RGB output addresses for rgb utxos fund")
+                    if not isinstance(fund_change_addr, str) or not fund_change_addr:
+                        raise RuntimeError(f"Invalid wallet change address for rgb utxos fund: {fund_change_addr}")
+                    fund_resp = run_step_json(
+                        f"rgbldk rgb utxos fund --input {fund_input_outpoint} --output {fund_rgb_addr_1}:30000 --output {fund_rgb_addr_2}:28000 --change-address {fund_change_addr} --fee-rate-sats-per-vb 1.0",
+                        display_cmd="rgbldk rgb utxos fund --input <wallet_outpoint> --output <rgb_address_1>:30000 --output <rgb_address_2>:28000 --change-address <wallet_change_address> --fee-rate-sats-per-vb 1.0",
+                    )
+                    fund_txid_resp = fund_resp.get("txid")
+                    fund_outputs = fund_resp.get("outputs")
+                    if not isinstance(fund_txid_resp, str) or not fund_txid_resp:
+                        raise RuntimeError(f"Invalid txid from rgb utxos fund: {fund_resp}")
+                    if not isinstance(fund_outputs, list) or len(fund_outputs) < 2:
+                        raise RuntimeError(f"Invalid outputs from rgb utxos fund: {fund_resp}")
+                    fund_outpoint_1 = None
+                    fund_outpoint_2 = None
+                    for output in fund_outputs:
+                        if not isinstance(output, dict):
+                            continue
+                        addr = output.get("address")
+                        vout = output.get("vout")
+                        if not isinstance(addr, str) or not isinstance(vout, int):
+                            continue
+                        if addr == fund_rgb_addr_1:
+                            fund_outpoint_1 = f"{fund_txid_resp}:{vout}"
+                        if addr == fund_rgb_addr_2:
+                            fund_outpoint_2 = f"{fund_txid_resp}:{vout}"
+                    if not isinstance(fund_outpoint_1, str) or not isinstance(fund_outpoint_2, str):
+                        raise RuntimeError(f"Could not derive funded RGB outpoints from: {fund_resp}")
+                    run_step(
+                        f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
+                        display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
+                    )
+                    run_step("rgbldk wallet sync")
+                    run_step("rgbldk rgb sync", retries=10, retry_sleep_s=1.0)
+
+                    top_up_l1_addr = run_step_json("rgbldk wallet address").get("address")
+                    if not isinstance(top_up_l1_addr, str) or not top_up_l1_addr:
+                        raise RuntimeError(f"Invalid wallet address for rgb utxos top-up input: {top_up_l1_addr}")
+                    top_up_input_txid = first_nonempty_line(
+                        run_step(
+                            f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress {top_up_l1_addr} 0.005",
+                            display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress <wallet_address> 0.005",
+                        ).stdout
+                    )
+                    run_step(
+                        f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
+                        display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
+                    )
+                    run_step("rgbldk wallet sync")
+                    top_up_input_outpoint = tx_outpoint_for_address(top_up_input_txid, top_up_l1_addr)
+                    top_up_rgb_addr = run_step_json("rgbldk rgb address").get("address")
+                    top_up_change_addr = run_step_json("rgbldk wallet address").get("address")
+                    if not isinstance(top_up_rgb_addr, str) or not top_up_rgb_addr:
+                        raise RuntimeError(f"Invalid RGB address for rgb utxos top-up output: {top_up_rgb_addr}")
+                    if not isinstance(top_up_change_addr, str) or not top_up_change_addr:
+                        raise RuntimeError(f"Invalid wallet change address for rgb utxos top-up: {top_up_change_addr}")
+                    run_step(
+                        f"rgbldk rgb utxos top-up --rgb-outpoint {top_up_rgb_outpoint} --l1-input {top_up_input_outpoint} --rgb-address {top_up_rgb_addr} --target-value-sats {top_up_target_value_sats} --change-address {top_up_change_addr} --fee-rate-sats-per-vb 1.0",
+                        display_cmd="rgbldk rgb utxos top-up --rgb-outpoint <allocated_rgb_outpoint> --l1-input <wallet_outpoint> --rgb-address <rgb_address> --target-value-sats <larger_value_sats> --change-address <wallet_change_address> --fee-rate-sats-per-vb 1.0",
+                    )
+                    run_step(
+                        f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
+                        display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
+                    )
+                    run_step("rgbldk wallet sync")
+                    run_step("rgbldk rgb sync", retries=10, retry_sleep_s=1.0)
+
+                    sweep_dest_addr = run_step_json("rgbldk wallet address").get("address")
+                    if not isinstance(sweep_dest_addr, str) or not sweep_dest_addr:
+                        raise RuntimeError(f"Invalid sweep destination address: {sweep_dest_addr}")
+                    run_step(
+                        f"rgbldk rgb utxos sweep --outpoint {fund_outpoint_2} --destination-address {sweep_dest_addr} --fee-rate-sats-per-vb 1.0",
+                        display_cmd="rgbldk rgb utxos sweep --outpoint <rgb_outpoint> --destination-address <wallet_address> --fee-rate-sats-per-vb 1.0",
+                    )
+                    run_step(
+                        f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
+                        display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
+                    )
+                    run_step("rgbldk wallet sync")
+                    run_step("rgbldk rgb sync", retries=10, retry_sleep_s=1.0)
+                    run_step("rgbldk ctx use node-b")
 
                     md.heading(4, "RGB on-chain transfer (L1, node-a → node-b)")
                     md.paragraph(
@@ -1215,6 +1818,10 @@ def main() -> int:
                     if not isinstance(inv_split, str) or not inv_split:
                         raise RuntimeError(f"Invalid RGB on-chain invoice from node-b: {inv_split}")
                     inv_split_payment_id = hashlib.sha256(inv_split.encode("utf-8")).hexdigest()
+                    run_step(
+                        f"rgbldk rgb onchain invoice-decode '{inv_split}'",
+                        display_cmd="rgbldk rgb onchain invoice-decode '<invoice>'",
+                    )
                     run_step(
                         f"rgbldk debug invoice '{inv_split}'",
                         display_cmd="rgbldk debug invoice '<invoice>'",
@@ -1257,6 +1864,10 @@ def main() -> int:
                     run_step("rgbldk wallet sync")
                     run_step("rgbldk rgb sync", retries=10, retry_sleep_s=1.0)
                     run_step(f"rgbldk rgb contracts balance {contract_id}")
+                    run_step(
+                        f"rgbldk rgb onchain payments --contract-id {contract_id}",
+                        display_cmd="rgbldk rgb onchain payments --contract-id <contract_id>",
+                    )
                     run_step("rgbldk ctx use node-a")
                     run_step("rgbldk wallet sync")
                     run_step("rgbldk rgb sync", retries=10, retry_sleep_s=1.0)
@@ -1463,6 +2074,10 @@ def main() -> int:
             )
             if not isinstance(invoice1, str) or not invoice1:
                 raise RuntimeError(f"Invalid invoice from invoice create: {invoice1}")
+            run_step(
+                f"rgbldk pay invoice decode {invoice1}",
+                display_cmd="rgbldk pay invoice decode <invoice>",
+            )
             run_step("rgbldk ctx use node-a")
 
             # Ensure the channel is usable before attempting payments (do not include in markdown).
@@ -1480,20 +2095,98 @@ def main() -> int:
             run_step(f"rgbldk pay get {pay1}")
 
             run_step("rgbldk ctx use node-b")
+            invoice_send = run_step_json("rgbldk pay invoice create --desc demo-send --amount-msat 13000").get(
+                "invoice"
+            )
+            if not isinstance(invoice_send, str) or not invoice_send:
+                raise RuntimeError(f"Invalid invoice from invoice create: {invoice_send}")
+            run_step("rgbldk ctx use node-a")
+            pay_send = run_step_json(
+                f"rgbldk pay invoice send {shlex.quote(invoice_send)}",
+                display_cmd="rgbldk --color never --output json --pretty pay invoice send <invoice>",
+                retries=30,
+                retry_sleep_s=1.0,
+            ).get("payment_id")
+            if not isinstance(pay_send, str) or not pay_send:
+                raise RuntimeError(f"Invalid payment_id from invoice send: {pay_send}")
+            run_step(f"rgbldk pay wait {pay_send} --timeout-secs 60")
+            run_step(f"rgbldk pay get {pay_send}")
+
+            run_step("rgbldk ctx use node-b")
             invoice2 = run_step_json("rgbldk pay invoice create --desc demo-var").get("invoice")
             if not isinstance(invoice2, str) or not invoice2:
                 raise RuntimeError(f"Invalid invoice from invoice create: {invoice2}")
             run_step("rgbldk ctx use node-a")
             pay2 = run_step_json(
-                f"rgbldk pay invoice pay --invoice {invoice2} --amount-msat 11000",
-                display_cmd="rgbldk --color never --output json --pretty pay invoice pay --invoice <invoice> --amount-msat 11000",
+                f"rgbldk pay invoice send-using-amount --invoice {invoice2} --amount-msat 11000",
+                display_cmd="rgbldk --color never --output json --pretty pay invoice send-using-amount --invoice <invoice> --amount-msat 11000",
                 retries=30,
                 retry_sleep_s=1.0,
             ).get("payment_id")
             if not isinstance(pay2, str) or not pay2:
-                raise RuntimeError(f"Invalid payment_id from invoice pay: {pay2}")
+                raise RuntimeError(f"Invalid payment_id from invoice send-using-amount: {pay2}")
             run_step(f"rgbldk pay wait {pay2} --timeout-secs 60")
             run_step(f"rgbldk pay get {pay2}")
+
+            claim_preimage_hex = "42" * 32
+            claim_payment_hash_hex = hashlib.sha256(bytes.fromhex(claim_preimage_hex)).hexdigest()
+            run_step("rgbldk ctx use node-b")
+            hold_invoice_claim = run_step_json(
+                f"rgbldk pay invoice create-for-hash --desc demo-hold-claim --amount-msat 14000 --payment-hash {claim_payment_hash_hex}",
+                display_cmd="rgbldk pay invoice create-for-hash --desc demo-hold-claim --amount-msat 14000 --payment-hash <payment_hash>",
+            ).get("invoice")
+            if not isinstance(hold_invoice_claim, str) or not hold_invoice_claim:
+                raise RuntimeError(f"Invalid hold invoice from create-for-hash: {hold_invoice_claim}")
+            run_step(
+                f"rgbldk pay invoice decode {hold_invoice_claim}",
+                display_cmd="rgbldk pay invoice decode <invoice>",
+            )
+            run_step("rgbldk ctx use node-a")
+            hold_claim_pid = run_step_json(
+                f"rgbldk pay invoice send {shlex.quote(hold_invoice_claim)}",
+                display_cmd="rgbldk --color never --output json --pretty pay invoice send <invoice>",
+                retries=30,
+                retry_sleep_s=1.0,
+            ).get("payment_id")
+            if not isinstance(hold_claim_pid, str) or not hold_claim_pid:
+                raise RuntimeError(f"Invalid payment_id from hold invoice send: {hold_claim_pid}")
+            wait_for_payment_status(node_b, hold_claim_pid, "Pending", timeout_s=90.0)
+            run_step("rgbldk ctx use node-b")
+            run_step(
+                f"rgbldk pay invoice claim-for-hash --payment-hash {claim_payment_hash_hex} --preimage {claim_preimage_hex} --claimable-amount-msat 14000",
+                display_cmd="rgbldk pay invoice claim-for-hash --payment-hash <payment_hash> --preimage <preimage> --claimable-amount-msat 14000",
+            )
+            run_step("rgbldk ctx use node-a")
+            run_step(f"rgbldk pay wait {hold_claim_pid} --timeout-secs 60")
+            run_step(f"rgbldk pay get {hold_claim_pid}")
+
+            fail_preimage_hex = "43" * 32
+            fail_payment_hash_hex = hashlib.sha256(bytes.fromhex(fail_preimage_hex)).hexdigest()
+            run_step("rgbldk ctx use node-b")
+            hold_invoice_fail = run_step_json(
+                f"rgbldk pay invoice create-for-hash --desc demo-hold-fail --amount-msat 15000 --payment-hash {fail_payment_hash_hex}",
+                display_cmd="rgbldk pay invoice create-for-hash --desc demo-hold-fail --amount-msat 15000 --payment-hash <payment_hash>",
+            ).get("invoice")
+            if not isinstance(hold_invoice_fail, str) or not hold_invoice_fail:
+                raise RuntimeError(f"Invalid hold invoice from create-for-hash: {hold_invoice_fail}")
+            run_step("rgbldk ctx use node-a")
+            hold_fail_pid = run_step_json(
+                f"rgbldk pay invoice send {shlex.quote(hold_invoice_fail)}",
+                display_cmd="rgbldk --color never --output json --pretty pay invoice send <invoice>",
+                retries=30,
+                retry_sleep_s=1.0,
+            ).get("payment_id")
+            if not isinstance(hold_fail_pid, str) or not hold_fail_pid:
+                raise RuntimeError(f"Invalid payment_id from hold invoice send: {hold_fail_pid}")
+            wait_for_payment_status(node_b, hold_fail_pid, "Pending", timeout_s=90.0)
+            run_step("rgbldk ctx use node-b")
+            run_step(
+                f"rgbldk pay invoice fail-for-hash {fail_payment_hash_hex}",
+                display_cmd="rgbldk pay invoice fail-for-hash <payment_hash>",
+            )
+            wait_for_payment_status(node_a, hold_fail_pid, "Failed", timeout_s=90.0)
+            run_step("rgbldk ctx use node-a")
+            run_step(f"rgbldk pay get {hold_fail_pid}")
 
             md.heading(3, "BTC Lightning transfer (L2, node-b → node-a)")
             run_step("rgbldk ctx use node-a")
@@ -1567,6 +2260,22 @@ def main() -> int:
                 display_cmd="rgbldk pay abandon <payment_id>",
             )
 
+            md.heading(3, "Async payments (role/configuration checks)")
+            md.paragraph(
+                "Async-payment commands require dedicated node roles and additional handshake state. In this simple "
+                "two-node demo they intentionally surface the current configuration/state errors instead of hanging.\n"
+            )
+            run_step("rgbldk ctx use node-a")
+            run_step("rgbldk pay async receive-offer", check=False)
+            run_step(
+                "rgbldk pay async set-static-invoice-server-paths --paths-hex deadbeef",
+                check=False,
+            )
+            run_step(
+                "rgbldk pay async blinded-paths-for-recipient --recipient-id-hex 010203",
+                check=False,
+            )
+
             md.heading(3, "Payments list")
             run_step("rgbldk pay ls")
 
@@ -1576,6 +2285,20 @@ def main() -> int:
                     "Create an RGB LN invoice on node-b and pay it from node-a over the RGB-enabled channel.\n"
                 )
                 run_step("rgbldk ctx use node-b")
+                rgb_ln_preimage_hex = "44" * 32
+                rgb_ln_payment_hash_hex = hashlib.sha256(bytes.fromhex(rgb_ln_preimage_hex)).hexdigest()
+                rgb_inv_for_hash = run_step_json(
+                    f"rgbldk rgb ln invoice create-for-hash --contract-id {contract_id} --asset-amount 2 --payment-hash {rgb_ln_payment_hash_hex} --desc \"rgb ln hold demo\" --btc-carrier-amount-msat 3000000",
+                    display_cmd="rgbldk --color never --output json --pretty rgb ln invoice create-for-hash --contract-id <contract_id> --asset-amount 2 --payment-hash <payment_hash> --desc \"rgb ln hold demo\" --btc-carrier-amount-msat 3000000",
+                    retries=10,
+                    retry_sleep_s=1.0,
+                ).get("invoice")
+                if not isinstance(rgb_inv_for_hash, str) or not rgb_inv_for_hash:
+                    raise RuntimeError(f"Invalid RGB LN invoice from create-for-hash: {rgb_inv_for_hash}")
+                run_step(
+                    f"rgbldk rgb ln invoice decode {rgb_inv_for_hash}",
+                    display_cmd="rgbldk rgb ln invoice decode <invoice>",
+                )
                 rgb_inv = run_step_json(
                     f"rgbldk rgb ln invoice create --contract-id {contract_id} --asset-amount 5 --desc \"rgb ln demo\" --btc-carrier-amount-msat 5000000",
                     display_cmd="rgbldk --color never --output json --pretty rgb ln invoice create --contract-id <contract_id> --asset-amount 5 --desc \"rgb ln demo\" --btc-carrier-amount-msat 5000000",
@@ -1746,6 +2469,14 @@ def main() -> int:
             if not args.no_cleanup:
                 _progress(docker_down_cmd_display)
                 runner.run(docker_down_cmd, timeout_s=clamp_timeout(300.0, "docker compose down"))
+
+            missing_leaf_commands = sorted(EXPECTED_LEAF_COMMANDS - covered_leaf_commands)
+            if missing_leaf_commands:
+                missing = "\n".join(f"- {cmd}" for cmd in missing_leaf_commands)
+                raise RuntimeError(
+                    "EXAMPLE generator is missing coverage for the following rgbldk leaf commands:\n"
+                    f"{missing}"
+                )
 
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(md.render(), encoding="utf-8")

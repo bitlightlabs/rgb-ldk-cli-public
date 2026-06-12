@@ -1,4 +1,4 @@
-use rgbldk_http_dto::EventDto;
+use rgbldk_http_client::dto::EventDto;
 
 use crate::app::App;
 use crate::cli::EventsCommand;

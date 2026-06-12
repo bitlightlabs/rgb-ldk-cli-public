@@ -1,13 +1,15 @@
 use owo_colors::OwoColorize;
 
-use rgbldk_http_dto::{
-	Bolt11ClaimForHashRequest, Bolt11DecodeRequest, Bolt11DecodeResponse, Bolt11FailForHashRequest,
-	Bolt11PayRequest, Bolt11PayResponse, Bolt11ReceiveForHashRequest, Bolt11ReceiveRequest,
-	Bolt11ReceiveResponse, Bolt11ReceiveVarRequest, Bolt11SendRequest,
-	Bolt11SendUsingAmountRequest, Bolt12OfferDecodeRequest, Bolt12OfferDecodeResponse,
-	Bolt12OfferReceiveRequest, Bolt12OfferReceiveVarRequest, Bolt12OfferResponse,
-	Bolt12OfferSendRequest, Bolt12RefundDecodeRequest, Bolt12RefundDecodeResponse,
-	Bolt12RefundInitiateRequest, Bolt12RefundInitiateResponse, Bolt12RefundRequestPaymentRequest,
+use rgbldk_http_client::dto::{
+	AsyncBlindedPathsRequest, AsyncBlindedPathsResponse, AsyncReceiveOfferResponse,
+	AsyncSetStaticInvoiceServerPathsRequest, Bolt11ClaimForHashRequest, Bolt11DecodeRequest,
+	Bolt11DecodeResponse, Bolt11FailForHashRequest, Bolt11PayRequest, Bolt11PayResponse,
+	Bolt11ReceiveForHashRequest, Bolt11ReceiveRequest, Bolt11ReceiveResponse,
+	Bolt11ReceiveVarRequest, Bolt11SendRequest, Bolt11SendUsingAmountRequest,
+	Bolt12OfferDecodeRequest, Bolt12OfferDecodeResponse, Bolt12OfferReceiveRequest,
+	Bolt12OfferReceiveVarRequest, Bolt12OfferResponse, Bolt12OfferSendRequest,
+	Bolt12RefundDecodeRequest, Bolt12RefundDecodeResponse, Bolt12RefundInitiateRequest,
+	Bolt12RefundInitiateResponse, Bolt12RefundRequestPaymentRequest,
 	Bolt12RefundRequestPaymentResponse, CustomTlvDto, OkResponse, PaymentDetailsDto,
 	PaymentWaitRequest, PaymentWaitResponse, SendResponse, SpontaneousSendRequest,
 };
@@ -15,7 +17,9 @@ use rgbldk_http_dto::{
 use serde::Serialize;
 
 use crate::app::App;
-use crate::cli::{InvoiceCommand, KeysendCommand, OfferCommand, PayCommand, RefundCommand};
+use crate::cli::{
+	AsyncPaymentsCommand, InvoiceCommand, KeysendCommand, OfferCommand, PayCommand, RefundCommand,
+};
 use crate::client::{join_url, send_json, send_value};
 use crate::ui;
 use crate::utils::{die, print_json};
@@ -36,7 +40,7 @@ fn print_wait_error_text(app: &App, v: &serde_json::Value) {
 	}
 	if let Some(checks) = v.get("checks") {
 		if let Ok(checks) =
-			serde_json::from_value::<Vec<rgbldk_http_dto::HealthCheckDto>>(checks.clone())
+			serde_json::from_value::<Vec<rgbldk_http_client::dto::HealthCheckDto>>(checks.clone())
 		{
 			ui::print_checks(app.theme, "Details", false, &checks);
 		}
@@ -454,6 +458,57 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 				let resp: SendResponse =
 					send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
 				print_json_or_text(app, &resp, || println!("{}", resp.payment_id));
+			},
+		},
+		PayCommand::Async { command } => match command {
+			AsyncPaymentsCommand::ReceiveOffer => {
+				let url = join_url(&app.base, "/api/v1/payment/bolt12/async/receive_offer");
+				let resp: AsyncReceiveOfferResponse =
+					send_json(app.client.post(url).json(&serde_json::json!({})))
+						.await
+						.unwrap_or_else(|e| die(e));
+				print_json_or_text(app, &resp, || {
+					println!("{}", resp.offer);
+					eprintln!("Async-payment offer is ready to share.");
+				});
+			},
+			AsyncPaymentsCommand::SetStaticInvoiceServerPaths(args) => {
+				let url = join_url(
+					&app.base,
+					"/api/v1/payment/bolt12/async/set_static_invoice_server_paths",
+				);
+				let req =
+					AsyncSetStaticInvoiceServerPathsRequest { paths_hex: args.paths_hex.clone() };
+				let resp: OkResponse =
+					send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+				print_json_or_text(app, &resp, || {
+					ui::print_checks(
+						app.theme,
+						"Static-invoice server paths",
+						resp.ok,
+						&resp.checks,
+					);
+					if resp.ok {
+						println!("Blinded paths have been stored for the async-payment handshake.");
+					}
+				});
+			},
+			AsyncPaymentsCommand::BlindedPathsForRecipient(args) => {
+				let url =
+					join_url(&app.base, "/api/v1/payment/bolt12/async/blinded_paths_for_recipient");
+				let req =
+					AsyncBlindedPathsRequest { recipient_id_hex: args.recipient_id_hex.clone() };
+				let resp: AsyncBlindedPathsResponse =
+					send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+				print_json_or_text(app, &resp, || {
+					let preview = if resp.paths_hex.len() > 32 {
+						format!("{}...", &resp.paths_hex[..32])
+					} else {
+						resp.paths_hex.clone()
+					};
+					println!("{preview}");
+					eprintln!("Blinded paths were generated for the recipient.");
+				});
 			},
 		},
 	}

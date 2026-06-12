@@ -1,4 +1,4 @@
-use rgbldk_http_dto::{PeerConnectRequest, PeerDetailsDto, PeerDisconnectRequest};
+use rgbldk_http_client::dto::{PeerConnectRequest, PeerDetailsDto, PeerDisconnectRequest};
 
 use crate::app::App;
 use crate::cli::PeerCommand;

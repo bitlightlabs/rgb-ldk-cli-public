@@ -2,6 +2,7 @@ pub(crate) mod channel;
 pub(crate) mod ctx;
 pub(crate) mod debug;
 pub(crate) mod events;
+pub(crate) mod graph;
 pub(crate) mod keystore;
 pub(crate) mod node;
 pub(crate) mod pay;

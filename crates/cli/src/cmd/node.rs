@@ -1,6 +1,6 @@
 use owo_colors::OwoColorize;
 
-use rgbldk_http_dto::{OkResponse, StatusDto};
+use rgbldk_http_client::dto::{OkResponse, StatusDto};
 
 use crate::app::App;
 use crate::cli::{Cli, NodeCommand};

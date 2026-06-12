@@ -1,11 +1,12 @@
-use rgbldk_http_dto::{
-	ChannelDetailsExtendedDto, CloseChannelRequest, OpenChannelRequest, OpenChannelResponse,
-	RgbOpenChannelRequest,
+use rgbldk_http_client::dto::{
+	ChannelDetailsExtendedDto, CloseChannelRequest, OkResponse, OpenChannelRequest,
+	OpenChannelResponse, RgbOpenChannelRequest, SpliceInRequest, SpliceOutRequest,
 };
 
 use crate::app::App;
 use crate::cli::ChannelCommand;
 use crate::client::{join_url, send_json};
+use crate::ui;
 use crate::utils::{confirm_or_exit, die, print_json};
 
 pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
@@ -124,6 +125,62 @@ pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
 			match app.output {
 				crate::ui::OutputMode::Json => print_json(&v, app.pretty),
 				crate::ui::OutputMode::Text => println!("Channel force-close initiated."),
+			}
+		},
+		ChannelCommand::SpliceIn(args) => {
+			let req = SpliceInRequest {
+				user_channel_id: args.user_channel_id.clone(),
+				counterparty_node_id: args.counterparty_node_id.clone(),
+				splice_amount_sats: args.splice_amount_sats,
+			};
+			let url = join_url(&app.base, "/api/v1/channel/splice_in");
+			let resp: OkResponse =
+				send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+			match app.output {
+				crate::ui::OutputMode::Json => print_json(&resp, app.pretty),
+				crate::ui::OutputMode::Text => {
+					ui::print_checks(app.theme, "Splice in", resp.ok, &resp.checks);
+					if resp.ok {
+						println!(
+							"Adding {} sats into channel {}.",
+							crate::ui::format_u64_with_commas(args.splice_amount_sats),
+							if app.no_truncate {
+								args.user_channel_id.clone()
+							} else {
+								crate::ui::truncate_id(&args.user_channel_id)
+							}
+						);
+					}
+				},
+			}
+		},
+		ChannelCommand::SpliceOut(args) => {
+			let req = SpliceOutRequest {
+				user_channel_id: args.user_channel_id.clone(),
+				counterparty_node_id: args.counterparty_node_id.clone(),
+				address: args.address.clone(),
+				splice_amount_sats: args.splice_amount_sats,
+			};
+			let url = join_url(&app.base, "/api/v1/channel/splice_out");
+			let resp: OkResponse =
+				send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+			match app.output {
+				crate::ui::OutputMode::Json => print_json(&resp, app.pretty),
+				crate::ui::OutputMode::Text => {
+					ui::print_checks(app.theme, "Splice out", resp.ok, &resp.checks);
+					if resp.ok {
+						println!(
+							"Withdrawing {} sats from channel {} to {}.",
+							crate::ui::format_u64_with_commas(args.splice_amount_sats),
+							if app.no_truncate {
+								args.user_channel_id.clone()
+							} else {
+								crate::ui::truncate_id(&args.user_channel_id)
+							},
+							args.address
+						);
+					}
+				},
 			}
 		},
 	}

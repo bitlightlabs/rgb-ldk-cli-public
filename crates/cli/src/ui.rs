@@ -5,7 +5,7 @@ use comfy_table::{Cell, CellAlignment, Table};
 use owo_colors::OwoColorize;
 use supports_color::Stream;
 
-use rgbldk_http_dto::{EventDto, HealthCheckDto};
+use rgbldk_http_client::dto::{EventDto, HealthCheckDto};
 
 #[derive(Clone, Copy, Debug)]
 pub enum ColorMode {
@@ -84,9 +84,12 @@ pub fn print_event_text(ev: &EventDto, no_truncate: bool) {
 				.unwrap_or_else(|| "-".into());
 			println!("PaymentSuccessful payment_id={pid} fee_paid={fee}");
 		},
-		EventDto::PaymentFailed { payment_id } => {
+		EventDto::PaymentFailed { payment_id, reason } => {
 			let pid = payment_id.as_deref().unwrap_or("-");
-			println!("PaymentFailed payment_id={pid}");
+			match reason.as_deref() {
+				Some(reason) => println!("PaymentFailed payment_id={pid} reason={reason}"),
+				None => println!("PaymentFailed payment_id={pid}"),
+			}
 		},
 		EventDto::PaymentReceived { payment_id, payment_hash, amount_msat, rgb, .. } => {
 			let pid = payment_id.as_deref().unwrap_or("-");
@@ -119,6 +122,32 @@ pub fn print_event_text(ev: &EventDto, no_truncate: bool) {
 			let reason = reason.as_deref().unwrap_or("-");
 			println!(
 				"ChannelClosed user_channel_id={user_channel_id} channel_id={channel_id} counterparty_node_id={cp} reason={reason}"
+			);
+		},
+		EventDto::SplicePending {
+			channel_id,
+			user_channel_id,
+			counterparty_node_id,
+			new_funding_txo,
+		} => {
+			println!(
+				"SplicePending user_channel_id={user_channel_id} channel_id={channel_id} counterparty_node_id={counterparty_node_id} new_funding_txo={}:{}",
+				new_funding_txo.txid,
+				new_funding_txo.vout
+			);
+		},
+		EventDto::SpliceFailed {
+			channel_id,
+			user_channel_id,
+			counterparty_node_id,
+			abandoned_funding_txo,
+		} => {
+			let abandoned = abandoned_funding_txo
+				.as_ref()
+				.map(|txo| format!("{}:{}", txo.txid, txo.vout))
+				.unwrap_or_else(|| "-".into());
+			println!(
+				"SpliceFailed user_channel_id={user_channel_id} channel_id={channel_id} counterparty_node_id={counterparty_node_id} abandoned_funding_txo={abandoned}"
 			);
 		},
 		EventDto::Other { kind } => {
