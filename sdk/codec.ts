@@ -12,7 +12,9 @@ import type {
   RgbContractBalanceResponse,
   RgbContractsResponse,
   RgbContractsIssueResponse,
+  RgbLnCarrierEstimateResponse,
   RgbLnInvoiceDecodeResponse,
+  RgbLnInvoiceResponse,
   RgbOnchainInvoiceDecodeResponse,
   RgbOnchainPaymentsResponse,
   RgbOnchainReceiveResponse,
@@ -124,6 +126,32 @@ export function decodeRgbContractBalanceResponse(value: unknown): RgbContractBal
   balance.total = decodeU64(balance.total);
   v.balance = balance;
   return v as RgbContractBalanceResponse;
+}
+
+export function decodeRgbLnCarrierEstimateResponse(value: unknown): RgbLnCarrierEstimateResponse {
+  const v = asRecord(value);
+  v.minimum_viable_carrier_amount_msat = decodeU64(v.minimum_viable_carrier_amount_msat);
+  v.default_create_carrier_amount_msat = decodeU64(v.default_create_carrier_amount_msat);
+  v.carrier_admission_threshold_msat = decodeU64(v.carrier_admission_threshold_msat);
+  v.minimum_allowed_carrier_amount_msat = decodeU64(v.minimum_allowed_carrier_amount_msat);
+  v.holder_reserve_threshold_msat = decodeU64(v.holder_reserve_threshold_msat);
+  v.channels = asArray(v.channels).map((channel) => {
+    const c = asRecord(channel);
+    c.inbound_capacity_msat = decodeU64(c.inbound_capacity_msat);
+    c.inbound_htlc_minimum_msat = decodeU64(c.inbound_htlc_minimum_msat);
+    c.inbound_htlc_maximum_msat = decodeU64Nullable(c.inbound_htlc_maximum_msat);
+    c.local_balance_output_sats = decodeU64(c.local_balance_output_sats);
+    c.minimum_viable_carrier_amount_msat = decodeU64Nullable(c.minimum_viable_carrier_amount_msat);
+    c.default_create_carrier_amount_msat = decodeU64Nullable(c.default_create_carrier_amount_msat);
+    return c;
+  });
+  return v as RgbLnCarrierEstimateResponse;
+}
+
+export function decodeRgbLnInvoiceResponse(value: unknown): RgbLnInvoiceResponse {
+  const v = asRecord(value);
+  v.btc_carrier_amount_msat = decodeU64(v.btc_carrier_amount_msat);
+  return v as RgbLnInvoiceResponse;
 }
 
 export function decodeRgbLnInvoiceDecodeResponse(value: unknown): RgbLnInvoiceDecodeResponse {

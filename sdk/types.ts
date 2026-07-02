@@ -374,12 +374,42 @@ export interface RgbContractKnownResponse {
   known: boolean;
 }
 
+export interface RgbLnCarrierEstimateChannelDto {
+  channel_id: string;
+  user_channel_id: string;
+  is_usable: boolean;
+  inbound_capacity_msat: U64;
+  inbound_htlc_minimum_msat: U64;
+  inbound_htlc_maximum_msat?: U64 | null;
+  local_balance_output_sats: U64;
+  has_holder_reserve: boolean;
+  receive_available: boolean;
+  minimum_viable_carrier_amount_msat?: U64 | null;
+  minimum_viable_reason?: string | null;
+  default_create_carrier_amount_msat?: U64 | null;
+  default_create_reason?: string | null;
+}
+
+export interface RgbLnCarrierEstimateResponse {
+  receive_available: boolean;
+  minimum_viable_carrier_amount_msat: U64;
+  minimum_viable_reason: string;
+  default_create_carrier_amount_msat: U64;
+  default_create_reason: string;
+  carrier_admission_threshold_msat: U64;
+  minimum_allowed_carrier_amount_msat: U64;
+  holder_reserve_threshold_msat: U64;
+  channels: RgbLnCarrierEstimateChannelDto[];
+  estimate_only: boolean;
+  warning: string;
+}
+
 export interface RgbLnInvoiceCreateRequest {
   contract_id: string;
   asset_amount: U64;
   description: string;
   expiry_secs?: number | null;
-  btc_carrier_amount_msat: U64;
+  btc_carrier_amount_msat?: U64 | null;
 }
 
 export interface RgbLnInvoiceCreateForHashRequest {
@@ -388,11 +418,12 @@ export interface RgbLnInvoiceCreateForHashRequest {
   payment_hash: string;
   description: string;
   expiry_secs?: number | null;
-  btc_carrier_amount_msat: U64;
+  btc_carrier_amount_msat?: U64 | null;
 }
 
 export interface RgbLnInvoiceResponse {
   invoice: string;
+  btc_carrier_amount_msat: U64;
 }
 
 export interface RgbLnInvoiceDecodeRequest {

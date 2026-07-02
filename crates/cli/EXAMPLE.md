@@ -54,7 +54,7 @@ $ export PATH="$PWD/target/debug:$PATH"
 ```text
 node_a=http://127.0.0.1:8501
 node_b=http://127.0.0.1:8502
-esplora=http://127.0.0.1:59968
+esplora=http://127.0.0.1:51104
 
 ```
 
@@ -261,7 +261,7 @@ $ rgbldk node ready
 > [OK] node ready
 >   [OK] Lightning Node: Running
 >   [OK] P2P Listener: Listening
->   [OK] Best Block Height: Height: 1553
+>   [OK] Best Block Height: Height: 101
 >
 > ```
 
@@ -282,7 +282,7 @@ $ rgbldk node status
 > |-------------------+-------|
 > | p2p_is_listening  | true  |
 > |-------------------+-------|
-> | best_block_height | 1553  |
+> | best_block_height | 101   |
 > +-------------------+-------+
 >
 > ```
@@ -322,7 +322,7 @@ $ rgbldk --color never --output json --pretty node id
 
 > ```text
 > {
->   "node_id": "03a40c278b4fb9dc536162fdfe8d8343de0cdd36ba1d6d4b420683929cbed8e546"
+>   "node_id": "022c41148b6c80f47b184e22bf2d47f20c27048094a427d74d961c27720b03bd34"
 > }
 >
 > ```
@@ -369,7 +369,7 @@ $ rgbldk node ready
 > [OK] node ready
 >   [OK] Lightning Node: Running
 >   [OK] P2P Listener: Listening
->   [OK] Best Block Height: Height: 1553
+>   [OK] Best Block Height: Height: 101
 >
 > ```
 
@@ -384,7 +384,7 @@ $ rgbldk --color never --output json --pretty node id
 
 > ```text
 > {
->   "node_id": "03e13839d366e82ce83de7e663b2ce93aa380ec46327a33bb56534b1bc9d7a1e24"
+>   "node_id": "02b127170b0422770c642dc888e0950a4b1309374514821f0d3fdb4055b1dfd204"
 > }
 >
 > ```
@@ -435,7 +435,7 @@ $ printf '%s\n' '<passphrase>' | rgbldk --yes --data-dir <data_dir> keystore ini
 **Result:**
 
 > ```text
-> {"keystore_path":"/tmp/rgbldk-cli-example-93422m1x/keystore-init-demo/keystore","mnemonic":"vast address puppy envelope pioneer subject bid churn dizzy upper metal involve base alpha trouble joy nice middle pupil diet play stadium come matter","ok":true}
+> {"keystore_path":"/tmp/rgbldk-cli-example-pdou6llq/keystore-init-demo/keystore","mnemonic":"gown floor buzz door profit achieve hawk human chapter begin dutch pride submit popular keep have assault clock usual group ill payment fork umbrella","ok":true}
 >
 > ```
 
@@ -451,7 +451,7 @@ $ printf '%s\n' '<passphrase>' | rgbldk --data-dir <data_dir> keystore migrate -
 **Result:**
 
 > ```text
-> {"keystore_path":"/tmp/rgbldk-cli-example-93422m1x/keystore-migrate-demo/keystore","legacy_backup_path":"/tmp/rgbldk-cli-example-93422m1x/keystore-migrate-demo/keys_seed.bak.20260611-115835","ok":true}
+> {"keystore_path":"/tmp/rgbldk-cli-example-pdou6llq/keystore-migrate-demo/keystore","legacy_backup_path":"/tmp/rgbldk-cli-example-pdou6llq/keystore-migrate-demo/keys_seed.bak.20260702-081607","ok":true}
 >
 > ```
 
@@ -620,7 +620,7 @@ $ rgbldk peer ls
 > +---------------------+----------------+-----------+-----------+
 > | Node ID             | Address        | Connected | Persisted |
 > +==============================================================+
-> | 03e13839...9d7a1e24 | 127.0.0.1:9736 | true      | true      |
+> | 02b12717...b1dfd204 | 127.0.0.1:9736 | true      | true      |
 > +---------------------+----------------+-----------+-----------+
 >
 > ```
@@ -646,7 +646,7 @@ $ rgbldk --color never --output json --pretty wallet address
 
 > ```text
 > {
->   "address": "bcrt1qatwshxz8fku6h4rf6sqddeshm5e4qmnu6zsdph"
+>   "address": "bcrt1qzn5a6mh9fg4jqqkvtxr62xd7gm4aa8h9shssgh"
 > }
 >
 > ```
@@ -677,7 +677,7 @@ $ rgbldk --color never --output json --pretty wallet address
 
 > ```text
 > {
->   "address": "bcrt1qv4xv9mmvp0nadqcmnjq8u770m9k9pnr0c54sn9"
+>   "address": "bcrt1qpgxc99m0075j7kyl8er8nmvqw0qs69c5j567k0"
 > }
 >
 > ```
@@ -709,42 +709,42 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 **Result:**
 
 > ```text
-> bcrt1q044mynz56qmlhn6t4j3shktrg90khe4cts7m7k
+> bcrt1ql2ldkxnh3y06ph73pjdn2kdy9lc2dwaychc5hd
 >
 > ```
 
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress bcrt1qatwshxz8fku6h4rf6sqddeshm5e4qmnu6zsdph 1
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress bcrt1qzn5a6mh9fg4jqqkvtxr62xd7gm4aa8h9shssgh 1
 
 ```
 
 **Result:**
 
 > ```text
-> 743ba3672a53793d4052eb51e5f10c3092de63056a29d8617cb32693c5b67c8e
+> e21b57a35c28308ddbdb3464f78c259f44b22b0e79adf1e3de23463e5fa15fcb
 >
 > ```
 
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress bcrt1qv4xv9mmvp0nadqcmnjq8u770m9k9pnr0c54sn9 1
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress bcrt1qpgxc99m0075j7kyl8er8nmvqw0qs69c5j567k0 1
 
 ```
 
 **Result:**
 
 > ```text
-> 06f752df9747cad2380df561b1d37c008298d16cb9dd8a5c514fa6291566daff
+> bbb16d42fd1a53d4df3a324a550dd6b05ebda6fae37b0f210635872ffafa36ec
 >
 > ```
 
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 bcrt1q044mynz56qmlhn6t4j3shktrg90khe4cts7m7k
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 bcrt1ql2ldkxnh3y06ph73pjdn2kdy9lc2dwaychc5hd
 
 ```
 
@@ -752,12 +752,12 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 
 > ```text
 > [
->   "7e47fdfd43aed7743be74498b4970bf31c1a1d3bf07c3f60b2909d4cf943b117",
->   "797b22ec0eda3512120a8775340b6f4a9bac568b8cddba4222426d491fe5633d",
->   "2f613f39ee0f3976945c237c2360af4827455066389a20567b25eb0c01b12ca3",
->   "5bca928f55ba3e77cd1ffb50ebccd98f6ec28187a74faf72706f32b9c3a4eff7",
->   "542cf7798e5e78f54ba4fb35effb3c1d67dbb08544179745c32851237d145d0a",
->   "2af1c13bd2097a5151d573a463d96e8f56f4856f0e530d35ef482411d19729f1"
+>   "7b0eee16af3d2499dea71646a68c6e2b0a3b08a711b10e0035343de760126799",
+>   "4938a88bdc654e4662d1fbc65944ea14a3da3b73282b8e7f39f257842c3feabb",
+>   "3e9738caec14394522525f534eab1037aec51899a8626b94c4f654b0cc7de9e1",
+>   "258f2f1e0a2df0519f5273136dc2a6f06117dd38cb768d28d78b8779ffef8f8d",
+>   "51ceec8d02691650f3c513cea487ca6c1e52986df8c7c3a6ba18a670c457ea70",
+>   "24ca520f665f7f24aa7040ac22e2d2c32b65f7688efa15c3c7540b035da0518d"
 > ]
 >
 > ```
@@ -853,7 +853,7 @@ $ rgbldk wallet utxos
 > +--------------------------------------------------------------------+--------------+-----------+--------+--------------+----------+--------------+
 > | Outpoint                                                           | Value (sats) | Status    | Height | Availability | Lock Ref | Locked Until |
 > +=================================================================================================================================================+
-> | 743ba3672a53793d4052eb51e5f10c3092de63056a29d8617cb32693c5b67c8e:1 |  100,000,000 | Confirmed |   1554 | Available    | -        |            - |
+> | e21b57a35c28308ddbdb3464f78c259f44b22b0e79adf1e3de23463e5fa15fcb:1 |  100,000,000 | Confirmed |    102 | Available    | -        |            - |
 > +--------------------------------------------------------------------+--------------+-----------+--------+--------------+----------+--------------+
 >
 > ```
@@ -939,7 +939,7 @@ $ rgbldk channel open --node-id <node_id_a> --addr <node_a_p2p> --amount-sats 12
 
 > ```text
 > {
->   "user_channel_id": "4d698d0429f760727de7c8f34fd6e149"
+>   "user_channel_id": "e31ab7ff562b14dad77b10f4e3e05dfd"
 > }
 >
 > ```
@@ -947,7 +947,7 @@ $ rgbldk channel open --node-id <node_id_a> --addr <node_a_p2p> --amount-sats 12
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 bcrt1q044mynz56qmlhn6t4j3shktrg90khe4cts7m7k
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 bcrt1ql2ldkxnh3y06ph73pjdn2kdy9lc2dwaychc5hd
 
 ```
 
@@ -955,12 +955,12 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 
 > ```text
 > [
->   "1f62f51a97051a6a04798064877a33b852e1e06998614f123062b5901a7f5e84",
->   "7ac8337aeae6d121d72476c08556d1ca8ae5f0d8d1920ed436f5c35836559881",
->   "7655bd486717615c1a979569dc81424cc20825fc37680bb462b65b6f194e8d96",
->   "7556bdc41f3b5d2a7c2542228a8ddc0a186f3ad0a3f6c4d3e47c08751a387745",
->   "72781859d99cf990ebcfafd9021286e2c28a1bf56c9fb472702d2de048ce3f4c",
->   "16aa79da4487569b241315706c4b532bf90b492e9fee5a05c4c5c7b8ff71f618"
+>   "7c71e9305ebca10a04a3c4bf5508283efcb33371c49a603d8385d2ce8dcb4517",
+>   "063f85a345a22dc8c1feb4d53a04d32e43e131b683f0b61d0c9d466d96f3d533",
+>   "6c59028b8e0d9c8b9cc369c929df291ea2571633d8ad1a8e921afcf53fe2e46c",
+>   "687249de96015fb59121562133b1c7bac562e65867248fe7c038f89c3937f70f",
+>   "3f3dbab9b9da8848af4dff2fb2419b03269ad2328469e408b393c8b598119c18",
+>   "250ae3d17940ad06e4a6c1aa8e4419404dd4ca84546bdb305f9c083cf44a5330"
 > ]
 >
 > ```
@@ -978,7 +978,7 @@ $ rgbldk channel ls
 > +---------------------+---------------------+-----------------+-------+--------+
 > | User Channel ID     | Counterparty        | Capacity (sats) | Ready | Usable |
 > +==============================================================================+
-> | 4d698d04...4fd6e149 | 03a40c27...bed8e546 | 120000          | true  | true   |
+> | e31ab7ff...e3e05dfd | 022c4114...0b03bd34 | 120000          | true  | true   |
 > +---------------------+---------------------+-----------------+-------+--------+
 >
 > ```
@@ -1011,7 +1011,7 @@ $ rgbldk channel ls
 > +---------------------+---------------------+-----------------+-------+--------+
 > | User Channel ID     | Counterparty        | Capacity (sats) | Ready | Usable |
 > +==============================================================================+
-> | d972a527...2cac9df4 | 03e13839...9d7a1e24 | 120000          | true  | true   |
+> | cb68c2bf...5034cd9a | 02b12717...b1dfd204 | 120000          | true  | true   |
 > +---------------------+---------------------+-----------------+-------+--------+
 >
 > ```
@@ -1031,9 +1031,9 @@ $ rgbldk graph nodes
 > +--------------------------------------------------------------------+
 > | Node ID                                                            |
 > +====================================================================+
-> | 03e13839d366e82ce83de7e663b2ce93aa380ec46327a33bb56534b1bc9d7a1e24 |
+> | 022c41148b6c80f47b184e22bf2d47f20c27048094a427d74d961c27720b03bd34 |
 > |--------------------------------------------------------------------|
-> | 03a40c278b4fb9dc536162fdfe8d8343de0cdd36ba1d6d4b420683929cbed8e546 |
+> | 02b127170b0422770c642dc888e0950a4b1309374514821f0d3fdb4055b1dfd204 |
 > +--------------------------------------------------------------------+
 >
 > ```
@@ -1048,13 +1048,13 @@ $ rgbldk graph node <node_id_b>
 **Result:**
 
 > ```text
-> Node 03e13839...9d7a1e24.
+> Node 02b12717...b1dfd204.
 > Known channels: 1.
-> +------------------+
-> | SCID             |
-> +==================+
-> | 1715238139396096 |
-> +------------------+
+> +-----------------+
+> | SCID            |
+> +=================+
+> | 118747255865345 |
+> +-----------------+
 >
 > ```
 
@@ -1068,11 +1068,11 @@ $ rgbldk graph channels
 **Result:**
 
 > ```text
-> +------------------+
-> | SCID             |
-> +==================+
-> | 1715238139396096 |
-> +------------------+
+> +-----------------+
+> | SCID            |
+> +=================+
+> | 118747255865345 |
+> +-----------------+
 >
 > ```
 
@@ -1086,14 +1086,14 @@ $ rgbldk graph channel <scid>
 **Result:**
 
 > ```text
-> Channel 1715238139396096 connects 03a40c27...bed8e546 and 03e13839...9d7a1e24.
+> Channel 118747255865345 connects 022c4114...0b03bd34 and 02b12717...b1dfd204.
 > Capacity: unknown.
 >
-> 03a40c27...bed8e546 -> 03e13839...9d7a1e24: Enabled.
+> 022c4114...0b03bd34 -> 02b12717...b1dfd204: Enabled.
 > +-------------+------------------+
 > | Field       | Value            |
 > +================================+
-> | Last update | 1781179149       |
+> | Last update | 1782980203       |
 > |-------------+------------------|
 > | CLTV delta  | 72               |
 > |-------------+------------------|
@@ -1106,11 +1106,11 @@ $ rgbldk graph channel <scid>
 > | Fee rate    | 0 ppm            |
 > +-------------+------------------+
 >
-> 03e13839...9d7a1e24 -> 03a40c27...bed8e546: Enabled.
+> 02b12717...b1dfd204 -> 022c4114...0b03bd34: Enabled.
 > +-------------+------------------+
 > | Field       | Value            |
 > +================================+
-> | Last update | 1781179149       |
+> | Last update | 1782980203       |
 > |-------------+------------------|
 > | CLTV delta  | 72               |
 > |-------------+------------------|
@@ -1187,7 +1187,7 @@ $ rgbldk --color never --output json --pretty wallet address
 
 > ```text
 > {
->   "address": "bcrt1q0ask0aav6val662s8acd6k2edzr5m39dgvkqeq"
+>   "address": "bcrt1qxtr5x478dd5yg2ypvcq8j6meuflnz3p48h8pnk"
 > }
 >
 > ```
@@ -1221,7 +1221,7 @@ $ rgbldk channel ls
 > +---------------------+---------------------+-----------------+-------+--------+
 > | User Channel ID     | Counterparty        | Capacity (sats) | Ready | Usable |
 > +==============================================================================+
-> | d972a527...2cac9df4 | 03e13839...9d7a1e24 | 120000          | true  | true   |
+> | cb68c2bf...5034cd9a | 02b12717...b1dfd204 | 120000          | true  | true   |
 > +---------------------+---------------------+-----------------+-------+--------+
 >
 > ```
@@ -1254,7 +1254,7 @@ $ rgbldk channel ls
 > +---------------------+---------------------+-----------------+-------+--------+
 > | User Channel ID     | Counterparty        | Capacity (sats) | Ready | Usable |
 > +==============================================================================+
-> | 4d698d04...4fd6e149 | 03a40c27...bed8e546 | 120000          | true  | true   |
+> | e31ab7ff...e3e05dfd | 022c4114...0b03bd34 | 120000          | true  | true   |
 > +---------------------+---------------------+-----------------+-------+--------+
 >
 > ```
@@ -1276,7 +1276,7 @@ $ rgbldk channel close --user-channel-id <user_channel_id> --counterparty-node-i
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 bcrt1q044mynz56qmlhn6t4j3shktrg90khe4cts7m7k
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 bcrt1ql2ldkxnh3y06ph73pjdn2kdy9lc2dwaychc5hd
 
 ```
 
@@ -1284,12 +1284,12 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 
 > ```text
 > [
->   "0a6f9638358f9fcdc048e8de07c45c8024cfc54fccb269e9bc5189c2b3bca49d",
->   "5aceaa7ff3c9e65f13f7cca0f1470799479448091f1920b9ef40eea603fcec86",
->   "3f86aeb4b763ef232082e1a5e17b2202a2c2a21c3c42c36d61721982e9f3d3dc",
->   "28cfc6ab3ed0907c09f4a6b42eaa193f10cb42b3bc22b54a07916490ea0b3376",
->   "7e2977d780e12d9e1618433c0aff984fc45c92c368a9dabc9bb8c6aa934a5fa3",
->   "3e944823f2aa6a0968956c60b13259a71c2f48c06aed36655faf98c8faec0420"
+>   "2aa8a7c82d70b92fcabfe4050d8904af93a79051412ed56ad0b169006c11e694",
+>   "6727128d4763db3523ba6fd440735a98f2b751c43bb9f4c576cefd3f6c95aeab",
+>   "12b8ffb0ae8ede3d89bc283820babc56f3d89efad5fa19bf3ad8aa02cbfee9c2",
+>   "2efa5268522cc177e581f1bfcc99d0bf0bc1ce119884254fbf68951700633c0a",
+>   "78d24948af4fc03a3a12f4b6d51adbed01ff769361aec38966a4a6e788c4f952",
+>   "15e7ca7085275c29b047185821af40d8665f5558a4d057c1221a0f07cdfb7e2f"
 > ]
 >
 > ```
@@ -1320,7 +1320,7 @@ $ rgbldk wallet sync
 
 > ```text
 > Wallet synced.
-> BTC balance change: on-chain total +30,000 sats, spendable 0 sats, anchor reserve 0 sats, lightning 0 sats.
+> BTC balance change: on-chain total +30,000 sats, spendable +30,000 sats, anchor reserve 0 sats, lightning -30,000 sats.
 >
 > ```
 
@@ -1334,17 +1334,17 @@ $ rgbldk wallet balance
 **Result:**
 
 > ```text
-> +--------------------------+-------------+
-> | Asset                    | Balance     |
-> +========================================+
-> | BTC On-chain (total)     |  1.0003 BTC |
-> |--------------------------+-------------|
-> | BTC On-chain (spendable) |     1.0 BTC |
-> |--------------------------+-------------|
-> | BTC Anchor reserve       |      0 sats |
-> |--------------------------+-------------|
-> | BTC Lightning (total)    | 30,000 sats |
-> +--------------------------+-------------+
+> +--------------------------+------------+
+> | Asset                    | Balance    |
+> +=======================================+
+> | BTC On-chain (total)     | 1.0003 BTC |
+> |--------------------------+------------|
+> | BTC On-chain (spendable) | 1.0003 BTC |
+> |--------------------------+------------|
+> | BTC Anchor reserve       |     0 sats |
+> |--------------------------+------------|
+> | BTC Lightning (total)    |     0 sats |
+> +--------------------------+------------+
 >
 > ```
 
@@ -1449,7 +1449,7 @@ $ rgbldk --color never --output json --pretty rgb address
 
 > ```text
 > {
->   "address": "bcrt1qa2x9p3e58a9sa2jx6ce67g6jpuwfe20l9x9lwg"
+>   "address": "bcrt1qrws7y9gaswxmx825y88hcwal43zgxrwzt2vlzy"
 > }
 >
 > ```
@@ -1465,12 +1465,12 @@ $ rgbldk rgb descriptor
 
 > ```text
 > RGB wallet descriptor:
-> rgb(wpkh([ced04ff4/86h/827167h/0h]tpubDC6EcdagWMvWS8GKrAmkW18Pzv4def16wRUu2mCLKZ9meraedVcE6jbGEvqucnpHbj25PHiGy75X9L9MQBZs2eLWX7GuTBBFu7wDvTpZTSu/<0;1>/*),seals(),noise(f39a868a3a1e8b3608b0a15bd4ed75692e11ad32627d648e6cf309f045c451b4))
+> rgb(wpkh([696893cb/86h/827167h/0h]tpubDC792Khz6Lk2YBR2k9oN56neR2biPRQJ7CunoBXzJixGpBWxNNL9uG11Ta6nVxDkyVGUxa3oGtmfEYWxwBKsJF21Go7NQwkerJ7ojNFb9Gy/<0;1>/*),seals(),noise(60c73e0242f08792a0980fa99c88e74de5386f8693b8be517a30e4c1f31d4143))
 >
 > +-------------+------------------+-----------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------+
 > | Fingerprint | Derivation Path  | Xpub                                                                                                            | Descriptor                                                                                                                                                      |
 > +====================================================================================================================================================================================================================================================================================================================+
-> | ced04ff4    | m/86'/827167'/0' | tpubDC6EcdagWMvWS8GKrAmkW18Pzv4def16wRUu2mCLKZ9meraedVcE6jbGEvqucnpHbj25PHiGy75X9L9MQBZs2eLWX7GuTBBFu7wDvTpZTSu | wpkh([ced04ff4/86'/827167'/0']tpubDC6EcdagWMvWS8GKrAmkW18Pzv4def16wRUu2mCLKZ9meraedVcE6jbGEvqucnpHbj25PHiGy75X9L9MQBZs2eLWX7GuTBBFu7wDvTpZTSu/<0;1>/*)#m3dswg0a |
+> | 696893cb    | m/86'/827167'/0' | tpubDC792Khz6Lk2YBR2k9oN56neR2biPRQJ7CunoBXzJixGpBWxNNL9uG11Ta6nVxDkyVGUxa3oGtmfEYWxwBKsJF21Go7NQwkerJ7ojNFb9Gy | wpkh([696893cb/86'/827167'/0']tpubDC792Khz6Lk2YBR2k9oN56neR2biPRQJ7CunoBXzJixGpBWxNNL9uG11Ta6nVxDkyVGUxa3oGtmfEYWxwBKsJF21Go7NQwkerJ7ojNFb9Gy/<0;1>/*)#u6ac2e4p |
 > +-------------+------------------+-----------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------+
 >
 > ```
@@ -1489,7 +1489,7 @@ $ rgbldk rgb sign-message --message 7267626c646b206578616d706c65 --algorithm ecd
 > +-----------------+--------------------------------------------------------------------+
 > | Field           | Value                                                              |
 > +======================================================================================+
-> | Public key      | 03cedd2625b2c45eb2010a652dd9cfc48ba3636997a9cccbab17de7f63ee6f3721 |
+> | Public key      | 03eb63747462a08ba95512785e02ebfa85e2f1caeda639ba96a12920784d6b71ed |
 > |-----------------+--------------------------------------------------------------------|
 > | Derivation path | m/86'/827167'/0'                                                   |
 > |-----------------+--------------------------------------------------------------------|
@@ -1501,7 +1501,7 @@ $ rgbldk rgb sign-message --message 7267626c646b206578616d706c65 --algorithm ecd
 > +-----------------+--------------------------------------------------------------------+
 >
 > Signature:
-> 3045022100be9a696a0fa81cbe99263dd1f545bfe227b7e08c0dbca0d0f04ae5bbcd0e70ea0220612477dfc9126ea76f2e923c7c78916d535789b904105346af3ce7c00062e32f
+> 30440220437bf719f6d465f4a2eca2a9b59f6ddc7bceafbbd32515cfb2158451b49d536d02205eaf269b4defa17dcf4e39d1accad1278adef984ca0960771161f7ec56eda477
 >
 > ```
 
@@ -1515,11 +1515,11 @@ $ rgbldk rgb issuers ls
 **Result:**
 
 > ```text
-> +-------------+
-> | Issuer      |
-> +=============+
-> | demo-issuer |
-> +-------------+
+> +--------------------------+
+> | Issuer                   |
+> +==========================+
+> | RGB20-Simplest-v0-rLosfg |
+> +--------------------------+
 >
 > ```
 
@@ -1590,7 +1590,7 @@ $ rgbldk --color never --output json --pretty rgb address
 
 > ```text
 > {
->   "address": "bcrt1qu38m9ur6v0d3mst2zlf9exfm4m2wrg5tkugh5g"
+>   "address": "bcrt1qfe7yvnkuye2py89twtswzxh096evant7gw88sr"
 > }
 >
 > ```
@@ -1605,7 +1605,7 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 **Result:**
 
 > ```text
-> 1ece68b2001b72cb5e97c6600690d55919798318a012effc4c3234784fedc029
+> 28f38adb1040b4a987a937ab8ad6163d7b17ceaf76d491ccef128b6bcd7f8f99
 >
 > ```
 
@@ -1619,14 +1619,14 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 **Result:**
 
 > ```text
-> 83f30f51e2aa44c31c4aa8d92d553a7814e931a7be222894227ad44b93edee19
+> c22f4b03a8b1a6b72ec243b02a9024eec40300e4e10d22b37974f04643937243
 >
 > ```
 
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 bcrt1q044mynz56qmlhn6t4j3shktrg90khe4cts7m7k
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 bcrt1ql2ldkxnh3y06ph73pjdn2kdy9lc2dwaychc5hd
 
 ```
 
@@ -1634,7 +1634,7 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 
 > ```text
 > [
->   "46158d5ff28d77ac61e0b185b650cce8fb4f74b82cf3a347fd872895a84b6d50"
+>   "7aef02b7c63b91971706608a93fc891ba93a412bff74526684cac88d56891d7a"
 > ]
 >
 > ```
@@ -1668,9 +1668,9 @@ $ rgbldk rgb utxos ls
 > +--------------------------------------------------------------------+--------------+------------+--------+--------------+-------------+----------------------------+
 > | Outpoint                                                           | Value (sats) | Status     | Height | Availability | Allocations | Roles                      |
 > +===================================================================================================================================================================+
-> | 1ece68b2001b72cb5e97c6600690d55919798318a012effc4c3234784fedc029:1 |   10,000,000 | In mempool |      - | Available    | -           | FeeSupport, BlindingTarget |
+> | 28f38adb1040b4a987a937ab8ad6163d7b17ceaf76d491ccef128b6bcd7f8f99:0 |   10,000,000 | In mempool |      - | Available    | -           | FeeSupport, BlindingTarget |
 > |--------------------------------------------------------------------+--------------+------------+--------+--------------+-------------+----------------------------|
-> | 83f30f51e2aa44c31c4aa8d92d553a7814e931a7be222894227ad44b93edee19:0 |      110,000 | In mempool |      - | Available    | -           | FeeSupport, BlindingTarget |
+> | c22f4b03a8b1a6b72ec243b02a9024eec40300e4e10d22b37974f04643937243:0 |      110,000 | In mempool |      - | Available    | -           | FeeSupport, BlindingTarget |
 > +--------------------------------------------------------------------+--------------+------------+--------+--------------+-------------+----------------------------+
 >
 > ```
@@ -1688,9 +1688,9 @@ $ rgbldk rgb utxos summary
 > +--------------------------------------------------------------------+--------------+--------+-----------+--------+
 > | Outpoint                                                           | Value (sats) | Height | State     | Assets |
 > +=================================================================================================================+
-> | 1ece68b2001b72cb5e97c6600690d55919798318a012effc4c3234784fedc029:1 |   10,000,000 |      - | Available |        |
+> | 28f38adb1040b4a987a937ab8ad6163d7b17ceaf76d491ccef128b6bcd7f8f99:0 |   10,000,000 |      - | Available |        |
 > |--------------------------------------------------------------------+--------------+--------+-----------+--------|
-> | 83f30f51e2aa44c31c4aa8d92d553a7814e931a7be222894227ad44b93edee19:0 |      110,000 |      - | Available |        |
+> | c22f4b03a8b1a6b72ec243b02a9024eec40300e4e10d22b37974f04643937243:0 |      110,000 |      - | Available |        |
 > +--------------------------------------------------------------------+--------------+--------+-----------+--------+
 >
 > ```
@@ -1706,9 +1706,9 @@ $ rgbldk rgb utxos reserve --outpoint <rgb_outpoint> --ttl-secs 60
 
 > ```text
 > {
->   "reservation_id": "manual-reservation-1781179197-TbUTuXmENURExBgpjhraM9ZxhdIAT1dR",
->   "outpoint": "1ece68b2001b72cb5e97c6600690d55919798318a012effc4c3234784fedc029:1",
->   "reserved_until_unix_secs": "1781179257"
+>   "reservation_id": "manual-reservation-1782980280-ok5hYnV62av1V62TghWHjfemWVNDGSLN",
+>   "outpoint": "28f38adb1040b4a987a937ab8ad6163d7b17ceaf76d491ccef128b6bcd7f8f99:0",
+>   "reserved_until_unix_secs": "1782980340"
 > }
 >
 > ```
@@ -1758,11 +1758,13 @@ $ rgbldk rgb issuers ls
 **Result:**
 
 > ```text
-> +-------------+
-> | Issuer      |
-> +=============+
-> | demo-issuer |
-> +-------------+
+> +--------------------------+
+> | Issuer                   |
+> +==========================+
+> | RGB20-Simplest-v0-rLosfg |
+> |--------------------------|
+> | demo-issuer              |
+> +--------------------------+
 >
 > ```
 
@@ -1778,7 +1780,7 @@ $ rgbldk --color never --output json --pretty rgb contracts issue --issuer-name 
 > ```text
 > {
 >   "ok": true,
->   "contract_id": "contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE",
+>   "contract_id": "contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs",
 >   "issued_supply": "100",
 >   "checks": [
 >     {
@@ -1798,7 +1800,7 @@ $ rgbldk --color never --output json --pretty rgb contracts issue --issuer-name 
 >     {
 >       "name": "utxo_selected",
 >       "ok": true,
->       "detail": "1ece68b2001b72cb5e97c6600690d55919798318a012effc4c3234784fedc029:1"
+>       "detail": "28f38adb1040b4a987a937ab8ad6163d7b17ceaf76d491ccef128b6bcd7f8f99:0"
 >     },
 >     {
 >       "name": "params_built",
@@ -1823,7 +1825,7 @@ $ rgbldk rgb contracts ls
 > +-----------+--------+-----------+--------+-----------------------------------------------------------+
 > | Name      | Ticker | Precision | Issued | Contract ID                                               |
 > +=====================================================================================================+
-> | DemoAsset | DEMO   |         0 |    100 | contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE |
+> | DemoAsset | DEMO   |         0 |    100 | contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs |
 > +-----------+--------+-----------+--------+-----------------------------------------------------------+
 >
 > ```
@@ -1831,7 +1833,7 @@ $ rgbldk rgb contracts ls
 **Run:**
 
 ```bash
-$ rgbldk rgb contracts balance contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE
+$ rgbldk rgb contracts balance contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs
 
 ```
 
@@ -1841,7 +1843,7 @@ $ rgbldk rgb contracts balance contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv
 > +-----------+-----------------------------------------------------------+
 > | Field     | Value                                                     |
 > +=======================================================================+
-> | Contract  | contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE |
+> | Contract  | contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs |
 > |-----------+-----------------------------------------------------------|
 > | Mined     | 100                                                       |
 > |-----------+-----------------------------------------------------------|
@@ -1859,16 +1861,16 @@ $ rgbldk rgb contracts balance contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv
 **Run:**
 
 ```bash
-$ rgbldk rgb contracts export --contract-id contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE --out /Users/zijingzhang/work/rgb-ldk-cli/target/rgbldk-example/contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE.raw --format raw --direct
+$ rgbldk rgb contracts export --contract-id contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs --out /Users/zijingzhang/work/rgb-ldk-cli/target/rgbldk-example/contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs.raw --format raw --direct
 
 ```
 
 **Result:**
 
 > ```text
-> Exported contract contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE.
-> Consignment key: contract_export_159f2b12b80bab5ea7aeff8b7d304df4f6cb36c28e69d7a35157e1763e899a77
-> Saved to /Users/zijingzhang/work/rgb-ldk-cli/target/rgbldk-example/contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE.raw.
+> Exported contract contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs.
+> Consignment key: contract_export_d1b7aa080d22a42c7cd7601c387446022da90138ae52e6a685d50f8ada7b87a8
+> Saved to /Users/zijingzhang/work/rgb-ldk-cli/target/rgbldk-example/contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs.raw.
 >
 > ```
 
@@ -1883,13 +1885,13 @@ $ rgbldk debug consignment <contract.raw> --format raw
 
 > ```text
 > ok=true
-> contract_id=contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE
+> contract_id=contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs
 > seals_total=1
 > extern_outpoints=1
 > wout_outpoints=0
 > fallback_outpoints=0
 > noises=1
-> outpoint=1ece68b2001b72cb5e97c6600690d55919798318a012effc4c3234784fedc029:1
+> outpoint=28f38adb1040b4a987a937ab8ad6163d7b17ceaf76d491ccef128b6bcd7f8f99:0
 >
 > ```
 
@@ -1904,7 +1906,7 @@ $ rgbldk rgb contracts export --contract-id <contract_id> --out <out.zip> --form
 
 > ```text
 > {
->   "bytes": 2993,
+>   "bytes": 2991,
 >   "export": {
 >     "checks": [
 >       {
@@ -1912,16 +1914,16 @@ $ rgbldk rgb contracts export --contract-id <contract_id> --out <out.zip> --form
 >         "ok": true
 >       },
 >       {
->         "detail": "contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE",
+>         "detail": "contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs",
 >         "name": "contract_id_valid",
 >         "ok": true
 >       }
 >     ],
->     "consignment_key": "contract_export_0f2a7c0fb09e4d0a80fd40ff7b51b4285119e2327e888c949c73a51253a03502",
->     "contract_id": "contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE",
+>     "consignment_key": "contract_export_0efc33e690d23ef042a67bb36d3b9b55b396e1756d776cb7ac6feff2f3ea957a",
+>     "contract_id": "contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs",
 >     "ok": true
 >   },
->   "out": "/Users/zijingzhang/work/rgb-ldk-cli/target/rgbldk-example/contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE.zip"
+>   "out": "/Users/zijingzhang/work/rgb-ldk-cli/target/rgbldk-example/contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs.zip"
 > }
 >
 > ```
@@ -1936,8 +1938,8 @@ $ rgbldk rgb consignments download --key <consignment_key> --out <out.zip> --for
 **Result:**
 
 > ```text
-> Downloaded consignment contract_export_0f2a7c0fb09e4d0a80fd40ff7b51b4285119e2327e888c949c73a51253a03502.
-> Saved to /Users/zijingzhang/work/rgb-ldk-cli/target/rgbldk-example/contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE.download.zip.
+> Downloaded consignment contract_export_0efc33e690d23ef042a67bb36d3b9b55b396e1756d776cb7ac6feff2f3ea957a.
+> Saved to /Users/zijingzhang/work/rgb-ldk-cli/target/rgbldk-example/contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs.download.zip.
 >
 > ```
 
@@ -1981,7 +1983,7 @@ $ rgbldk --color never --output json --pretty rgb address
 
 > ```text
 > {
->   "address": "bcrt1qjvnfyzggg38amvdpxzmt8a6z7y3a2uf797dgzt"
+>   "address": "bcrt1qe7w6dgwpvqrdktypllaqu7ks40x7326lx7cx2x"
 > }
 >
 > ```
@@ -1999,14 +2001,14 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 **Result:**
 
 > ```text
-> b4af85d6f0e61d7f430b27f1b05ac1c22e1fd42dcefdd6af886cfb7f3e86a69d
+> e5bc2434ff2f68128a66c02550027a6b414bbc9db844e549de453f551da200b4
 >
 > ```
 
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 bcrt1q044mynz56qmlhn6t4j3shktrg90khe4cts7m7k
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 bcrt1ql2ldkxnh3y06ph73pjdn2kdy9lc2dwaychc5hd
 
 ```
 
@@ -2014,7 +2016,7 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 
 > ```text
 > [
->   "540df826c9546d3f86586e59f36d3221276a690643716ff015a7894b1e9b7a26"
+>   "5e92fe5a18d5b588e03c4cc47cb9be8eabaa62e5018aaef81f3fd56d0d869b23"
 > ]
 >
 > ```
@@ -2036,7 +2038,7 @@ $ rgbldk rgb sync
 **Run:**
 
 ```bash
-$ rgbldk rgb contracts import --contract-id contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE --file /Users/zijingzhang/work/rgb-ldk-cli/target/rgbldk-example/contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE.raw
+$ rgbldk rgb contracts import --contract-id contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs --file /Users/zijingzhang/work/rgb-ldk-cli/target/rgbldk-example/contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs.raw
 
 ```
 
@@ -2045,12 +2047,12 @@ $ rgbldk rgb contracts import --contract-id contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-Dk
 > ```text
 > [OK] RGB contract import
 >   [OK] RGB Enabled
->   [OK] Contract Id Valid: contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE
+>   [OK] Contract Id Valid: contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs
 >   [OK] Upload Size Ok: 6744 bytes
 >   [OK] Archive Decoded: 6744 bytes
->   [OK] Consignment Stored: contract_import_07f7ccecd1cce9b6b0ead0ae131e1cbbbc7ad078f8089514b24e4aa18fcf1779
-> Imported contract contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE.
-> Consignment key: contract_import_07f7ccecd1cce9b6b0ead0ae131e1cbbbc7ad078f8089514b24e4aa18fcf1779
+>   [OK] Consignment Stored: contract_import_b1b57d91c1737168029a6488cb36f9606a979b989de15a45886256ecdee92923
+> Imported contract contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs.
+> Consignment key: contract_import_b1b57d91c1737168029a6488cb36f9606a979b989de15a45886256ecdee92923
 >
 > ```
 
@@ -2067,7 +2069,7 @@ $ rgbldk rgb contracts ls
 > +-----------+--------+-----------+--------+-----------------------------------------------------------+
 > | Name      | Ticker | Precision | Issued | Contract ID                                               |
 > +=====================================================================================================+
-> | DemoAsset | DEMO   |         0 |    100 | contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE |
+> | DemoAsset | DEMO   |         0 |    100 | contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs |
 > +-----------+--------+-----------+--------+-----------------------------------------------------------+
 >
 > ```
@@ -2075,7 +2077,7 @@ $ rgbldk rgb contracts ls
 **Run:**
 
 ```bash
-$ rgbldk rgb contracts balance contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE
+$ rgbldk rgb contracts balance contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs
 
 ```
 
@@ -2085,7 +2087,7 @@ $ rgbldk rgb contracts balance contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv
 > +-----------+-----------------------------------------------------------+
 > | Field     | Value                                                     |
 > +=======================================================================+
-> | Contract  | contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE |
+> | Contract  | contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs |
 > |-----------+-----------------------------------------------------------|
 > | Mined     | 0                                                         |
 > |-----------+-----------------------------------------------------------|
@@ -2110,7 +2112,7 @@ $ rgbldk rgb contracts known <contract_id>
 **Result:**
 
 > ```text
-> The node knows contract contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE.
+> The node knows contract contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs.
 >
 > ```
 
@@ -2145,7 +2147,7 @@ $ rgbldk --color never --output json --pretty wallet address
 
 > ```text
 > {
->   "address": "bcrt1q28lkmyjuljhkqwwl7sfjd2uhuxnvaqjch7exed"
+>   "address": "bcrt1qmfjjp7k9wjk8lzkupqtgm348d954ur6rhmhw7z"
 > }
 >
 > ```
@@ -2160,14 +2162,14 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 **Result:**
 
 > ```text
-> 84d81d26a6057aed3ff3b056414a928214e1c58e5241ea1438f0dc9e84a6272a
+> 321e44b20d7b57772ef8f5346d00f1bc311b06a36a83cefc8250193cf0e809ff
 >
 > ```
 
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 bcrt1q044mynz56qmlhn6t4j3shktrg90khe4cts7m7k
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 bcrt1ql2ldkxnh3y06ph73pjdn2kdy9lc2dwaychc5hd
 
 ```
 
@@ -2175,7 +2177,7 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 
 > ```text
 > [
->   "10f19d9ecfc8f9774aa7027180696972d00fe62a47fb329d3e111dd4fb4caf9a"
+>   "72b49f71476638372445b2bc79b43675ac70ed8eec1b090bb1d2b966a92812a8"
 > ]
 >
 > ```
@@ -2206,7 +2208,7 @@ $ rgbldk --color never --output json --pretty rgb address
 
 > ```text
 > {
->   "address": "bcrt1qnnswxgz3dkwvegvmvsuqa6acwjtwnsyxvftwlk"
+>   "address": "bcrt1q4c6d22njmp8au4myasty8tm50g8hhfwn3pqzr2"
 > }
 >
 > ```
@@ -2222,7 +2224,7 @@ $ rgbldk --color never --output json --pretty rgb address
 
 > ```text
 > {
->   "address": "bcrt1qlv6a57gzqc6lqwu3hk0kwahl56vqnye9sllknd"
+>   "address": "bcrt1q9jl0fzfe8vug28edjxcne8qwltdfh22926etm0"
 > }
 >
 > ```
@@ -2238,7 +2240,7 @@ $ rgbldk --color never --output json --pretty wallet address
 
 > ```text
 > {
->   "address": "bcrt1qk29rfmnm7phcn0am3xs4792plsvc53mae9lr8k"
+>   "address": "bcrt1q6sys9pduqmplxpdzpml92c9axtjspqqn322gj0"
 > }
 >
 > ```
@@ -2253,14 +2255,14 @@ $ rgbldk rgb utxos fund --input <wallet_outpoint> --output <rgb_address_1>:30000
 **Result:**
 
 > ```text
-> {"txid":"9ae4c5140a94871ce9ec1303cfab8f28526ad5252d3b8b9c931cc0aa9aea82e2","status":"broadcast","outputs":[{"address":"bcrt1qnnswxgz3dkwvegvmvsuqa6acwjtwnsyxvftwlk","value_sats":"30000","vout":0},{"address":"bcrt1qlv6a57gzqc6lqwu3hk0kwahl56vqnye9sllknd","value_sats":"28000","vout":1}],"change":{"address":"bcrt1qk29rfmnm7phcn0am3xs4792plsvc53mae9lr8k","value_sats":"941828","vout":2},"fee_sats":"172"}
+> {"txid":"df887781d7ce2a2868ce6d10a7b5e7bb5054da1863e0d427e932e6e4ff1db2cb","status":"broadcast","outputs":[{"address":"bcrt1q4c6d22njmp8au4myasty8tm50g8hhfwn3pqzr2","value_sats":"30000","vout":2},{"address":"bcrt1q9jl0fzfe8vug28edjxcne8qwltdfh22926etm0","value_sats":"28000","vout":0}],"change":{"address":"bcrt1q6sys9pduqmplxpdzpml92c9axtjspqqn322gj0","value_sats":"941828","vout":1},"fee_sats":"172"}
 >
 > ```
 
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 bcrt1q044mynz56qmlhn6t4j3shktrg90khe4cts7m7k
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 bcrt1ql2ldkxnh3y06ph73pjdn2kdy9lc2dwaychc5hd
 
 ```
 
@@ -2268,7 +2270,7 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 
 > ```text
 > [
->   "42ebe2df85021a243824582208efd82b1e22d2b2c6914a6e581dbd5cc036bc37"
+>   "40cf33a9dd4e3b45b9c0d59acc56b871cb7e018c5ed2a51ae6617be53a045889"
 > ]
 >
 > ```
@@ -2284,7 +2286,7 @@ $ rgbldk wallet sync
 
 > ```text
 > Wallet synced.
-> BTC balance change: on-chain total -58,172 sats, spendable -1,000,000 sats, anchor reserve 0 sats, lightning 0 sats.
+> BTC balance change: on-chain total -58,172 sats, spendable -58,172 sats, anchor reserve 0 sats, lightning 0 sats.
 >
 > ```
 
@@ -2313,7 +2315,7 @@ $ rgbldk --color never --output json --pretty wallet address
 
 > ```text
 > {
->   "address": "bcrt1q8apacw723sscv56ylzvtmslpu00m8sjh8tkk6a"
+>   "address": "bcrt1qqegdzyxccfk2vy8mre5h3ufw2j54msxun93knv"
 > }
 >
 > ```
@@ -2328,14 +2330,14 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 **Result:**
 
 > ```text
-> df481c4b74b17fbba82eb8587234e484e7a661fa4e26be1430b7396ab7bdb134
+> e4ff91e32130c5b15f681c5c1041828ab1bb6385a6bfb9e9ba963f3c99a1babd
 >
 > ```
 
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 bcrt1q044mynz56qmlhn6t4j3shktrg90khe4cts7m7k
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 bcrt1ql2ldkxnh3y06ph73pjdn2kdy9lc2dwaychc5hd
 
 ```
 
@@ -2343,7 +2345,7 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 
 > ```text
 > [
->   "742f5de749c372f43cd3a60b0cbf2edb3e18fd1ac1a17d34df501b08d297d924"
+>   "02ff3f689c68af6f74f289d42f3b71f8ef50a3b2e3277dc079f5d0927e676d19"
 > ]
 >
 > ```
@@ -2359,7 +2361,7 @@ $ rgbldk wallet sync
 
 > ```text
 > Wallet synced.
-> No balance change.
+> BTC balance change: on-chain total +500,000 sats, spendable +500,000 sats, anchor reserve 0 sats, lightning 0 sats.
 >
 > ```
 
@@ -2374,7 +2376,7 @@ $ rgbldk --color never --output json --pretty rgb address
 
 > ```text
 > {
->   "address": "bcrt1q0yuq2eph6msxrrvecghzm62ps79v04fd055z70"
+>   "address": "bcrt1q8cg7vjpeprq55fj8c4n37wayldrhg07y0flc4p"
 > }
 >
 > ```
@@ -2390,7 +2392,7 @@ $ rgbldk --color never --output json --pretty wallet address
 
 > ```text
 > {
->   "address": "bcrt1qfsu5xnvf5q55qlpcsrp58vu297caz5wggpp6yw"
+>   "address": "bcrt1qhv65rv2vw2y6ej02658r46r6xryawxgk9zkcdj"
 > }
 >
 > ```
@@ -2405,19 +2407,19 @@ $ rgbldk rgb utxos top-up --rgb-outpoint <allocated_rgb_outpoint> --l1-input <wa
 **Result:**
 
 > ```text
-> Topped up RGB UTXO 1ece68b2001b72cb5e97c6600690d55919798318a012effc4c3234784fedc029:1.
-> Broadcast transaction: 1b6d01cb6099e6fc3d6eda189a94349837a7c13f52ac07f8d1413c4b51b742d7
-> Replacement output: bcrt1q0yuq2eph6msxrrvecghzm62ps79v04fd055z70 with 10,040,000 sats.
+> Topped up RGB UTXO 28f38adb1040b4a987a937ab8ad6163d7b17ceaf76d491ccef128b6bcd7f8f99:0.
+> Broadcast transaction: c650b013f861d29e44585e343f5eb8ded5e42099f10e481c6006fc38a33e90cf
+> Replacement output: bcrt1q8cg7vjpeprq55fj8c4n37wayldrhg07y0flc4p with 10,040,000 sats.
 > Network fee: 254 sats.
-> Consignment key: rgb_consignment_contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE_1b6d01cb6099e6fc3d6eda189a94349837a7c13f52ac07f8d1413c4b51b742d7
-> Change output: bcrt1qfsu5xnvf5q55qlpcsrp58vu297caz5wggpp6yw with 459,746 sats.
+> Consignment key: rgb_consignment_contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs_c650b013f861d29e44585e343f5eb8ded5e42099f10e481c6006fc38a33e90cf
+> Change output: bcrt1qhv65rv2vw2y6ej02658r46r6xryawxgk9zkcdj with 459,746 sats.
 >
 > ```
 
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 bcrt1q044mynz56qmlhn6t4j3shktrg90khe4cts7m7k
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 bcrt1ql2ldkxnh3y06ph73pjdn2kdy9lc2dwaychc5hd
 
 ```
 
@@ -2425,7 +2427,7 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 
 > ```text
 > [
->   "4b0bd3bdd12a80043855e0cf7984ea1fb13668175ac94d070e38ab45ff3308be"
+>   "235af7c5f105eccc9a46b1128bead01b113a933f23bbf562d50af6592c194172"
 > ]
 >
 > ```
@@ -2441,7 +2443,7 @@ $ rgbldk wallet sync
 
 > ```text
 > Wallet synced.
-> BTC balance change: on-chain total -40,254 sats, spendable -40,254 sats, anchor reserve 0 sats, lightning 0 sats.
+> BTC balance change: on-chain total -40,254 sats, spendable -500,000 sats, anchor reserve 0 sats, lightning 0 sats.
 >
 > ```
 
@@ -2470,7 +2472,7 @@ $ rgbldk --color never --output json --pretty wallet address
 
 > ```text
 > {
->   "address": "bcrt1qtwwm3lh8gk24yhzdylc02np8w32fa8ma3ewaky"
+>   "address": "bcrt1qphah3wmny2l2yulm3f63phz6d6khjathe30x8j"
 > }
 >
 > ```
@@ -2485,9 +2487,9 @@ $ rgbldk rgb utxos sweep --outpoint <rgb_outpoint> --destination-address <wallet
 **Result:**
 
 > ```text
-> Swept RGB UTXO 9ae4c5140a94871ce9ec1303cfab8f28526ad5252d3b8b9c931cc0aa9aea82e2:1.
-> Broadcast transaction: bc7492dd9501dfc3b83f99f9c06e0a98632be411d375a9d77bf8dc03c8f6287d
-> Sent 27,889 sats to bcrt1qtwwm3lh8gk24yhzdylc02np8w32fa8ma3ewaky.
+> Swept RGB UTXO df887781d7ce2a2868ce6d10a7b5e7bb5054da1863e0d427e932e6e4ff1db2cb:0.
+> Broadcast transaction: 63d783e4d0869fa2d1a718965b55f5a1c2ebacabe782bf1bec71b4dbe2d64694
+> Sent 27,889 sats to bcrt1qphah3wmny2l2yulm3f63phz6d6khjathe30x8j.
 > Network fee: 111 sats.
 >
 > ```
@@ -2495,7 +2497,7 @@ $ rgbldk rgb utxos sweep --outpoint <rgb_outpoint> --destination-address <wallet
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 bcrt1q044mynz56qmlhn6t4j3shktrg90khe4cts7m7k
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 bcrt1ql2ldkxnh3y06ph73pjdn2kdy9lc2dwaychc5hd
 
 ```
 
@@ -2503,7 +2505,7 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 
 > ```text
 > [
->   "739137fd3c5c87dd586c1c504eea3037e03c3ad3c425ad349ede77756c500db0"
+>   "09e61b0bd53fde4fe51e18953c247b285fd6ab02d303b8a2bc648cbf1405c6a9"
 > ]
 >
 > ```
@@ -2519,7 +2521,7 @@ $ rgbldk wallet sync
 
 > ```text
 > Wallet synced.
-> BTC balance change: on-chain total 0 sats, spendable +27,889 sats, anchor reserve 0 sats, lightning 0 sats.
+> BTC balance change: on-chain total +27,889 sats, spendable 0 sats, anchor reserve 0 sats, lightning 0 sats.
 >
 > ```
 
@@ -2568,8 +2570,8 @@ $ rgbldk rgb onchain invoice-create --contract-id <contract_id> --amount 90
 
 > ```text
 > {
->   "invoice": "contract:tb@YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE/90@at:7KgzHvss-IZNvmYiY-n_sh1MYp-8TX9OffR-rWLaejjS-eklJzw/?expiry=2026-06-11T13:00:46.635798+00:00",
->   "blinding_utxo_used": "b4af85d6f0e61d7f430b27f1b05ac1c22e1fd42dcefdd6af886cfb7f3e86a69d:1"
+>   "invoice": "contract:tb@Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs/90@at:T~9KVw8p-LmDNG_NC-jTHl~sg7-2jyAxc0V-GtjuBP1b-M3p68Q/?expiry=2026-07-02T09:18:55.489839+00:00",
+>   "blinding_utxo_used": "e5bc2434ff2f68128a66c02550027a6b414bbc9db844e549de453f551da200b4:0"
 > }
 >
 > ```
@@ -2587,15 +2589,15 @@ $ rgbldk rgb onchain invoice-decode '<invoice>'
 > +------------------+-----------------------------------------------------------+
 > | Field            | Value                                                     |
 > +==============================================================================+
-> | Contract         | contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE |
+> | Contract         | contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs |
 > |------------------+-----------------------------------------------------------|
 > | Amount           | 90                                                        |
 > |------------------+-----------------------------------------------------------|
-> | Beneficiary      | at:7KgzHvss-IZNvmYiY-n_sh1MYp-8TX9OffR-rWLaejjS-eklJzw    |
+> | Beneficiary      | at:T~9KVw8p-LmDNG_NC-jTHl~sg7-2jyAxc0V-GtjuBP1b-M3p68Q    |
 > |------------------+-----------------------------------------------------------|
 > | Beneficiary type | Blinded                                                   |
 > |------------------+-----------------------------------------------------------|
-> | Expiry           | 1781182846                                                |
+> | Expiry           | 1782983935                                                |
 > +------------------+-----------------------------------------------------------+
 >
 > ```
@@ -2610,13 +2612,13 @@ $ rgbldk debug invoice '<invoice>'
 **Result:**
 
 > ```text
-> invoice=contract:tb@YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE/90@at:7KgzHvss-IZNvmYiY-n_sh1MYp-8TX9OffR-rWLaejjS-eklJzw/?expiry=2026-06-11T13:00:46.635798+00:00
-> scope=contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE
+> invoice=contract:tb@Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs/90@at:T~9KVw8p-LmDNG_NC-jTHl~sg7-2jyAxc0V-GtjuBP1b-M3p68Q/?expiry=2026-07-02T09:18:55.489839+00:00
+> scope=contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs
 > layer1=bitcoin testnet=true
 > beneficiary_type=token
-> beneficiary_value=at:7KgzHvss-IZNvmYiY-n_sh1MYp-8TX9OffR-rWLaejjS-eklJzw
+> beneficiary_value=at:T~9KVw8p-LmDNG_NC-jTHl~sg7-2jyAxc0V-GtjuBP1b-M3p68Q
 > data=90
-> expiry=2026-06-11T13:00:46.635798+00:00
+> expiry=2026-07-02T09:18:55.489839+00:00
 >
 > ```
 
@@ -2646,8 +2648,8 @@ $ rgbldk rgb onchain send --invoice '<invoice>' --sats-for-fee-and-outputs 10000
 
 > ```text
 > {
->   "txid": "fd1dcbf1bd60e5fd4bf013b743494d3018871ff22f02f64a6d8d68aa9ffadf48",
->   "consignment_key": "rgb_consignment_contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE_fd1dcbf1bd60e5fd4bf013b743494d3018871ff22f02f64a6d8d68aa9ffadf48"
+>   "txid": "462eccb407e8ca13d9664eca1de576d6ab4b82bf84f74ffe89965dc44613fde9",
+>   "consignment_key": "rgb_consignment_contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs_462eccb407e8ca13d9664eca1de576d6ab4b82bf84f74ffe89965dc44613fde9"
 > }
 >
 > ```
@@ -2662,7 +2664,7 @@ $ rgbldk rgb consignments download --key <consignment_key> --out <a-to-b.zip> --
 **Result:**
 
 > ```text
-> Downloaded consignment rgb_consignment_contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE_fd1dcbf1bd60e5fd4bf013b743494d3018871ff22f02f64a6d8d68aa9ffadf48.
+> Downloaded consignment rgb_consignment_contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs_462eccb407e8ca13d9664eca1de576d6ab4b82bf84f74ffe89965dc44613fde9.
 > Saved to /Users/zijingzhang/work/rgb-ldk-cli/target/rgbldk-example/rgb-onchain-a-to-b-prechannel.zip.
 >
 > ```
@@ -2692,7 +2694,7 @@ $ rgbldk rgb onchain receive --file <a-to-b.zip> --format zip --payment-id <paym
 **Result:**
 
 > ```text
-> Accepted contract contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE.
+> Accepted contract contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs.
 > Amount: 90
 >
 > ```
@@ -2700,7 +2702,7 @@ $ rgbldk rgb onchain receive --file <a-to-b.zip> --format zip --payment-id <paym
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 bcrt1q044mynz56qmlhn6t4j3shktrg90khe4cts7m7k
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 bcrt1ql2ldkxnh3y06ph73pjdn2kdy9lc2dwaychc5hd
 
 ```
 
@@ -2708,12 +2710,12 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 
 > ```text
 > [
->   "142984f35edf4b82c2bbff427f96bee23909f7bc6c8c6e2fc34285d3b6c18da0",
->   "1eb93f4efc8d0766e55a5917a1c795fe69187726b4eae53f54253a0ba3016590",
->   "0d94cfb89f0766c7a8fd46f45b34d435b7803c2f4b31886a1396f4135a9742a0",
->   "002f259bd0ce7e6b7d1e0818306f405ab0c8b23e8cf6c161f8ab2ffdd528ce22",
->   "25ccc9c9b4b38a5064df43abd28656794229265c601a2a6d37d5818545098928",
->   "2797d2bb0692b7bb53afae05d3b710f00d62c09c54f5b98acdaa19d356307ddc"
+>   "2374565ae64da825efcbdbe3da4850835da6c86f9b38a61a7a222d917addabad",
+>   "1bb30eb6a5927ef674383446dafecf823edb749eac8f23364682836c7b49aa0b",
+>   "389b8623474d1a8473999fe175d7c1ec8a0f908c72ec4134c37d46471bbe786f",
+>   "62448cfb33c7f534443ca6f4a76e8bca7ab35c2a1173cdc0bc71f40281030c63",
+>   "6fcc950a969ea0c2460fe97486af5c21fb539b5a428de34a158992e93cb718c0",
+>   "198abd08409dd47f91e37229c9381968afe9e9aeae8616d500ff91dbcec93216"
 > ]
 >
 > ```
@@ -2750,7 +2752,7 @@ $ rgbldk rgb sync
 **Run:**
 
 ```bash
-$ rgbldk rgb contracts balance contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE
+$ rgbldk rgb contracts balance contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs
 
 ```
 
@@ -2760,7 +2762,7 @@ $ rgbldk rgb contracts balance contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv
 > +-----------+-----------------------------------------------------------+
 > | Field     | Value                                                     |
 > +=======================================================================+
-> | Contract  | contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE |
+> | Contract  | contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs |
 > |-----------+-----------------------------------------------------------|
 > | Mined     | 0                                                         |
 > |-----------+-----------------------------------------------------------|
@@ -2788,7 +2790,7 @@ $ rgbldk rgb onchain payments --contract-id <contract_id>
 > +------------------------------------------------------------------+-----------+-----------------------------------------------------------+--------+------+----------------------------------------------------------------------------------+
 > | Payment ID                                                       | Status    | Contract                                                  | Amount | Txid | Consignment                                                                      |
 > +=============================================================================================================================================================================================================================================+
-> | 0869d2a67ce0768cb5179e03720ff438a77577d6e8b62193c73d0ef9209c7da7 | succeeded | contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE |     90 | -    | transfer_import_71b093c9afb39d8e512f4fa2b13c65b9da6ab52ee6d473af4efc438b9dd9fc95 |
+> | 3e05fd5e72efd8959652b2bc317c7119163a5ab3c30fbf7e6ba69cd19ee7d7b9 | succeeded | contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs |     90 | -    | transfer_import_af064239ef6748d44e6a33d5bfec9b1f3be96b85f751196521db4a2b0630319f |
 > +------------------------------------------------------------------+-----------+-----------------------------------------------------------+--------+------+----------------------------------------------------------------------------------+
 >
 > ```
@@ -2840,7 +2842,7 @@ $ rgbldk rgb sync
 **Run:**
 
 ```bash
-$ rgbldk rgb contracts balance contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE
+$ rgbldk rgb contracts balance contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs
 
 ```
 
@@ -2850,7 +2852,7 @@ $ rgbldk rgb contracts balance contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv
 > +-----------+-----------------------------------------------------------+
 > | Field     | Value                                                     |
 > +=======================================================================+
-> | Contract  | contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE |
+> | Contract  | contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs |
 > |-----------+-----------------------------------------------------------|
 > | Mined     | 10                                                        |
 > |-----------+-----------------------------------------------------------|
@@ -2916,7 +2918,7 @@ $ rgbldk channel open --node-id <node_id_b> --addr <node_b_p2p> --amount-sats 10
 
 > ```text
 > {
->   "user_channel_id": "682d5789320d19d61ff406e13bd1e1ea"
+>   "user_channel_id": "3e2068aa7a8cdf120a0db3a1dd060a0f"
 > }
 >
 > ```
@@ -2924,7 +2926,7 @@ $ rgbldk channel open --node-id <node_id_b> --addr <node_b_p2p> --amount-sats 10
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 bcrt1q044mynz56qmlhn6t4j3shktrg90khe4cts7m7k
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 bcrt1ql2ldkxnh3y06ph73pjdn2kdy9lc2dwaychc5hd
 
 ```
 
@@ -2932,12 +2934,12 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 
 > ```text
 > [
->   "1c5046454102c72692e8346bbe6f882b364f9d2ced7bc9dc81fa94b6123acdc2",
->   "79c0e3423fa5d099b178333d6ac3b946239b5453fc60ffdd8aab798386cbbc12",
->   "6a54c7c5b490738e56835671ea0427265de24554b222cf66c37d0cd643326e63",
->   "689306d2e5103adf394aff43cbdbafcc755113ef79c6941c9b9c623e9a60d640",
->   "0abbf0c41268046436d60917db5326015944a4428d3235d4014f85357a5284ce",
->   "2d2a49f05287493310834231a74facc48c0c6cc5c8367843cd53ecf8c9e1eda9"
+>   "170f8c37d52a1a9380274888bf901f55f7de4e27b9757d8ee0cae686cf83486f",
+>   "19a9a4811dab99319ec9232200164a2a5dc8247b8793a82ffa5260f823a309b0",
+>   "77e85a794276a2db75ade2b11abba126ddb5dbe7900f8fd137fa600057526567",
+>   "1ccd6c9645211c623f8612098385e203b7457634014666de36f06ef1299c06f2",
+>   "1ae0a9d1cea1a02087968e07ac67e107f812ed91eeb23e5120d3bd873b84fa55",
+>   "152a9af1bb46d0327019257e6bc784f67ced6158eae6168ef53f9865eb12abee"
 > ]
 >
 > ```
@@ -2955,7 +2957,7 @@ $ rgbldk channel ls
 > +---------------------+---------------------+-----------------+-------+--------+---------------------+-----------+------------+
 > | User Channel ID     | Counterparty        | Capacity (sats) | Ready | Usable | RGB Contract        | RGB Local | RGB Remote |
 > +=============================================================================================================================+
-> | 682d5789...3bd1e1ea | 03e13839...9d7a1e24 | 100000          | false | false  | contract...-GxfVGkE | 10        | 0          |
+> | 3e2068aa...dd060a0f | 02b12717...b1dfd204 | 100000          | false | false  | contract...-nNouDAs | 10        | 0          |
 > +---------------------+---------------------+-----------------+-------+--------+---------------------+-----------+------------+
 >
 > ```
@@ -3040,8 +3042,8 @@ $ rgbldk rgb onchain invoice-create --contract-id <contract_id> --amount 7
 
 > ```text
 > {
->   "invoice": "contract:tb@YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE/7@at:28UbWHcK-YbF_PvmS-WM0zrdbH-wGL3ZdwU-fBkSKSvY-nYmJ_Q/?expiry=2026-06-11T13:01:14.141963+00:00",
->   "blinding_utxo_used": "83f30f51e2aa44c31c4aa8d92d553a7814e931a7be222894227ad44b93edee19:0"
+>   "invoice": "contract:tb@Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs/7@at:LEMvBliJ-R8WJC6~y-Z4zZ3P~E-V8xZ7pv2-TunPuU2y-ngUFCw/?expiry=2026-07-02T09:19:26.248329+00:00",
+>   "blinding_utxo_used": "4e119b467a7b78325fe9eb8da04efff2bab438ec5b30c059fa1beaa28f3ac352:2"
 > }
 >
 > ```
@@ -3087,8 +3089,8 @@ $ rgbldk rgb onchain send --invoice '<invoice>' --sats-for-fee-and-outputs 10000
 
 > ```text
 > {
->   "txid": "51ec0c79a4b9d1a0dd163908e8598113d5385413a1ad4c82acb8b1af0a32bbe8",
->   "consignment_key": "rgb_consignment_contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE_51ec0c79a4b9d1a0dd163908e8598113d5385413a1ad4c82acb8b1af0a32bbe8"
+>   "txid": "7f23ed84b4049c0c8908b67d4583d6e3868dc4b1f778ce46de1a5ef6736185ee",
+>   "consignment_key": "rgb_consignment_contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs_7f23ed84b4049c0c8908b67d4583d6e3868dc4b1f778ce46de1a5ef6736185ee"
 > }
 >
 > ```
@@ -3103,7 +3105,7 @@ $ rgbldk rgb consignments download --key <consignment_key> --out <b-to-a.zip> --
 **Result:**
 
 > ```text
-> Downloaded consignment rgb_consignment_contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE_51ec0c79a4b9d1a0dd163908e8598113d5385413a1ad4c82acb8b1af0a32bbe8.
+> Downloaded consignment rgb_consignment_contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs_7f23ed84b4049c0c8908b67d4583d6e3868dc4b1f778ce46de1a5ef6736185ee.
 > Saved to /Users/zijingzhang/work/rgb-ldk-cli/target/rgbldk-example/rgb-onchain-b-to-a.zip.
 >
 > ```
@@ -3133,7 +3135,7 @@ $ rgbldk rgb onchain receive --file <b-to-a.zip> --format zip --payment-id <paym
 **Result:**
 
 > ```text
-> Accepted contract contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE.
+> Accepted contract contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs.
 > Amount: 7
 >
 > ```
@@ -3141,7 +3143,7 @@ $ rgbldk rgb onchain receive --file <b-to-a.zip> --format zip --payment-id <paym
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 bcrt1q044mynz56qmlhn6t4j3shktrg90khe4cts7m7k
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 bcrt1ql2ldkxnh3y06ph73pjdn2kdy9lc2dwaychc5hd
 
 ```
 
@@ -3149,12 +3151,12 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 
 > ```text
 > [
->   "6eba610c1297bb3abd05e099527a7adfd0155e71834b8e84fc57c50a03797b0e",
->   "7d1cd2013d21cf70183544b733c1a7bdc1d184c0d48e1b3ea19017d0d08c5f8e",
->   "6a6cafae1bfe9dc727a6227bde39cbd79a451818f93bd5f7d4449b0e6e3ba936",
->   "1db042792bcbf3b5f835d19c6f6d78bb2d5b80a4e81092f89e9a7095e2e20348",
->   "3f1bfb65a7b925223970172a132421634b14a81eccf28ba515456f857f3fd84b",
->   "08c1fed6ff89100aa14ccf0056cbb57820132e87997d1d57e33b8af277c30387"
+>   "22590fa90f5ffb89f31f6457481cb277dd6a2ef3683e513d225b6eae84fb534f",
+>   "6120637047a091bb529c56d2c96da32b21789d78f3dd69b99727c3e80b5d5235",
+>   "229700c9e4c1eb89d3fb20e55868415116148a387b73ad63ef26bf66bfc474da",
+>   "2c79ccea272c074b931abf1afb5d615fc55b064ca03ed90a94f349552f90fdcf",
+>   "733f698a9371c9ad0b30970e9b4113ba9f5c0d777d949978e348188c5f1005f9",
+>   "1d916fc2a20bebd3227e11e1e0ca35f09ede1d6f5926c77f86a3bfe4100b5a1b"
 > ]
 >
 > ```
@@ -3191,7 +3193,7 @@ $ rgbldk rgb sync
 **Run:**
 
 ```bash
-$ rgbldk rgb contracts balance contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE
+$ rgbldk rgb contracts balance contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs
 
 ```
 
@@ -3201,7 +3203,7 @@ $ rgbldk rgb contracts balance contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv
 > +-----------+-----------------------------------------------------------+
 > | Field     | Value                                                     |
 > +=======================================================================+
-> | Contract  | contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE |
+> | Contract  | contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs |
 > |-----------+-----------------------------------------------------------|
 > | Mined     | 7                                                         |
 > |-----------+-----------------------------------------------------------|
@@ -3264,7 +3266,7 @@ $ rgbldk --color never --output json --pretty pay invoice create --desc demo --a
 
 > ```text
 > {
->   "invoice": "lnbcrt100n1p4z4guhdq8v3jk6mcnp4q0snswwnvm5ze6paulnx8vkwjw4rsrkyvvn6xwa4v56tr0ya0g0zgpp5htxx2709e5g0035kp3mn60e4906auryhjxktthv3xf8ft8ysywassp5jjnr7hz592kg42gs9496yy0ejadyk2nx5h7dfvk5aqdz9vcyqvas9qyysgqcqzp2xqrrssrzjqwjqcfutf7uac5mpvt7larvrg00qehfkhgwk6j6zq6pe9897mrj5vqqqqyqq2nsqqyqqqqlgqqqqqqqqfq6zpp644ykv4vlf0je09ref3jxvfwe8hnsdnfmet89capyvh2p5vsyz94slwer03den9wwf5ttngte3y5vmmeq5fledf30eay00unwrqpayvkfa"
+>   "invoice": "lnbcrt100n1p4yv8cudq8v3jk6mcnp4q2cjw9ctqs38wrry9hyg3cy4pf93xzfhg52gy8cd8ld5q4d3mlfqgpp56j2ceads9pg4607lrqv7jlzteclnt4d0esny04d9rz3h7pclnhaqsp5dq8rkjg0g7rwxd974ysl003jvyeezk0w2cy5e020lcdc53vd7jvq9qyysgqcqzp2xqrrssrzjqgkyz9ytdjq0g7ccfc3t7t287gxzwpyqjjjz046djcwzwustqw7ngqqqqyqqxuqqquqqqqlgqqqqqqqqfqu6q8sq8lvjus9v2w8f3epkn6xxddjv3csrpvl4dnzlwy339vmn2szgv4kpj87hm3wh8vpkp08x8q858vy2zlcykxecfj9wvrekanxjgpdkx0p7"
 > }
 >
 > ```
@@ -3282,9 +3284,9 @@ $ rgbldk pay invoice decode <invoice>
 > +--------------+--------------------------------------------------------------------+
 > | Field        | Value                                                              |
 > +===================================================================================+
-> | payment_hash | bacc6579e5cd10f7c6960c773d3f352bf5de0c9791acb5dd91324e959c9023bb   |
+> | payment_hash | d4958cf5b028515d3fdf1819e97c4bce3f35d5afcc2647d5a518a37f071f9dfa   |
 > |--------------+--------------------------------------------------------------------|
-> | destination  | 03e13839d366e82ce83de7e663b2ce93aa380ec46327a33bb56534b1bc9d7a1e24 |
+> | destination  | 02b127170b0422770c642dc888e0950a4b1309374514821f0d3fdb4055b1dfd204 |
 > |--------------+--------------------------------------------------------------------|
 > | amount_msat  | 10,000                                                             |
 > |--------------+--------------------------------------------------------------------|
@@ -3319,10 +3321,10 @@ $ rgbldk --color never --output json --pretty pay invoice pay --invoice <invoice
 
 > ```text
 > {
->   "payment_id": "bacc6579e5cd10f7c6960c773d3f352bf5de0c9791acb5dd91324e959c9023bb",
->   "preimage": "2b9ca7c273864b72908ec03aa5f2410cbac9ea202fc18962e310bd8540c187ce",
+>   "payment_id": "d4958cf5b028515d3fdf1819e97c4bce3f35d5afcc2647d5a518a37f071f9dfa",
+>   "preimage": "b016a25ef9d7ff2c5888d5424c4c2ef7fc45f027250cf60d613d25689bdcd9bb",
 >   "amount_sats": "10",
->   "destination": "03e13839d366e82ce83de7e663b2ce93aa380ec46327a33bb56534b1bc9d7a1e24",
+>   "destination": "02b127170b0422770c642dc888e0950a4b1309374514821f0d3fdb4055b1dfd204",
 >   "fee_paid_msat": "0"
 > }
 >
@@ -3331,7 +3333,7 @@ $ rgbldk --color never --output json --pretty pay invoice pay --invoice <invoice
 **Run:**
 
 ```bash
-$ rgbldk pay wait bacc6579e5cd10f7c6960c773d3f352bf5de0c9791acb5dd91324e959c9023bb --timeout-secs 60
+$ rgbldk pay wait d4958cf5b028515d3fdf1819e97c4bce3f35d5afcc2647d5a518a37f071f9dfa --timeout-secs 60
 
 ```
 
@@ -3341,14 +3343,14 @@ $ rgbldk pay wait bacc6579e5cd10f7c6960c773d3f352bf5de0c9791acb5dd91324e959c9023
 > [OK] Payment wait
 >   [OK] Payment Id Valid
 >   [OK] Payment Terminal: Succeeded
-> bacc6579e5cd10f7c6960c773d3f352bf5de0c9791acb5dd91324e959c9023bb
+> d4958cf5b028515d3fdf1819e97c4bce3f35d5afcc2647d5a518a37f071f9dfa
 >
 > ```
 
 **Run:**
 
 ```bash
-$ rgbldk pay get bacc6579e5cd10f7c6960c773d3f352bf5de0c9791acb5dd91324e959c9023bb
+$ rgbldk pay get d4958cf5b028515d3fdf1819e97c4bce3f35d5afcc2647d5a518a37f071f9dfa
 
 ```
 
@@ -3358,7 +3360,7 @@ $ rgbldk pay get bacc6579e5cd10f7c6960c773d3f352bf5de0c9791acb5dd91324e959c9023b
 > +-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 > | Field           | Value                                                                                                                                                                                                                                         |
 > +=================================================================================================================================================================================================================================================================+
-> | id              | bacc6579e5cd10f7c6960c773d3f352bf5de0c9791acb5dd91324e959c9023bb                                                                                                                                                                              |
+> | id              | d4958cf5b028515d3fdf1819e97c4bce3f35d5afcc2647d5a518a37f071f9dfa                                                                                                                                                                              |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | direction       | Outbound                                                                                                                                                                                                                                      |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -3366,7 +3368,7 @@ $ rgbldk pay get bacc6579e5cd10f7c6960c773d3f352bf5de0c9791acb5dd91324e959c9023b
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | kind            | Bolt11                                                                                                                                                                                                                                        |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-> | kind_details    | {"payment_hash":"bacc6579e5cd10f7c6960c773d3f352bf5de0c9791acb5dd91324e959c9023bb","preimage":"2b9ca7c273864b72908ec03aa5f2410cbac9ea202fc18962e310bd8540c187ce","secret":"94a63f5c542aac8aa9102d4ba211f9975a4b2a66a5fcd4b2d4e81a22b304033b"} |
+> | kind_details    | {"payment_hash":"d4958cf5b028515d3fdf1819e97c4bce3f35d5afcc2647d5a518a37f071f9dfa","preimage":"b016a25ef9d7ff2c5888d5424c4c2ef7fc45f027250cf60d613d25689bdcd9bb","secret":"680e3b490f4786e334bea921f7be3261339159ee56094cbd4ffe1b8a458df498"} |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | amount (msat)   | 10,000 msat                                                                                                                                                                                                                                   |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -3401,7 +3403,7 @@ $ rgbldk --color never --output json --pretty pay invoice create --desc demo-sen
 
 > ```text
 > {
->   "invoice": "lnbcrt130n1p4z4guldq0v3jk6medwdjkueqnp4q0snswwnvm5ze6paulnx8vkwjw4rsrkyvvn6xwa4v56tr0ya0g0zgpp5ckr9d7vwnrz4x3x70s4nft3js0v6zwy7wus2d2wn7m9tekr5srnqsp57vcslcwlqcvcup0xmwcjgzl5q8vf9nwpfjh2c0x4g3snuak58lpq9qyysgqcqzp2xqrrssrzjqwjqcfutf7uac5mpvt7larvrg00qehfkhgwk6j6zq6pe9897mrj5vqqqqyqq2nsqqyqqqqlgqqqqqqqqfqc5jwjeq0c8vmk3w886sp32xj98uhe6rp0yndgzjvsr244m20lkxrkafh8v85a3vv2mn4uuytst6et3sk7guptlyxz9j9punt9n9ytdgpmtwg9s"
+>   "invoice": "lnbcrt130n1p4yv8e9dq0v3jk6medwdjkueqnp4q2cjw9ctqs38wrry9hyg3cy4pf93xzfhg52gy8cd8ld5q4d3mlfqgpp53janc3p5dzc8mnlcu5mn0k2yk5pjletja2f7z7nhcdtycf3dmqrqsp5nmxjl00hcqym5w5yld4edxk7gq3q4rycnh2gs73j3tfrudhuv4gq9qyysgqcqzp2xqrrssrzjqgkyz9ytdjq0g7ccfc3t7t287gxzwpyqjjjz046djcwzwustqw7ngqqqqyqqxuqqquqqqqlgqqqqqqqqfqw7d298jjknuxsypwh4hjcvacl8rypennfulugt0kn5xfu47c9a04gsu48un05dj2cefhrl6e5m27twazc4e39hd3cnej6th9wvjryucp62ypua"
 > }
 >
 > ```
@@ -3432,7 +3434,7 @@ $ rgbldk --color never --output json --pretty pay invoice send <invoice>
 
 > ```text
 > {
->   "payment_id": "c58656f98e98c55344de7c2b34ae3283d9a1389e7720a6a9d3f6cabcd87480e6"
+>   "payment_id": "8cbb3c443468b07dcff8e53737d944b5032fe572ea93e17a77c3564c262dd806"
 > }
 >
 > ```
@@ -3440,7 +3442,7 @@ $ rgbldk --color never --output json --pretty pay invoice send <invoice>
 **Run:**
 
 ```bash
-$ rgbldk pay wait c58656f98e98c55344de7c2b34ae3283d9a1389e7720a6a9d3f6cabcd87480e6 --timeout-secs 60
+$ rgbldk pay wait 8cbb3c443468b07dcff8e53737d944b5032fe572ea93e17a77c3564c262dd806 --timeout-secs 60
 
 ```
 
@@ -3450,14 +3452,14 @@ $ rgbldk pay wait c58656f98e98c55344de7c2b34ae3283d9a1389e7720a6a9d3f6cabcd87480
 > [OK] Payment wait
 >   [OK] Payment Id Valid
 >   [OK] Payment Terminal: Succeeded
-> c58656f98e98c55344de7c2b34ae3283d9a1389e7720a6a9d3f6cabcd87480e6
+> 8cbb3c443468b07dcff8e53737d944b5032fe572ea93e17a77c3564c262dd806
 >
 > ```
 
 **Run:**
 
 ```bash
-$ rgbldk pay get c58656f98e98c55344de7c2b34ae3283d9a1389e7720a6a9d3f6cabcd87480e6
+$ rgbldk pay get 8cbb3c443468b07dcff8e53737d944b5032fe572ea93e17a77c3564c262dd806
 
 ```
 
@@ -3467,7 +3469,7 @@ $ rgbldk pay get c58656f98e98c55344de7c2b34ae3283d9a1389e7720a6a9d3f6cabcd87480e
 > +-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 > | Field           | Value                                                                                                                                                                                                                                         |
 > +=================================================================================================================================================================================================================================================================+
-> | id              | c58656f98e98c55344de7c2b34ae3283d9a1389e7720a6a9d3f6cabcd87480e6                                                                                                                                                                              |
+> | id              | 8cbb3c443468b07dcff8e53737d944b5032fe572ea93e17a77c3564c262dd806                                                                                                                                                                              |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | direction       | Outbound                                                                                                                                                                                                                                      |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -3475,7 +3477,7 @@ $ rgbldk pay get c58656f98e98c55344de7c2b34ae3283d9a1389e7720a6a9d3f6cabcd87480e
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | kind            | Bolt11                                                                                                                                                                                                                                        |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-> | kind_details    | {"payment_hash":"c58656f98e98c55344de7c2b34ae3283d9a1389e7720a6a9d3f6cabcd87480e6","preimage":"cf5e62d8d078f0cbe55afc3a4391bbd96cf14fabce20b978412d2c8f341bda9a","secret":"f3310fe1df06198e05e6dbb1240bf401d892cdc14caeac3cd544613e76d43fc2"} |
+> | kind_details    | {"payment_hash":"8cbb3c443468b07dcff8e53737d944b5032fe572ea93e17a77c3564c262dd806","preimage":"074f43e583e31a1f34fab2002c40f9b1a34aa5ce874a7b2fe009fd306da0e6fd","secret":"9ecd2fbdf7c009ba3a84fb6b969ade40220a8c989dd4887a328ad23e36fc6550"} |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | amount (msat)   | 13,000 msat                                                                                                                                                                                                                                   |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -3510,7 +3512,7 @@ $ rgbldk --color never --output json --pretty pay invoice create --desc demo-var
 
 > ```text
 > {
->   "invoice": "lnbcrt1p4z4gaydqdv3jk6medweshynp4q0snswwnvm5ze6paulnx8vkwjw4rsrkyvvn6xwa4v56tr0ya0g0zgpp5mh9wr6wv8g0vc2xrel0jfunxp3q9takygy3y3p2szn7lxgucj6sqsp50qr59p2lc09kjje53hq44gyqqwzcgk946c9levykm544nas6cm0q9qyysgqcqzp2xqrrssrzjqwjqcfutf7uac5mpvt7larvrg00qehfkhgwk6j6zq6pe9897mrj5vqqqqyqq2nsqqyqqqqlgqqqqqqqqfqc04xpaj05qxvfxvqdn7dfz99rvmaglw28vawywwd7rtf0gj0w64998rp5qqhyf7n8274n8cjufdjyxrzx7mmd9aplmlnfd7nthv8c9cp8l39u3"
+>   "invoice": "lnbcrt1p4yv8etdqdv3jk6medweshynp4q2cjw9ctqs38wrry9hyg3cy4pf93xzfhg52gy8cd8ld5q4d3mlfqgpp5a49r6cn2w9dp8k4k07u30w88hrmekgrdmpp02sfe88aegjxuxmzssp5p9np2w04ewj0yhqxdy3v6esxj8sgc9ff6fstf8896l77wy0x9swq9qyysgqcqzp2xqrrssrzjqgkyz9ytdjq0g7ccfc3t7t287gxzwpyqjjjz046djcwzwustqw7ngqqqqyqqxuqqquqqqqlgqqqqqqqqfqpyxptkj65nr05ctwtu4qk5pxvrs0chq8x8vkedq5w6rr7fsgclq8gtd583z6uvxqhqvuxwwj5n79n2rvtjc29ej6v25v4f8gevmqg8gpems8mc"
 > }
 >
 > ```
@@ -3541,7 +3543,7 @@ $ rgbldk --color never --output json --pretty pay invoice send-using-amount --in
 
 > ```text
 > {
->   "payment_id": "ddcae1e9cc3a1ecc28c3cfdf24f2660c4055f6c4412248855014fdf3239896a0"
+>   "payment_id": "ed4a3d626a715a13dab67fb917b8e7b8f79b206dd842f5413939fb9448dc36c5"
 > }
 >
 > ```
@@ -3549,7 +3551,7 @@ $ rgbldk --color never --output json --pretty pay invoice send-using-amount --in
 **Run:**
 
 ```bash
-$ rgbldk pay wait ddcae1e9cc3a1ecc28c3cfdf24f2660c4055f6c4412248855014fdf3239896a0 --timeout-secs 60
+$ rgbldk pay wait ed4a3d626a715a13dab67fb917b8e7b8f79b206dd842f5413939fb9448dc36c5 --timeout-secs 60
 
 ```
 
@@ -3559,14 +3561,14 @@ $ rgbldk pay wait ddcae1e9cc3a1ecc28c3cfdf24f2660c4055f6c4412248855014fdf3239896
 > [OK] Payment wait
 >   [OK] Payment Id Valid
 >   [OK] Payment Terminal: Succeeded
-> ddcae1e9cc3a1ecc28c3cfdf24f2660c4055f6c4412248855014fdf3239896a0
+> ed4a3d626a715a13dab67fb917b8e7b8f79b206dd842f5413939fb9448dc36c5
 >
 > ```
 
 **Run:**
 
 ```bash
-$ rgbldk pay get ddcae1e9cc3a1ecc28c3cfdf24f2660c4055f6c4412248855014fdf3239896a0
+$ rgbldk pay get ed4a3d626a715a13dab67fb917b8e7b8f79b206dd842f5413939fb9448dc36c5
 
 ```
 
@@ -3576,7 +3578,7 @@ $ rgbldk pay get ddcae1e9cc3a1ecc28c3cfdf24f2660c4055f6c4412248855014fdf3239896a
 > +-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 > | Field           | Value                                                                                                                                                                                                                                         |
 > +=================================================================================================================================================================================================================================================================+
-> | id              | ddcae1e9cc3a1ecc28c3cfdf24f2660c4055f6c4412248855014fdf3239896a0                                                                                                                                                                              |
+> | id              | ed4a3d626a715a13dab67fb917b8e7b8f79b206dd842f5413939fb9448dc36c5                                                                                                                                                                              |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | direction       | Outbound                                                                                                                                                                                                                                      |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -3584,7 +3586,7 @@ $ rgbldk pay get ddcae1e9cc3a1ecc28c3cfdf24f2660c4055f6c4412248855014fdf3239896a
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | kind            | Bolt11                                                                                                                                                                                                                                        |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-> | kind_details    | {"payment_hash":"ddcae1e9cc3a1ecc28c3cfdf24f2660c4055f6c4412248855014fdf3239896a0","preimage":"55404a28f1a7f29472facac3e6b72a8db8b704986b68468473ca700b231cddcf","secret":"780742855fc3cb694b348dc15aa08003858458b5d60bfcb096dd2b59f61ac6de"} |
+> | kind_details    | {"payment_hash":"ed4a3d626a715a13dab67fb917b8e7b8f79b206dd842f5413939fb9448dc36c5","preimage":"ec9a1d2538db28c9a1aa6e1f9e3f83db824dd3c41c2122e33c059803c9f38a4e","secret":"09661539f5cba4f25c066922cd660691e08c1529d260b49ce5d7fde711e62c1c"} |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | amount (msat)   | 11,000 msat                                                                                                                                                                                                                                   |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -3619,7 +3621,7 @@ $ rgbldk pay invoice create-for-hash --desc demo-hold-claim --amount-msat 14000 
 
 > ```text
 > {
->   "invoice": "lnbcrt140n1p4z4ga2dqcv3jk6meddphkcepdvdkxz6tdnp4q0snswwnvm5ze6paulnx8vkwjw4rsrkyvvn6xwa4v56tr0ya0g0zgpp5gf0dfe9rdvcw5gdepcsuwykxf85zznpfkl40dqyf6ypecmj48pxqsp50ygpt8cldtlkzz5a6tmn77hhffszxqdajuykn9whkw03nymtd5eq9qyysgqcqzp2xqrrssrzjqwjqcfutf7uac5mpvt7larvrg00qehfkhgwk6j6zq6pe9897mrj5vqqqqyqq2nsqqyqqqqlgqqqqqqqqfq80yfj64407rqg3cf5df0elahpddxslplc5ulqfzu9whpqlfxpcr9z7zwkp4u8mem0pndqh4mmax229y8lhy46prywget3mnldytn5ssqg72fe6"
+>   "invoice": "lnbcrt140n1p4yv8e3dqcv3jk6meddphkcepdvdkxz6tdnp4q2cjw9ctqs38wrry9hyg3cy4pf93xzfhg52gy8cd8ld5q4d3mlfqgpp5gf0dfe9rdvcw5gdepcsuwykxf85zznpfkl40dqyf6ypecmj48pxqsp54mngwurh352qnvqyvw69dna4f4jjrpyhpvh4q6y4gj03mqdq5k3q9qyysgqcqzp2xqrrssrzjqgkyz9ytdjq0g7ccfc3t7t287gxzwpyqjjjz046djcwzwustqw7ngqqqqyqqxuqqquqqqqlgqqqqqqqqfqa07aqvvw4st2nrt45te97g0nhp8ctgqxjwudwxr7nrsjrlpm4kh5ppd37hx08f43wp5gw35wsknye4fw0gcynv2z58uur42czux37tgpnn348j"
 > }
 >
 > ```
@@ -3639,7 +3641,7 @@ $ rgbldk pay invoice decode <invoice>
 > +===================================================================================+
 > | payment_hash | 425ed4e4a36b30ea21b90e21c712c649e8214c29b7eaf68089d1039c6e55384c   |
 > |--------------+--------------------------------------------------------------------|
-> | destination  | 03e13839d366e82ce83de7e663b2ce93aa380ec46327a33bb56534b1bc9d7a1e24 |
+> | destination  | 02b127170b0422770c642dc888e0950a4b1309374514821f0d3fdb4055b1dfd204 |
 > |--------------+--------------------------------------------------------------------|
 > | amount_msat  | 14,000                                                             |
 > |--------------+--------------------------------------------------------------------|
@@ -3761,7 +3763,7 @@ $ rgbldk pay get 425ed4e4a36b30ea21b90e21c712c649e8214c29b7eaf68089d1039c6e55384
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | kind            | Bolt11                                                                                                                                                                                                                                        |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-> | kind_details    | {"payment_hash":"425ed4e4a36b30ea21b90e21c712c649e8214c29b7eaf68089d1039c6e55384c","preimage":"4242424242424242424242424242424242424242424242424242424242424242","secret":"7910159f1f6aff610a9dd2f73f7af74a602301bd97096995d7b39f19936b6d32"} |
+> | kind_details    | {"payment_hash":"425ed4e4a36b30ea21b90e21c712c649e8214c29b7eaf68089d1039c6e55384c","preimage":"4242424242424242424242424242424242424242424242424242424242424242","secret":"aee68770778d1409b00463b456cfb54d652184970b2f506895449f1d81a0a5a2"} |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | amount (msat)   | 14,000 msat                                                                                                                                                                                                                                   |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -3796,7 +3798,7 @@ $ rgbldk pay invoice create-for-hash --desc demo-hold-fail --amount-msat 15000 -
 
 > ```text
 > {
->   "invoice": "lnbcrt150n1p4z4gandqhv3jk6meddphkcepdveskjmqnp4q0snswwnvm5ze6paulnx8vkwjw4rsrkyvvn6xwa4v56tr0ya0g0zgpp5gyfa2jctvyfffdl4jkmfrjwm2s0uplr3npydd3wrg53w4nqt8gjqsp5tf87hk69qjcvn057vwvj3tagrlqqax7j3f098g5lmmztum3wqtvs9qyysgqcqzp2xqrrssrzjqwjqcfutf7uac5mpvt7larvrg00qehfkhgwk6j6zq6pe9897mrj5vqqqqyqq2nsqqyqqqqlgqqqqqqqqfqyp4sevh3d86jqq73eyjv7femsn5ms5d505d9tfvsrx33kl04j4a9a2qn042y6cy6kfazq50qunsnnnvcf8qz0aylyadfut2f9tk8wlqqrlmxky"
+>   "invoice": "lnbcrt150n1p4yv8emdqhv3jk6meddphkcepdveskjmqnp4q2cjw9ctqs38wrry9hyg3cy4pf93xzfhg52gy8cd8ld5q4d3mlfqgpp5gyfa2jctvyfffdl4jkmfrjwm2s0uplr3npydd3wrg53w4nqt8gjqsp5hfk58nuxnl2c9ach7r7grdgs62mj7txh456vp8h3wksd2h950laq9qyysgqcqzp2xqrrssrzjqgkyz9ytdjq0g7ccfc3t7t287gxzwpyqjjjz046djcwzwustqw7ngqqqqyqqxuqqquqqqqlgqqqqqqqqfqnhwgu352n298hygy7hqnhfqzsyyqhy5kfmx2p0l5cny00ksawx5hnzrqtut2agd9y2svn2jwjjzl779n5umpgk428deet5m3s6jfagqq03w7ks"
 > }
 >
 > ```
@@ -3897,7 +3899,7 @@ $ rgbldk pay get 4113d54b0b611294b7f595b691c9db541fc0fc719848d6c5c34522eacc0b3a2
 > |-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | kind            | Bolt11                                                                                                                                                                          |
 > |-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-> | kind_details    | {"payment_hash":"4113d54b0b611294b7f595b691c9db541fc0fc719848d6c5c34522eacc0b3a24","preimage":null,"secret":"5a4febdb4504b0c9be9e639928afa81fc00e9bd28a5e53a29fdec4be6e2e02d9"} |
+> | kind_details    | {"payment_hash":"4113d54b0b611294b7f595b691c9db541fc0fc719848d6c5c34522eacc0b3a24","preimage":null,"secret":"ba6d43cf869fd582f717f0fc81b510d2b72f2cd7ad34c09ef175a0d55cb47ffa"} |
 > |-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | amount (msat)   | 15,000 msat                                                                                                                                                                     |
 > |-----------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -3934,7 +3936,7 @@ $ rgbldk --color never --output json --pretty pay invoice create --desc demo-bac
 
 > ```text
 > {
->   "invoice": "lnbcrt120n1p4z4gaudq0v3jk6medvfskx6cnp4qwjqcfutf7uac5mpvt7larvrg00qehfkhgwk6j6zq6pe9897mrj5vpp50y0lp4sequx7amj5enn94mf8w2s5a8xz3tfludy54ff3dvh54urqsp5aulrhsgru7ty25njrjz9n2227hxqdaen80mrfx75phxcfq06s3gq9qyysgqcqzp2xqrrssrzjq0snswwnvm5ze6paulnx8vkwjw4rsrkyvvn6xwa4v56tr0ya0g0zgqqqqyqqfxsqqcqqqqlgqqqqqqqqfqtlr3xx6s09elh5gdawr48tr5zg88qwevcxwtrtk8zutpt55kadx4eydnsq4d65h99x27drcdp68qppld7rykzylw8y3asgpx0kgkyhcqrdnh3t"
+>   "invoice": "lnbcrt120n1p4yv869dq0v3jk6medvfskx6cnp4qgkyz9ytdjq0g7ccfc3t7t287gxzwpyqjjjz046djcwzwustqw7ngpp5k22eng2cexmnnufcr7dat4huqw2f45wx4d9dstg3vfntg8jrffmssp5cag6qtdeu5ed5k5ya9tgqak4ayl6sdcj9j0dq46q7x55jud2ylhq9qyysgqcqzp2xqrrssrzjq2cjw9ctqs38wrry9hyg3cy4pf93xzfhg52gy8cd8ld5q4d3mlfqgqqqqyqqt7gqquqqqqlgqqqqqqqqfqv8pn9hx3yhnz5fadykey4vftzvh6nwzsw956xmevyl4ulgepewqsr4xlx2he8v5jqqpjccjv53xspphk8pauymm3dce3kh93t7wllncqtlf6jz"
 > }
 >
 > ```
@@ -3965,10 +3967,10 @@ $ rgbldk --color never --output json --pretty pay invoice pay --invoice <invoice
 
 > ```text
 > {
->   "payment_id": "791ff0d619070deeee54cce65aed2772a14e9cc28ad3fe3494aa5316b2f4af06",
->   "preimage": "b0d262a841224217a0dc75d8ba40b1157b144d1b4f9ef9780d6fcaeab100e59b",
+>   "payment_id": "b29599a158c9b739f1381f9bd5d6fc03949ad1c6ab4ad82d116266b41e434a77",
+>   "preimage": "00f397d285a58234424fc99cadd67b9114ef4084ef7f9e9066621f3b54258208",
 >   "amount_sats": "12",
->   "destination": "03a40c278b4fb9dc536162fdfe8d8343de0cdd36ba1d6d4b420683929cbed8e546",
+>   "destination": "022c41148b6c80f47b184e22bf2d47f20c27048094a427d74d961c27720b03bd34",
 >   "fee_paid_msat": "0"
 > }
 >
@@ -3977,7 +3979,7 @@ $ rgbldk --color never --output json --pretty pay invoice pay --invoice <invoice
 **Run:**
 
 ```bash
-$ rgbldk pay wait 791ff0d619070deeee54cce65aed2772a14e9cc28ad3fe3494aa5316b2f4af06 --timeout-secs 60
+$ rgbldk pay wait b29599a158c9b739f1381f9bd5d6fc03949ad1c6ab4ad82d116266b41e434a77 --timeout-secs 60
 
 ```
 
@@ -3987,14 +3989,14 @@ $ rgbldk pay wait 791ff0d619070deeee54cce65aed2772a14e9cc28ad3fe3494aa5316b2f4af
 > [OK] Payment wait
 >   [OK] Payment Id Valid
 >   [OK] Payment Terminal: Succeeded
-> 791ff0d619070deeee54cce65aed2772a14e9cc28ad3fe3494aa5316b2f4af06
+> b29599a158c9b739f1381f9bd5d6fc03949ad1c6ab4ad82d116266b41e434a77
 >
 > ```
 
 **Run:**
 
 ```bash
-$ rgbldk pay get 791ff0d619070deeee54cce65aed2772a14e9cc28ad3fe3494aa5316b2f4af06
+$ rgbldk pay get b29599a158c9b739f1381f9bd5d6fc03949ad1c6ab4ad82d116266b41e434a77
 
 ```
 
@@ -4004,7 +4006,7 @@ $ rgbldk pay get 791ff0d619070deeee54cce65aed2772a14e9cc28ad3fe3494aa5316b2f4af0
 > +-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 > | Field           | Value                                                                                                                                                                                                                                         |
 > +=================================================================================================================================================================================================================================================================+
-> | id              | 791ff0d619070deeee54cce65aed2772a14e9cc28ad3fe3494aa5316b2f4af06                                                                                                                                                                              |
+> | id              | b29599a158c9b739f1381f9bd5d6fc03949ad1c6ab4ad82d116266b41e434a77                                                                                                                                                                              |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | direction       | Outbound                                                                                                                                                                                                                                      |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -4012,7 +4014,7 @@ $ rgbldk pay get 791ff0d619070deeee54cce65aed2772a14e9cc28ad3fe3494aa5316b2f4af0
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | kind            | Bolt11                                                                                                                                                                                                                                        |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-> | kind_details    | {"payment_hash":"791ff0d619070deeee54cce65aed2772a14e9cc28ad3fe3494aa5316b2f4af06","preimage":"b0d262a841224217a0dc75d8ba40b1157b144d1b4f9ef9780d6fcaeab100e59b","secret":"ef3e3bc103e7964552721c8459a94af5cc06f7333bf6349bd40dcd8481fa8450"} |
+> | kind_details    | {"payment_hash":"b29599a158c9b739f1381f9bd5d6fc03949ad1c6ab4ad82d116266b41e434a77","preimage":"00f397d285a58234424fc99cadd67b9114ef4084ef7f9e9066621f3b54258208","secret":"c751a02db9e532da5a84e9568076d5e93fa837122c9ed05740f1a94971aa27ee"} |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | amount (msat)   | 12,000 msat                                                                                                                                                                                                                                   |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -4064,7 +4066,7 @@ $ rgbldk --color never --output json --pretty pay offer create --desc offer-demo
 
 > ```text
 > {
->   "offer": "lno1qgsqvgnwgcg35z6ee2h3yczraddm72xrfua9uve2rlrm9deu7xyfzrcgqg2mxzs2danxvetj94jx2mt0pczx52436vgvyqgqqcvqqqqpqqqqx3furhduhflyjwacntj22zjwvl2papxjlqmgjdvf8erk7c0n2x07qypcskfpwf6553g7h833ng3eqa4j4lscdjjjxznpt407l600qdjp53qqwnpx9eutj9grkgua6zcu4u30vaw289a9m2lsj0ezgfktqs8ca3j8zqllvugpg2fgjsp5kyr437c6psk00wmknj3hpczm2ral2525zntg5rnqssvps3p7cdaj6pah9flj0pzqehgerq8gqgxh5mtknw7h65m8vglpyead585ukscn6ut8nqdgs4vmvgn3vggryl6a60k7uau76reu8s4g3w34t6280yjtma2fjgge9gagw3yfl4yq"
+>   "offer": "lno1qgsqvgnwgcg35z6ee2h3yczraddm72xrfua9uve2rlrm9deu7xyfzrcgqg2mxzs2danxvetj94jx2mt0pczx533dtsgvyqgqqpkqqqqpqqqs95ektvarylmty6mjwgje7525m937h82dkudk4ekfc9k6lqylx392qyp5dfg4au7zw2ryp23lfhyumwu7j6nqrtt75pr986ugq8lq6edfzmgqwnpgrnv62mapsrqmdgws3xpxr8xwawd8vhh7tu0hdpqckj5hjqaf3nlkrmu3t8v7krg8ge50edx39kh6sm9hhuvpgaz2at48xtheffmw29ecsenj7vtkcnz8jqv0dcklp2j5fcjq42gr06xh8klg6wvp4pyfg77ps2r3ryw5llndhdz232fywn9anug3vggzalhk2fr8lkk4qlsucdy2rl0zx9250fvtfcjhkqafcy9h84xxqchs"
 > }
 >
 > ```
@@ -4082,9 +4084,9 @@ $ rgbldk pay offer decode <offer>
 > +---------------------------+--------------------------------------------------------------------+
 > | Field                     | Value                                                              |
 > +================================================================================================+
-> | offer_id                  | e066315c1c8b075ad500890371426b05da1a7122fa5e45cb1a952b4fdef32fdb   |
+> | offer_id                  | f03cbedc9be270474cba77ec4861d1bbbfe305f26aad4389f5713b4b03156860   |
 > |---------------------------+--------------------------------------------------------------------|
-> | signing_pubkey            | 0327f5dd3edee779ed0f3c3c2a88ba355e9477924bdf549921192a3a874489fd48 |
+> | signing_pubkey            | 02efef652467fdad507e1cc348a1fde2315547a58b4e257b03a9c10b73d4c6062f |
 > |---------------------------+--------------------------------------------------------------------|
 > | description               | offer-demo                                                         |
 > |---------------------------+--------------------------------------------------------------------|
@@ -4092,7 +4094,7 @@ $ rgbldk pay offer decode <offer>
 > |---------------------------+--------------------------------------------------------------------|
 > | amount_msat               | 5,555                                                              |
 > |---------------------------+--------------------------------------------------------------------|
-> | absolute_expiry_unix_secs | 1781182931                                                         |
+> | absolute_expiry_unix_secs | 1782984028                                                         |
 > |---------------------------+--------------------------------------------------------------------|
 > | paths_count               | 1                                                                  |
 > |---------------------------+--------------------------------------------------------------------|
@@ -4129,7 +4131,7 @@ $ rgbldk --color never --output json --pretty pay offer pay --offer <offer>
 
 > ```text
 > {
->   "payment_id": "6101da03cb534672acddb39195ba8c0e58c5d9dd0e539e2a16a2b6d7f16f20fa"
+>   "payment_id": "d20c75edec1f44c5a2d8b758920d3c14f99e852c45973fe7971f4d643612f46e"
 > }
 >
 > ```
@@ -4137,7 +4139,7 @@ $ rgbldk --color never --output json --pretty pay offer pay --offer <offer>
 **Run:**
 
 ```bash
-$ rgbldk pay wait 6101da03cb534672acddb39195ba8c0e58c5d9dd0e539e2a16a2b6d7f16f20fa --timeout-secs 60
+$ rgbldk pay wait d20c75edec1f44c5a2d8b758920d3c14f99e852c45973fe7971f4d643612f46e --timeout-secs 60
 
 ```
 
@@ -4147,14 +4149,14 @@ $ rgbldk pay wait 6101da03cb534672acddb39195ba8c0e58c5d9dd0e539e2a16a2b6d7f16f20
 > [OK] Payment wait
 >   [OK] Payment Id Valid
 >   [OK] Payment Terminal: Succeeded
-> 6101da03cb534672acddb39195ba8c0e58c5d9dd0e539e2a16a2b6d7f16f20fa
+> d20c75edec1f44c5a2d8b758920d3c14f99e852c45973fe7971f4d643612f46e
 >
 > ```
 
 **Run:**
 
 ```bash
-$ rgbldk pay get 6101da03cb534672acddb39195ba8c0e58c5d9dd0e539e2a16a2b6d7f16f20fa
+$ rgbldk pay get d20c75edec1f44c5a2d8b758920d3c14f99e852c45973fe7971f4d643612f46e
 
 ```
 
@@ -4164,7 +4166,7 @@ $ rgbldk pay get 6101da03cb534672acddb39195ba8c0e58c5d9dd0e539e2a16a2b6d7f16f20f
 > +-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 > | Field           | Value                                                                                                                                                                                               |
 > +=======================================================================================================================================================================================================================+
-> | id              | 6101da03cb534672acddb39195ba8c0e58c5d9dd0e539e2a16a2b6d7f16f20fa                                                                                                                                    |
+> | id              | d20c75edec1f44c5a2d8b758920d3c14f99e852c45973fe7971f4d643612f46e                                                                                                                                    |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | direction       | Outbound                                                                                                                                                                                            |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -4172,7 +4174,7 @@ $ rgbldk pay get 6101da03cb534672acddb39195ba8c0e58c5d9dd0e539e2a16a2b6d7f16f20f
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | kind            | Bolt12Offer                                                                                                                                                                                         |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-> | kind_details    | {"offer_id":"e066315c1c8b075ad500890371426b05da1a7122fa5e45cb1a952b4fdef32fdb","payer_note":null,"payment_hash":"2d1b2e5d6cff9b0b60a1da28a431222fdaf7c62d6cfd45e3b13be61a850acdef","quantity":null} |
+> | kind_details    | {"offer_id":"f03cbedc9be270474cba77ec4861d1bbbfe305f26aad4389f5713b4b03156860","payer_note":null,"payment_hash":"42cd3fc4309320f8ca1b81001a66c724fb95f77ac3b8563e0f42093aa59c6b25","quantity":null} |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | amount (msat)   | 5,555 msat                                                                                                                                                                                          |
 > |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -4209,8 +4211,8 @@ $ rgbldk --color never --output json --pretty pay refund initiate --amount-msat 
 
 > ```text
 > {
->   "refund": "lnr1qqstfr9z55svvhm807tt0qarnwp253x4huavagkxnkxrsxe9nq0a8rq2qq8qg632k8v4qgqxyfhyvyg6pdvu4tcjvpp7kkal9rp57wj7xv4pl3ajku70rzy3pafqyy8ptqssy2exevxl0zzjgyl8wddkrt2u4pq6tfxewvqvyn69e80vdjfp2vh6ty9hyetxw4hxgttyv4kk7kkzqqqqvxqqqqqsqqqz3vp04tdwnq5k6jnneqnvxzaga8pcepcyxq6hm03yvkrglyf8th4qzqusmdt7vemk0fkmrpkqjzm35ye5rqaq6sndhr3fpyl208yum3n5ucq8fern738l2y06nwkauf82l2ccaag9nhpzdl6ly4ncx907crwr3z5u9q4ggkq099z2607r2e2x6905tunywnkwhql30s7yrt82j8967rd5afxsar4ck7yk9hclfym9nknzwldy24uz3vf5rnmjdy50595gqmu3hstdxs6fy8txa7tlr9tmjctpn2rjzkg",
->   "payment_id": "ddff86c1243d7ad0cfc4e1ce18512537094bc93c117604a2ba17e25e2a82f7cf"
+>   "refund": "lnr1qqs9l865dfdj7cfdfgkthf7ypgaveahlkjyd2g2utnxkgl9vuzzx2dq2qq8qg6jx9434qgqxyfhyvyg6pdvu4tcjvpp7kkal9rp57wj7xv4pl3ajku70rzy3pafqyy8ptqssxge00yg8gmcg8u5cxxx625epgz5azd4utq3hsgvrjn7dtljf2c4gty9hyetxw4hxgttyv4kk7kkzqqqqqmqqqqqsqqgrurp9zfzvfg7992699lcmevlvjfnqqa3qknyxckqf8mp00t7sm72qzq4ct66nlfdlapv6mhmm0axgtxv9l86wx2gctqffppyzp66yypt0k5q8gffegkv3cwrdggafldhgketwn4m9hg0m3k6hueh4lcq5xsydans4kqetzctrcaw9tv2er4j0y9m7vzfatkx7z7yndvg4rfx8yatjt3leurymn7kve5ce25j5fwtt3yprvfsmws9lyev4yf65mvkrqs09z39zjgrykre3s5fd76aaz0a57njs2gqxsxs",
+>   "payment_id": "d474d27007df62b189c8acddefb0a94105456d589c53190c2719689042e0a8e5"
 > }
 >
 > ```
@@ -4234,11 +4236,11 @@ $ rgbldk pay refund decode <refund>
 > |---------------------------+--------------------------------------------------------------------|
 > | amount_msat               | 4,321                                                              |
 > |---------------------------+--------------------------------------------------------------------|
-> | absolute_expiry_unix_secs | 1781182937                                                         |
+> | absolute_expiry_unix_secs | 1782984035                                                         |
 > |---------------------------+--------------------------------------------------------------------|
 > | chain_hash                | 06226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f   |
 > |---------------------------+--------------------------------------------------------------------|
-> | payer_signing_pubkey      | 022b26cb0df78852413e7735b61ad5ca841a5a4d97300c24f45c9dec6c921532fa |
+> | payer_signing_pubkey      | 03232f7910746f083f298318da5532140a9d136bc582378218394fcd5fe49562a8 |
 > |---------------------------+--------------------------------------------------------------------|
 > | payer_note                | refund-demo                                                        |
 > |---------------------------+--------------------------------------------------------------------|
@@ -4274,8 +4276,8 @@ $ rgbldk pay refund request-payment <refund>
 **Result:**
 
 > ```text
-> lni1qqstfr9z55svvhm807tt0qarnwp253x4huavagkxnkxrsxe9nq0a8rq2qq8qg632k8v4qgqxyfhyvyg6pdvu4tcjvpp7kkal9rp57wj7xv4pl3ajku70rzy3pafqyy8ptqssy2exevxl0zzjgyl8wddkrt2u4pq6tfxewvqvyn69e80vdjfp2vh6ty9hyetxw4hxgttyv4kk7kkzqqqqvxqqqqqsqqqz3vp04tdwnq5k6jnneqnvxzaga8pcepcyxq6hm03yvkrglyf8th4qzqusmdt7vemk0fkmrpkqjzm35ye5rqaq6sndhr3fpyl208yum3n5ucq8fern738l2y06nwkauf82l2ccaag9nhpzdl6ly4ncx907crwr3z5u9q4ggkq099z2607r2e2x6905tunywnkwhql30s7yrt82j8967rd5afxsar4ck7yk9hclfym9nknzwldy24uz3vf5rnmjdy50595gqmu3hstdxs6fy8txa7tlr9tmjctpn2rjzkdqacp7zwpe6dnwst8g8hn7vcaje6f65wqwc33j0gemk4jnfvdun4apufqz8zg5lk4zchu8uy0etl59pyd7vdlp62tcvacc652eeemru6zqpcnqzq66jtd3hha3cs862tdmhce9y29epncp8h3j2csekn54h9h2rxzgzsqgszkdgwxkruz28tnxpq6c3dp9r8esmu7hl0sy7xyqa9fn6sylajzpw4dlzpfn8njzxfzs93px87dek35n5gulpr4kz376ylkt2cgl85vukhudm9mwukgjhjw0wnej995urz6mumhzd0ul82ez7j36t76ttsd2kej0aymacay7nsn2mmqg9kjc5lf9sdj3trjqsmplzca6lh99gg22vf2d2lguuxdzrsqqqqqqqqqqqqqq9gqqqqqqqqqqqqgayjedltzjqqqqqq9yq34z4g7v4qsgkez09u0g4jk2hkac9zpkzegjll70c25cl9jakgwqvdxm94eqrld2qggwrtsrqgqqpvppqwqt7naq9vrhcv535qcg8fkufmxnpff3g3u98dvragpww9j8k5ndeuzqe2k4fdv78hxwrkgamwzj3wq2augxjj9ep3f8sv7dtgqyhxeytgff3t7nv2yau35t058yph8e0e0lsnc4nj8zdl5jmc4nkcfk023vdts
-> payment_id: 8b644f2f1e8acacabdbb82883616512fffcfc2a98f965db21c0634db2d7201fd
+> lni1qqs9l865dfdj7cfdfgkthf7ypgaveahlkjyd2g2utnxkgl9vuzzx2dq2qq8qg6jx9434qgqxyfhyvyg6pdvu4tcjvpp7kkal9rp57wj7xv4pl3ajku70rzy3pafqyy8ptqssxge00yg8gmcg8u5cxxx625epgz5azd4utq3hsgvrjn7dtljf2c4gty9hyetxw4hxgttyv4kk7kkzqqqqqmqqqqqsqqgrurp9zfzvfg7992699lcmevlvjfnqqa3qknyxckqf8mp00t7sm72qzq4ct66nlfdlapv6mhmm0axgtxv9l86wx2gctqffppyzp66yypt0k5q8gffegkv3cwrdggafldhgketwn4m9hg0m3k6hueh4lcq5xsydans4kqetzctrcaw9tv2er4j0y9m7vzfatkx7z7yndvg4rfx8yatjt3leurymn7kve5ce25j5fwtt3yprvfsmws9lyev4yf65mvkrqs09z39zjgrykre3s5fd76aaz0a57njs2gqxsx4qacptzfchpvzzyacvvsku3z8qj59ykycfxaz3fqslp5laksz4k80aypqzvg8rctjylmupnt2llzzaxaknq558ed867rz3plkazq9yd52w3szqzq4v7z5z3wnpqvcjh06nkc3w8lr0y8ttfn0jhd07t0m2t20z4ak6tyqgs38r7jujaakx525cv3pm8uue3d4m6mw5un4tknj8jgzntzhxanvhxdq3w2wx4538679kt9gy5hgsu4k4y2gmsel035vz5ch5558w7eamg0qnxu2ktr3xh5lmm29tr38324rtard96wr2hp383u3yrzzuzu54kfk4vd0plxwmyx00859q0ux09aj63gugumw4q8xg840xh6d5qth85c264ahv549zrsqqqqqqqqqqqqqq9gqqqqqqqqqqqqgayjedltzjqqqqqq9yq34yv86k4qszzn2pj44q8g7pxp573ujwnneh7nq4l44txyvs5kc0dnkqudete8d2qggwrtsrqgqqpvppqwxkwu20pz9u4cyfm2p0z436l5365su90etm8lectmrrhevxxhvw4uzq76k9tkru9p60q0kmv0kvcufk4jfj94sm99hmtaeydw6qtcuhqh6szv4rpv04w8zccmssayrpn3t3l6s3fx0yeprejr8tvek0rqz42ns
+> payment_id: 214d41956a03a3c13069e8f24e9cf37f4c15fd6ab31190a5b0f6cec0e372bc9d
 >
 > ```
 
@@ -4297,7 +4299,7 @@ $ rgbldk ctx use node-a
 **Run:**
 
 ```bash
-$ rgbldk pay wait ddff86c1243d7ad0cfc4e1ce18512537094bc93c117604a2ba17e25e2a82f7cf --timeout-secs 60
+$ rgbldk pay wait d474d27007df62b189c8acddefb0a94105456d589c53190c2719689042e0a8e5 --timeout-secs 60
 
 ```
 
@@ -4307,14 +4309,14 @@ $ rgbldk pay wait ddff86c1243d7ad0cfc4e1ce18512537094bc93c117604a2ba17e25e2a82f7
 > [OK] Payment wait
 >   [OK] Payment Id Valid
 >   [OK] Payment Terminal: Succeeded
-> ddff86c1243d7ad0cfc4e1ce18512537094bc93c117604a2ba17e25e2a82f7cf
+> d474d27007df62b189c8acddefb0a94105456d589c53190c2719689042e0a8e5
 >
 > ```
 
 **Run:**
 
 ```bash
-$ rgbldk pay get ddff86c1243d7ad0cfc4e1ce18512537094bc93c117604a2ba17e25e2a82f7cf
+$ rgbldk pay get d474d27007df62b189c8acddefb0a94105456d589c53190c2719689042e0a8e5
 
 ```
 
@@ -4324,7 +4326,7 @@ $ rgbldk pay get ddff86c1243d7ad0cfc4e1ce18512537094bc93c117604a2ba17e25e2a82f7c
 > +-----------------+--------------------------------------------------------------------------------------------------------------------------------+
 > | Field           | Value                                                                                                                          |
 > +==================================================================================================================================================+
-> | id              | ddff86c1243d7ad0cfc4e1ce18512537094bc93c117604a2ba17e25e2a82f7cf                                                               |
+> | id              | d474d27007df62b189c8acddefb0a94105456d589c53190c2719689042e0a8e5                                                               |
 > |-----------------+--------------------------------------------------------------------------------------------------------------------------------|
 > | direction       | Outbound                                                                                                                       |
 > |-----------------+--------------------------------------------------------------------------------------------------------------------------------|
@@ -4332,7 +4334,7 @@ $ rgbldk pay get ddff86c1243d7ad0cfc4e1ce18512537094bc93c117604a2ba17e25e2a82f7c
 > |-----------------+--------------------------------------------------------------------------------------------------------------------------------|
 > | kind            | Bolt12Refund                                                                                                                   |
 > |-----------------+--------------------------------------------------------------------------------------------------------------------------------|
-> | kind_details    | {"payer_note":"refund-demo","payment_hash":"8b644f2f1e8acacabdbb82883616512fffcfc2a98f965db21c0634db2d7201fd","quantity":null} |
+> | kind_details    | {"payer_note":"refund-demo","payment_hash":"214d41956a03a3c13069e8f24e9cf37f4c15fd6ab31190a5b0f6cec0e372bc9d","quantity":null} |
 > |-----------------+--------------------------------------------------------------------------------------------------------------------------------|
 > | amount (msat)   | 4,321 msat                                                                                                                     |
 > |-----------------+--------------------------------------------------------------------------------------------------------------------------------|
@@ -4352,8 +4354,8 @@ $ rgbldk --color never --output json --pretty pay refund initiate --amount-msat 
 
 > ```text
 > {
->   "refund": "lnr1qqszm70v9mfxeey344s2486rvzw502p0r6uqzmn3rqz4wa7g70dap9q2qq8qg632k804qgqxyfhyvyg6pdvu4tcjvpp7kkal9rp57wj7xv4pl3ajku70rzy3pafqypzhtqssx6sw9lcwqlelcnvkyavrfwly3fgq9zwwfvcyepxpg3apcvedvzt7tyfhyetxw4hxgttpvfskuer0dckkgetddadvyqqqqcvqqqqpqqqqxayxmj0cuhrrm629w70rz30fvz6z9snx83zhw8ujyrtxhv5zqt0gqype5yuvw562rxkhjlcn4t2tln4sy76vs06d6k6r2dlpfyavsg6eqmgqwny0f9w7wv45kylh2h4k3wtyctdy37agtwduraq2797w90dkh7j2nf4attt2tw7f7h4rlcaskcwpylkqzsv5xvre59gjpkfw5w2jxm75lvzxf6vttj0r2lsdmuq8g6vyzvk4wg02e2d6a25urxxw04hy2fszwdx3x9sef9l90c97tq34er6vdf29agns",
->   "payment_id": "af44b5caaefc7ebaede3ad2933b4b75e1e96fec9444285b5229d6b9c43abddef"
+>   "refund": "lnr1qqs2vyx259gfl8qh93dku7weajktstd8330w5j7mn9rfyf4dkmv9w4s2qq8qg6jx9449qgqxyfhyvyg6pdvu4tcjvpp7kkal9rp57wj7xv4pl3ajku70rzy3pafqypzhtqss8ph5cs5tsxv49dgt7ahx6w59qhsm9e5drnlhqvu483ep0pu0t03dtyfhyetxw4hxgttpvfskuer0dckkgetddadvyqqqqpkqqqqpqqqsx5d3lsjyhf7evvhlrdeea8qfdfezh6jq5wds99a9pz3wpppr23q6qyp8sjrwhh53p6wsy6lqam5xmq97rhsu7rev2lck9twkn49eq9dk8jsqw35uawauddl094eagjvx4y8qr9l9p0ewdaa4ssklfadl2vc8ww4wcwv44zesmeqgyjnly3yd7ehl4ac8j788xsm8ezk3unn26uh03a44ndu9hg80wc8espvf49kkjj3604m3stvvs3nd7ncszrpey5zcaxjetfe3a0cd8p7mv5xjxrktqdam4n4w423q",
+>   "payment_id": "fafd2655c2c1d4f687fd7c53bc4407e2b145667343fb3abfb640f26a2c9782fc"
 > }
 >
 > ```
@@ -4453,37 +4455,37 @@ $ rgbldk pay ls
 > +---------------------+-----------+--------------+----------+-----------------+------------+
 > | ID                  | Status    | Kind         | Dir      | Amount (msat)   | Fee (msat) |
 > +==========================================================================================+
-> | 2a27a684...261dd884 | Succeeded | Onchain      | Inbound  | 1,000,000,000   | 2,820,000  |
+> | fafd2655...2c9782fc | Failed    | Bolt12Refund | Outbound | 1,111           | -          |
 > |---------------------+-----------+--------------+----------+-----------------+------------|
-> | 425ed4e4...6e55384c | Succeeded | Bolt11       | Outbound | 14,000          | 0          |
+> | cb5fa15f...a3571be2 | Succeeded | Onchain      | Inbound  | 100,000,000,000 | 2,820,000  |
 > |---------------------+-----------+--------------+----------+-----------------+------------|
-> | e282ea9a...14c5e49a | Succeeded | Onchain      | Outbound | 58,000,000      | 172,000    |
+> | 5e66afd8...b110f365 | Succeeded | Onchain      | Inbound  | 30,000,000      | 2,011,000  |
 > |---------------------+-----------+--------------+----------+-----------------+------------|
-> | 34b1bdb7...4b1c48df | Succeeded | Onchain      | Inbound  | 500,000,000     | 2,820,000  |
-> |---------------------+-----------+--------------+----------+-----------------+------------|
-> | ddff86c1...2a82f7cf | Succeeded | Bolt12Refund | Outbound | 4,321           | 0          |
-> |---------------------+-----------+--------------+----------+-----------------+------------|
-> | 8e7cb6c5...67a33b74 | Succeeded | Onchain      | Inbound  | 100,000,000,000 | 2,820,000  |
-> |---------------------+-----------+--------------+----------+-----------------+------------|
-> | 7d28f6c8...dd9274bc | Succeeded | Onchain      | Inbound  | 27,889,000      | 111,000    |
-> |---------------------+-----------+--------------+----------+-----------------+------------|
-> | e6993d98...b0eae07e | Succeeded | Onchain      | Inbound  | 30,000,000      | 2,011,000  |
-> |---------------------+-----------+--------------+----------+-----------------+------------|
-> | 6101da03...f16f20fa | Succeeded | Bolt12Offer  | Outbound | 5,555           | 0          |
-> |---------------------+-----------+--------------+----------+-----------------+------------|
-> | d742b751...cb016d1b | Succeeded | Onchain      | Outbound | 40,000,000      | 254,000    |
-> |---------------------+-----------+--------------+----------+-----------------+------------|
-> | ddcae1e9...239896a0 | Succeeded | Bolt11       | Outbound | 11,000          | 0          |
-> |---------------------+-----------+--------------+----------+-----------------+------------|
-> | c58656f9...d87480e6 | Succeeded | Bolt11       | Outbound | 13,000          | 0          |
-> |---------------------+-----------+--------------+----------+-----------------+------------|
-> | af44b5ca...43abddef | Failed    | Bolt12Refund | Outbound | 1,111           | -          |
-> |---------------------+-----------+--------------+----------+-----------------+------------|
-> | bacc6579...9c9023bb | Succeeded | Bolt11       | Outbound | 10,000          | 0          |
+> | d20c75ed...3612f46e | Succeeded | Bolt12Offer  | Outbound | 5,555           | 0          |
 > |---------------------+-----------+--------------+----------+-----------------+------------|
 > | 4113d54b...cc0b3a24 | Failed    | Bolt11       | Outbound | 15,000          | -          |
 > |---------------------+-----------+--------------+----------+-----------------+------------|
-> | 791ff0d6...b2f4af06 | Succeeded | Bolt11       | Inbound  | 12,000          | -          |
+> | bdbaa199...e391ffe4 | Succeeded | Onchain      | Inbound  | 500,000,000     | 2,820,000  |
+> |---------------------+-----------+--------------+----------+-----------------+------------|
+> | cf903ea3...13b050c6 | Succeeded | Onchain      | Outbound | 40,000,000      | 254,000    |
+> |---------------------+-----------+--------------+----------+-----------------+------------|
+> | 9446d6e2...e483d763 | Succeeded | Onchain      | Inbound  | 27,889,000      | 111,000    |
+> |---------------------+-----------+--------------+----------+-----------------+------------|
+> | b29599a1...1e434a77 | Succeeded | Bolt11       | Inbound  | 12,000          | -          |
+> |---------------------+-----------+--------------+----------+-----------------+------------|
+> | cbb21dff...817788df | Succeeded | Onchain      | Outbound | 58,000,000      | 172,000    |
+> |---------------------+-----------+--------------+----------+-----------------+------------|
+> | d474d270...42e0a8e5 | Succeeded | Bolt12Refund | Outbound | 4,321           | 0          |
+> |---------------------+-----------+--------------+----------+-----------------+------------|
+> | 425ed4e4...6e55384c | Succeeded | Bolt11       | Outbound | 14,000          | 0          |
+> |---------------------+-----------+--------------+----------+-----------------+------------|
+> | d4958cf5...071f9dfa | Succeeded | Bolt11       | Outbound | 10,000          | 0          |
+> |---------------------+-----------+--------------+----------+-----------------+------------|
+> | ff09e8f0...b2441e32 | Succeeded | Onchain      | Inbound  | 1,000,000,000   | 2,820,000  |
+> |---------------------+-----------+--------------+----------+-----------------+------------|
+> | ed4a3d62...48dc36c5 | Succeeded | Bolt11       | Outbound | 11,000          | 0          |
+> |---------------------+-----------+--------------+----------+-----------------+------------|
+> | 8cbb3c44...262dd806 | Succeeded | Bolt11       | Outbound | 13,000          | 0          |
 > +---------------------+-----------+--------------+----------+-----------------+------------+
 >
 > ```
@@ -4511,6 +4513,46 @@ $ rgbldk ctx use node-b
 **Run:**
 
 ```bash
+$ rgbldk rgb ln invoice estimate-carrier
+
+```
+
+**Result:**
+
+> ```text
+> +---------------------------------+-----------------+
+> | Field                           | Value           |
+> +===================================================+
+> | Receive available               | yes             |
+> |---------------------------------+-----------------|
+> | Minimum viable carrier (msat)   | 1,000           |
+> |---------------------------------+-----------------|
+> | Minimum viable reason           | minimum_viable  |
+> |---------------------------------+-----------------|
+> | Default create carrier (msat)   | 330,000         |
+> |---------------------------------+-----------------|
+> | Default create reason           | admission_floor |
+> |---------------------------------+-----------------|
+> | Admission threshold (msat)      | 330,000         |
+> |---------------------------------+-----------------|
+> | Minimum allowed carrier (msat)  | 1,000           |
+> |---------------------------------+-----------------|
+> | Holder reserve threshold (msat) | 354,000         |
+> |---------------------------------+-----------------|
+> | Estimate only                   | yes             |
+> +---------------------------------+-----------------+
+> +------------------------------------------------------------------+--------+--------------+------------+---------+---------+----------+----------------+--------------+-----------------+
+> | Channel                                                          | Usable | Inbound msat | Local sats | Reserve | Receive | Min msat | Min reason     | Default msat | Default reason  |
+> +========================================================================================================================================================================================+
+> | 52c33a8fa2ea1bfa59c0305bec38b4baf2ff4ea08debe95f32787b7a469b114f | yes    | 78,294,124   | 20,045     | yes     | yes     | 1,000    | minimum_viable | 330,000      | admission_floor |
+> +------------------------------------------------------------------+--------+--------------+------------+---------+---------+----------+----------------+--------------+-----------------+
+> This is a current-state estimate only. Invoice creation and payment claim can still see different channel state; unsafe incoming payments are failed backwards instead of being claimed.
+>
+> ```
+
+**Run:**
+
+```bash
 $ rgbldk --color never --output json --pretty rgb ln invoice create-for-hash --contract-id <contract_id> --asset-amount 2 --payment-hash <payment_hash> --desc "rgb ln hold demo" --btc-carrier-amount-msat 3000000
 
 ```
@@ -4519,7 +4561,8 @@ $ rgbldk --color never --output json --pretty rgb ln invoice create-for-hash --c
 
 > ```text
 > {
->   "invoice": "lnbcrt30u1p4z4g7kdq6wfnkygrvdcsxsmmvvssxgetddupp5hvu3g9wqtcuawl9pwwqa803l05xdtefn9ed90yc34k4q4f3pqm5ssp56v4r958tlzynvjs5yuqj2nmzdhgyy5yqhhw0rmevzefjl2svyxrs9qrsgqxqrrsscqpjlp5vyemwlnlk4n7q75u4rvk6kn6xqgwgnu3lpz6jd93glh3k974rfqs7qpz28kseurajm357lcmt22qh22jvamnffclwfz7wlkngulvcshnpd0pvdfhrujlyhjtlu38r8kesk3unlammx2ljvzp5f7gr0lufhg5segqkat349"
+>   "invoice": "lnbcrt30u1p4yv8mzdq6wfnkygrvdcsxsmmvvssxgetddupp5hvu3g9wqtcuawl9pwwqa803l05xdtefn9ed90yc34k4q4f3pqm5ssp5j9rxc2h4fc0z2g36z4ak6nkh89mkug0tglvuvrkh4vspyehlkfxs9qrsgqxqrrsscqpjlp59m8n8a9vt2elr7hk37mn6q6g5mmv5rz82yyzrv5kvu9eek3wps9s7qpztxjk33v8lhmdjffk6csdjp3n0sg3em0rx3fay2kru4327673v7hhsratxjugf3rq9tvrfp5qm3wjz720mhf5reh4v9yshm7nk76au7cpvesyh2",
+>   "btc_carrier_amount_msat": "3000000"
 > }
 >
 > ```
@@ -4539,13 +4582,13 @@ $ rgbldk rgb ln invoice decode <invoice>
 > +============================================================================================+
 > | Payment hash          | bb391415c05e39d77ca17381d3be3f7d0cd5e5332e5a579311adaa0aa62106e9   |
 > |-----------------------+--------------------------------------------------------------------|
-> | Destination           | 03e13839d366e82ce83de7e663b2ce93aa380ec46327a33bb56534b1bc9d7a1e24 |
+> | Destination           | 02b127170b0422770c642dc888e0950a4b1309374514821f0d3fdb4055b1dfd204 |
 > |-----------------------+--------------------------------------------------------------------|
 > | Carrier amount (msat) | 3,000,000                                                          |
 > |-----------------------+--------------------------------------------------------------------|
 > | Expiry (secs)         | 3600                                                               |
 > |-----------------------+--------------------------------------------------------------------|
-> | Contract              | contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE          |
+> | Contract              | contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs          |
 > |-----------------------+--------------------------------------------------------------------|
 > | Asset amount          | 2                                                                  |
 > +-----------------------+--------------------------------------------------------------------+
@@ -4563,7 +4606,8 @@ $ rgbldk --color never --output json --pretty rgb ln invoice create --contract-i
 
 > ```text
 > {
->   "invoice": "lnbcrt50u1p4z4g7cdqjwfnkygrvdcsxgetddupp5dxrmr2dv0uvj7zgffvy68pfc052v8duxcf7zm9maah929wj309nssp5g4yceckp6hu5n6jghzkfsg92ggk75uurgjfkrgmfkuzmf3rnn3zq9qrsgqxqrrsscqpjlp5vyemwlnlk4n7q75u4rvk6kn6xqgwgnu3lpz6jd93glh3k974rfqs7qp9u6kv7hmt83k7604w8e96guqezatzhr62wu7asgt5xcmhvpqq0g2842659ze3wwc52ckykcgrpulrpsfe552prtfd9xed3gkt3hdlwesqzf89ur"
+>   "invoice": "lnbcrt50u1p4yv8mydqjwfnkygrvdcsxgetddupp5yhdszytlpyft0ca6egaeupucrxzacec85ufysm9rkdyzecqgac6ssp5yfqq6rmuhzn7tpwqkx6470cfgqkhjtw2dd8wmw4h03anztw3pygq9qrsgqxqrrsscqpjlp59m8n8a9vt2elr7hk37mn6q6g5mmv5rz82yyzrv5kvu9eek3wps9s7qp9xjvxjfv040j22u6w7kd8cjmzfylr3fx9cw8emqru9g5tvv5lmrsytd8dczmv6vsnwp578gqhgy6uvulyg8vuga56qgj0ec6p7kd53wspqr9m6k",
+>   "btc_carrier_amount_msat": "5000000"
 > }
 >
 > ```
@@ -4581,15 +4625,15 @@ $ rgbldk rgb ln invoice decode <invoice>
 > +-----------------------+--------------------------------------------------------------------+
 > | Field                 | Value                                                              |
 > +============================================================================================+
-> | Payment hash          | 6987b1a9ac7f192f09094b09a385387d14c3b786c27c2d977dedcaa2ba517967   |
+> | Payment hash          | 25db01117f0912b7e3baca3b9e07981985dc6707a712486ca3b3482ce008ee35   |
 > |-----------------------+--------------------------------------------------------------------|
-> | Destination           | 03e13839d366e82ce83de7e663b2ce93aa380ec46327a33bb56534b1bc9d7a1e24 |
+> | Destination           | 02b127170b0422770c642dc888e0950a4b1309374514821f0d3fdb4055b1dfd204 |
 > |-----------------------+--------------------------------------------------------------------|
 > | Carrier amount (msat) | 5,000,000                                                          |
 > |-----------------------+--------------------------------------------------------------------|
 > | Expiry (secs)         | 3600                                                               |
 > |-----------------------+--------------------------------------------------------------------|
-> | Contract              | contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE          |
+> | Contract              | contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs          |
 > |-----------------------+--------------------------------------------------------------------|
 > | Asset amount          | 5                                                                  |
 > +-----------------------+--------------------------------------------------------------------+
@@ -4622,7 +4666,7 @@ $ rgbldk --color never --output json --pretty rgb ln pay --invoice <invoice>
 
 > ```text
 > {
->   "payment_id": "6987b1a9ac7f192f09094b09a385387d14c3b786c27c2d977dedcaa2ba517967"
+>   "payment_id": "25db01117f0912b7e3baca3b9e07981985dc6707a712486ca3b3482ce008ee35"
 > }
 >
 > ```
@@ -4630,7 +4674,7 @@ $ rgbldk --color never --output json --pretty rgb ln pay --invoice <invoice>
 **Run:**
 
 ```bash
-$ rgbldk pay wait 6987b1a9ac7f192f09094b09a385387d14c3b786c27c2d977dedcaa2ba517967 --timeout-secs 60
+$ rgbldk pay wait 25db01117f0912b7e3baca3b9e07981985dc6707a712486ca3b3482ce008ee35 --timeout-secs 60
 
 ```
 
@@ -4640,14 +4684,14 @@ $ rgbldk pay wait 6987b1a9ac7f192f09094b09a385387d14c3b786c27c2d977dedcaa2ba5179
 > [OK] Payment wait
 >   [OK] Payment Id Valid
 >   [OK] Payment Terminal: Succeeded
-> 6987b1a9ac7f192f09094b09a385387d14c3b786c27c2d977dedcaa2ba517967
+> 25db01117f0912b7e3baca3b9e07981985dc6707a712486ca3b3482ce008ee35
 >
 > ```
 
 **Run:**
 
 ```bash
-$ rgbldk pay get 6987b1a9ac7f192f09094b09a385387d14c3b786c27c2d977dedcaa2ba517967
+$ rgbldk pay get 25db01117f0912b7e3baca3b9e07981985dc6707a712486ca3b3482ce008ee35
 
 ```
 
@@ -4657,7 +4701,7 @@ $ rgbldk pay get 6987b1a9ac7f192f09094b09a385387d14c3b786c27c2d977dedcaa2ba51796
 > +-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 > | Field           | Value                                                                                                                                                                                                                                                                                                                                                                                     |
 > +=============================================================================================================================================================================================================================================================================================================================================================================================================+
-> | id              | 6987b1a9ac7f192f09094b09a385387d14c3b786c27c2d977dedcaa2ba517967                                                                                                                                                                                                                                                                                                                          |
+> | id              | 25db01117f0912b7e3baca3b9e07981985dc6707a712486ca3b3482ce008ee35                                                                                                                                                                                                                                                                                                                          |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | direction       | Outbound                                                                                                                                                                                                                                                                                                                                                                                  |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -4665,7 +4709,7 @@ $ rgbldk pay get 6987b1a9ac7f192f09094b09a385387d14c3b786c27c2d977dedcaa2ba51796
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | kind            | Bolt11                                                                                                                                                                                                                                                                                                                                                                                    |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-> | kind_details    | {"payment_hash":"6987b1a9ac7f192f09094b09a385387d14c3b786c27c2d977dedcaa2ba517967","preimage":"22d89717f8d14143616bb07a4bdbc7644c90b7d5298fc68d18df6a17ddd10251","rgb":{"asset_amount":"5","contract_id":"contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE","direction":"Outbound","is_swap":false},"secret":"45498ce2c1d5f949ea48b8ac9820aa422dea7383449361a369b705b4c4739c44"} |
+> | kind_details    | {"payment_hash":"25db01117f0912b7e3baca3b9e07981985dc6707a712486ca3b3482ce008ee35","preimage":"a8358b3e0073b34abbf47060994ad9e33f2b0e624c574c2b3a4a689668080f93","rgb":{"asset_amount":"5","contract_id":"contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs","direction":"Outbound","is_swap":false},"secret":"22400d0f7cb8a7e585c0b1b55f3f09402d792dca6b4eedbab77c7b312dd10910"} |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | amount (msat)   | 5,000,000 msat                                                                                                                                                                                                                                                                                                                                                                            |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -4694,6 +4738,46 @@ $ rgbldk ctx use node-a
 **Run:**
 
 ```bash
+$ rgbldk rgb ln invoice estimate-carrier
+
+```
+
+**Result:**
+
+> ```text
+> +---------------------------------+-----------------+
+> | Field                           | Value           |
+> +===================================================+
+> | Receive available               | yes             |
+> |---------------------------------+-----------------|
+> | Minimum viable carrier (msat)   | 1,000           |
+> |---------------------------------+-----------------|
+> | Minimum viable reason           | minimum_viable  |
+> |---------------------------------+-----------------|
+> | Default create carrier (msat)   | 330,000         |
+> |---------------------------------+-----------------|
+> | Default create reason           | admission_floor |
+> |---------------------------------+-----------------|
+> | Admission threshold (msat)      | 330,000         |
+> |---------------------------------+-----------------|
+> | Minimum allowed carrier (msat)  | 1,000           |
+> |---------------------------------+-----------------|
+> | Holder reserve threshold (msat) | 354,000         |
+> |---------------------------------+-----------------|
+> | Estimate only                   | yes             |
+> +---------------------------------+-----------------+
+> +------------------------------------------------------------------+--------+--------------+------------+---------+---------+----------+----------------+--------------+-----------------+
+> | Channel                                                          | Usable | Inbound msat | Local sats | Reserve | Receive | Min msat | Min reason     | Default msat | Default reason  |
+> +========================================================================================================================================================================================+
+> | 52c33a8fa2ea1bfa59c0305bec38b4baf2ff4ea08debe95f32787b7a469b114f | yes    | 24,045,876   | 74,954     | yes     | yes     | 1,000    | minimum_viable | 330,000      | admission_floor |
+> +------------------------------------------------------------------+--------+--------------+------------+---------+---------+----------+----------------+--------------+-----------------+
+> This is a current-state estimate only. Invoice creation and payment claim can still see different channel state; unsafe incoming payments are failed backwards instead of being claimed.
+>
+> ```
+
+**Run:**
+
+```bash
 $ rgbldk --color never --output json --pretty rgb ln invoice create --contract-id <contract_id> --asset-amount 3 --desc "rgb ln demo back" --btc-carrier-amount-msat 4000000
 
 ```
@@ -4702,7 +4786,8 @@ $ rgbldk --color never --output json --pretty rgb ln invoice create --contract-i
 
 > ```text
 > {
->   "invoice": "lnbcrt40u1p4z4g7ldq6wfnkygrvdcsxgetddusxyctrdvpp5wy96h9yxq22m3nkkatcmms8lws3xqtkdm7tqat6e8uqdz3js9emqsp5hh0sxpdgt82z7xc3d6h96lye7wamqx9t290kgxr6t6jcufv6l98q9qrsgqxqrrsscqpjlp5vyemwlnlk4n7q75u4rvk6kn6xqgwgnu3lpz6jd93glh3k974rfqs7qprwy628zdp6mlxa7dsre7c473mc5ep3erh9sumu8vwl8n3h7ean9w3yp9tgx23u0ss0npw07hzmrlx06zr6usrs223xfjy5pwcvfcxlagq57dxh8"
+>   "invoice": "lnbcrt40u1p4yv8mvdq6wfnkygrvdcsxgetddusxyctrdvpp5dw5q22phsky45hdtm863pda5fr2tr5guqtw0svywfs9f7pknjz8qsp5hv5530g67qagjkypq0ysfhpguxz2emtygc5mx747y2ewv5q0q2ss9qrsgqxqrrsscqpjlp59m8n8a9vt2elr7hk37mn6q6g5mmv5rz82yyzrv5kvu9eek3wps9s7qprwm73wz00t9y6x39fgt9d2sdecplynkcgsw82zfauac3hr3fvw749x7e3prugemk2k84zcyk3vpm6tnxhwm04nn4kd9hdtrmrrzpe3nqpednvww",
+>   "btc_carrier_amount_msat": "4000000"
 > }
 >
 > ```
@@ -4720,15 +4805,15 @@ $ rgbldk rgb ln invoice decode <invoice>
 > +-----------------------+--------------------------------------------------------------------+
 > | Field                 | Value                                                              |
 > +============================================================================================+
-> | Payment hash          | 710bab94860295b8ced6eaf1bdc0ff7422602ecddf960eaf593f00d146502e76   |
+> | Payment hash          | 6ba805283785895a5dabd9f510b7b448d4b1d11c02dcf8308e4c0a9f06d3908e   |
 > |-----------------------+--------------------------------------------------------------------|
-> | Destination           | 03a40c278b4fb9dc536162fdfe8d8343de0cdd36ba1d6d4b420683929cbed8e546 |
+> | Destination           | 022c41148b6c80f47b184e22bf2d47f20c27048094a427d74d961c27720b03bd34 |
 > |-----------------------+--------------------------------------------------------------------|
 > | Carrier amount (msat) | 4,000,000                                                          |
 > |-----------------------+--------------------------------------------------------------------|
 > | Expiry (secs)         | 3600                                                               |
 > |-----------------------+--------------------------------------------------------------------|
-> | Contract              | contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE          |
+> | Contract              | contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs          |
 > |-----------------------+--------------------------------------------------------------------|
 > | Asset amount          | 3                                                                  |
 > +-----------------------+--------------------------------------------------------------------+
@@ -4761,7 +4846,7 @@ $ rgbldk --color never --output json --pretty rgb ln pay --invoice <invoice>
 
 > ```text
 > {
->   "payment_id": "710bab94860295b8ced6eaf1bdc0ff7422602ecddf960eaf593f00d146502e76"
+>   "payment_id": "6ba805283785895a5dabd9f510b7b448d4b1d11c02dcf8308e4c0a9f06d3908e"
 > }
 >
 > ```
@@ -4769,7 +4854,7 @@ $ rgbldk --color never --output json --pretty rgb ln pay --invoice <invoice>
 **Run:**
 
 ```bash
-$ rgbldk pay wait 710bab94860295b8ced6eaf1bdc0ff7422602ecddf960eaf593f00d146502e76 --timeout-secs 60
+$ rgbldk pay wait 6ba805283785895a5dabd9f510b7b448d4b1d11c02dcf8308e4c0a9f06d3908e --timeout-secs 60
 
 ```
 
@@ -4779,14 +4864,14 @@ $ rgbldk pay wait 710bab94860295b8ced6eaf1bdc0ff7422602ecddf960eaf593f00d146502e
 > [OK] Payment wait
 >   [OK] Payment Id Valid
 >   [OK] Payment Terminal: Succeeded
-> 710bab94860295b8ced6eaf1bdc0ff7422602ecddf960eaf593f00d146502e76
+> 6ba805283785895a5dabd9f510b7b448d4b1d11c02dcf8308e4c0a9f06d3908e
 >
 > ```
 
 **Run:**
 
 ```bash
-$ rgbldk pay get 710bab94860295b8ced6eaf1bdc0ff7422602ecddf960eaf593f00d146502e76
+$ rgbldk pay get 6ba805283785895a5dabd9f510b7b448d4b1d11c02dcf8308e4c0a9f06d3908e
 
 ```
 
@@ -4796,7 +4881,7 @@ $ rgbldk pay get 710bab94860295b8ced6eaf1bdc0ff7422602ecddf960eaf593f00d146502e7
 > +-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 > | Field           | Value                                                                                                                                                                                                                                                                                                                                                                                     |
 > +=============================================================================================================================================================================================================================================================================================================================================================================================================+
-> | id              | 710bab94860295b8ced6eaf1bdc0ff7422602ecddf960eaf593f00d146502e76                                                                                                                                                                                                                                                                                                                          |
+> | id              | 6ba805283785895a5dabd9f510b7b448d4b1d11c02dcf8308e4c0a9f06d3908e                                                                                                                                                                                                                                                                                                                          |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | direction       | Outbound                                                                                                                                                                                                                                                                                                                                                                                  |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -4804,7 +4889,7 @@ $ rgbldk pay get 710bab94860295b8ced6eaf1bdc0ff7422602ecddf960eaf593f00d146502e7
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | kind            | Bolt11                                                                                                                                                                                                                                                                                                                                                                                    |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-> | kind_details    | {"payment_hash":"710bab94860295b8ced6eaf1bdc0ff7422602ecddf960eaf593f00d146502e76","preimage":"b65d71bed8afd9c4a4cb1fe1131b3de127c6e2c5f64d784c928473e8356c5c09","rgb":{"asset_amount":"3","contract_id":"contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE","direction":"Outbound","is_swap":false},"secret":"bddf0305a859d42f1b116eae5d7c99f3bbb018ab515f64187a5ea58e259af94e"} |
+> | kind_details    | {"payment_hash":"6ba805283785895a5dabd9f510b7b448d4b1d11c02dcf8308e4c0a9f06d3908e","preimage":"5be5aacd92db2423efcd7c356578b9cd8de440c7517043aef67c87f307e49607","rgb":{"asset_amount":"3","contract_id":"contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs","direction":"Outbound","is_swap":false},"secret":"bb2948bd1af03a89588103c904dc28e184aced644629b37abe22b2e6500f02a1"} |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | amount (msat)   | 4,000,000 msat                                                                                                                                                                                                                                                                                                                                                                            |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -4844,7 +4929,7 @@ $ rgbldk channel ls
 > +---------------------+---------------------+-----------------+-------+--------+---------------------+-----------+------------+
 > | User Channel ID     | Counterparty        | Capacity (sats) | Ready | Usable | RGB Contract        | RGB Local | RGB Remote |
 > +=============================================================================================================================+
-> | 682d5789...3bd1e1ea | 03e13839...9d7a1e24 | 100000          | true  | true   | contract...-GxfVGkE | 8         | 2          |
+> | 3e2068aa...dd060a0f | 02b12717...b1dfd204 | 100000          | true  | true   | contract...-nNouDAs | 8         | 2          |
 > +---------------------+---------------------+-----------------+-------+--------+---------------------+-----------+------------+
 >
 > ```
@@ -4877,7 +4962,7 @@ $ rgbldk channel ls
 > +---------------------+---------------------+-----------------+-------+--------+---------------------+-----------+------------+
 > | User Channel ID     | Counterparty        | Capacity (sats) | Ready | Usable | RGB Contract        | RGB Local | RGB Remote |
 > +=============================================================================================================================+
-> | 5d224561...0f018f66 | 03a40c27...bed8e546 | 100000          | true  | true   | contract...-GxfVGkE | 2         | 8          |
+> | b1bdacd5...65bd73cd | 022c4114...0b03bd34 | 100000          | true  | true   | contract...-nNouDAs | 2         | 8          |
 > +---------------------+---------------------+-----------------+-------+--------+---------------------+-----------+------------+
 >
 > ```
@@ -4910,7 +4995,7 @@ $ rgbldk --color never --output json --pretty pay keysend send --node-id <node_i
 
 > ```text
 > {
->   "payment_id": "0072e8e3d1b0147cb67c072476afa9eb82156159e2ed0c747054e8789f7a79ca"
+>   "payment_id": "49aeb380c605028f98dbc712c5b793630ba6a3ef37a2e57ea166e665008a2f6c"
 > }
 >
 > ```
@@ -4918,7 +5003,7 @@ $ rgbldk --color never --output json --pretty pay keysend send --node-id <node_i
 **Run:**
 
 ```bash
-$ rgbldk pay wait 0072e8e3d1b0147cb67c072476afa9eb82156159e2ed0c747054e8789f7a79ca --timeout-secs 60
+$ rgbldk pay wait 49aeb380c605028f98dbc712c5b793630ba6a3ef37a2e57ea166e665008a2f6c --timeout-secs 60
 
 ```
 
@@ -4928,14 +5013,14 @@ $ rgbldk pay wait 0072e8e3d1b0147cb67c072476afa9eb82156159e2ed0c747054e8789f7a79
 > [OK] Payment wait
 >   [OK] Payment Id Valid
 >   [OK] Payment Terminal: Succeeded
-> 0072e8e3d1b0147cb67c072476afa9eb82156159e2ed0c747054e8789f7a79ca
+> 49aeb380c605028f98dbc712c5b793630ba6a3ef37a2e57ea166e665008a2f6c
 >
 > ```
 
 **Run:**
 
 ```bash
-$ rgbldk pay get 0072e8e3d1b0147cb67c072476afa9eb82156159e2ed0c747054e8789f7a79ca
+$ rgbldk pay get 49aeb380c605028f98dbc712c5b793630ba6a3ef37a2e57ea166e665008a2f6c
 
 ```
 
@@ -4945,7 +5030,7 @@ $ rgbldk pay get 0072e8e3d1b0147cb67c072476afa9eb82156159e2ed0c747054e8789f7a79c
 > +-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 > | Field           | Value                                                                                                                                                             |
 > +=====================================================================================================================================================================================+
-> | id              | 0072e8e3d1b0147cb67c072476afa9eb82156159e2ed0c747054e8789f7a79ca                                                                                                  |
+> | id              | 49aeb380c605028f98dbc712c5b793630ba6a3ef37a2e57ea166e665008a2f6c                                                                                                  |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | direction       | Outbound                                                                                                                                                          |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -4953,7 +5038,7 @@ $ rgbldk pay get 0072e8e3d1b0147cb67c072476afa9eb82156159e2ed0c747054e8789f7a79c
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | kind            | Spontaneous                                                                                                                                                       |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-> | kind_details    | {"payment_hash":"0072e8e3d1b0147cb67c072476afa9eb82156159e2ed0c747054e8789f7a79ca","preimage":"304bbefd2a1a72c11b4a6d6bce5dbc25409984824a5fabb79ad53219a162339c"} |
+> | kind_details    | {"payment_hash":"49aeb380c605028f98dbc712c5b793630ba6a3ef37a2e57ea166e665008a2f6c","preimage":"62f8bec5bc23d421841c7a7ff3f459628dec62d13141d7df261493ecc4aba9bf"} |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | amount (msat)   | 1,234 msat                                                                                                                                                        |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -4990,7 +5075,7 @@ $ rgbldk --color never --output json --pretty pay keysend send --node-id <node_i
 
 > ```text
 > {
->   "payment_id": "9e9ea37865aa30be705a93ae289dbc1feda127f0af391f3aa672ea07573d9c1b"
+>   "payment_id": "0ef2dfa683e09a9b19fd0c9ac1b8b21cc340d758936f23fe5bc594aed474294b"
 > }
 >
 > ```
@@ -4998,7 +5083,7 @@ $ rgbldk --color never --output json --pretty pay keysend send --node-id <node_i
 **Run:**
 
 ```bash
-$ rgbldk pay wait 9e9ea37865aa30be705a93ae289dbc1feda127f0af391f3aa672ea07573d9c1b --timeout-secs 60
+$ rgbldk pay wait 0ef2dfa683e09a9b19fd0c9ac1b8b21cc340d758936f23fe5bc594aed474294b --timeout-secs 60
 
 ```
 
@@ -5008,7 +5093,7 @@ $ rgbldk pay wait 9e9ea37865aa30be705a93ae289dbc1feda127f0af391f3aa672ea07573d9c
 > [X] Details
 >   [OK] Payment Id Valid
 >   [OK] Payment Terminal: Failed
-> 9e9ea37865aa30be705a93ae289dbc1feda127f0af391f3aa672ea07573d9c1b
+> 0ef2dfa683e09a9b19fd0c9ac1b8b21cc340d758936f23fe5bc594aed474294b
 > payment failed
 >
 > ```
@@ -5016,7 +5101,7 @@ $ rgbldk pay wait 9e9ea37865aa30be705a93ae289dbc1feda127f0af391f3aa672ea07573d9c
 **Run:**
 
 ```bash
-$ rgbldk pay get 9e9ea37865aa30be705a93ae289dbc1feda127f0af391f3aa672ea07573d9c1b
+$ rgbldk pay get 0ef2dfa683e09a9b19fd0c9ac1b8b21cc340d758936f23fe5bc594aed474294b
 
 ```
 
@@ -5026,7 +5111,7 @@ $ rgbldk pay get 9e9ea37865aa30be705a93ae289dbc1feda127f0af391f3aa672ea07573d9c1
 > +-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 > | Field           | Value                                                                                                                                                             |
 > +=====================================================================================================================================================================================+
-> | id              | 9e9ea37865aa30be705a93ae289dbc1feda127f0af391f3aa672ea07573d9c1b                                                                                                  |
+> | id              | 0ef2dfa683e09a9b19fd0c9ac1b8b21cc340d758936f23fe5bc594aed474294b                                                                                                  |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | direction       | Outbound                                                                                                                                                          |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -5034,7 +5119,7 @@ $ rgbldk pay get 9e9ea37865aa30be705a93ae289dbc1feda127f0af391f3aa672ea07573d9c1
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | kind            | Spontaneous                                                                                                                                                       |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-> | kind_details    | {"payment_hash":"9e9ea37865aa30be705a93ae289dbc1feda127f0af391f3aa672ea07573d9c1b","preimage":"f3b6d395c9d23acad1eb00c54d2a373fd4e109863eba06e6bc4623012087a4f6"} |
+> | kind_details    | {"payment_hash":"0ef2dfa683e09a9b19fd0c9ac1b8b21cc340d758936f23fe5bc594aed474294b","preimage":"0d4c5b22b0b15d2b9db58399ac117d1ceae2a1befc5e461a9a3bbf7cbda91954"} |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 > | amount (msat)   | 2,345 msat                                                                                                                                                        |
 > |-----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -5078,7 +5163,7 @@ $ rgbldk --connect http://127.0.0.1:8501 events watch --count 1
 **Result:**
 
 > ```text
-> ChannelPending funding_txo=0e7f12de3fe5da60ca47b20acdda5caab39bc4d610f033e667e1ae43561e70bf:0
+> ChannelPending funding_txo=3ca1a52c911def17a28e8b4bfe7cdbacb1395046432ac3977bf44ec0309829a8:1
 >
 > ```
 
@@ -5092,7 +5177,7 @@ $ rgbldk --connect http://127.0.0.1:8502 events watch --count 1
 **Result:**
 
 > ```text
-> ChannelPending funding_txo=0e7f12de3fe5da60ca47b20acdda5caab39bc4d610f033e667e1ae43561e70bf:0
+> ChannelPending funding_txo=3ca1a52c911def17a28e8b4bfe7cdbacb1395046432ac3977bf44ec0309829a8:1
 >
 > ```
 
@@ -5106,7 +5191,7 @@ $ rgbldk --connect http://127.0.0.1:8501 events next
 **Result:**
 
 > ```text
-> ChannelReady user_channel_id=d972a527a27857ea35685fd22cac9df4
+> ChannelReady user_channel_id=cb68c2bf90071077eabc9aee5034cd9a
 >
 > ```
 
@@ -5134,7 +5219,7 @@ $ rgbldk --connect http://127.0.0.1:8502 events next
 **Result:**
 
 > ```text
-> ChannelReady user_channel_id=4d698d0429f760727de7c8f34fd6e149
+> ChannelReady user_channel_id=e31ab7ff562b14dad77b10f4e3e05dfd
 >
 > ```
 
@@ -5176,7 +5261,7 @@ $ rgbldk channel close --user-channel-id <user_channel_id> --counterparty-node-i
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 bcrt1q044mynz56qmlhn6t4j3shktrg90khe4cts7m7k
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 bcrt1ql2ldkxnh3y06ph73pjdn2kdy9lc2dwaychc5hd
 
 ```
 
@@ -5184,12 +5269,12 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 
 > ```text
 > [
->   "342dcad957c6907ff5a823c86754ad9048159789752d5e31b4baa9126ae9f17c",
->   "50ae0b575ad14c81846aed6cb83acfbe6c120673ceea1bd2b092ba1c5720221b",
->   "5d2164587b5a5d1691d44e060fa8bdc511a236f74c344daff74e9733d5a658b4",
->   "61eab1d67c229ead1f3b417c55cbef19b537fe133c9f6a40b84b5bd38e0f8423",
->   "5d08b87ee71fb8998f3bdbeb605fa13a68c151a20868d7b60c0d5510a3b88585",
->   "540b3789367a5c49c1ec71bfbe1ce6156c1e2491d8956be5adf72ec0e9d42efc"
+>   "299dda9e495505c8c27c9cb2f53f8e649640f97529065f488385eeb362f6dbae",
+>   "35021dd4d3f6e72c99806217578d2a81b0cf947a349ae2fd8e7039ed79febc67",
+>   "72c596a4773607fa590a92737c922895d19c0f5a64155dee6439547858f9181a",
+>   "2c2cf722e02ef54e7cdd0e113db52df74e36063167180a4631acf2c56b41b0ed",
+>   "2fe803c7e29db0aee2205f9ff0ed8050e2bbd23bd9666ac4f5da58cb3b2ce7cd",
+>   "1d6db9d1f572f5060f2029886fd9b2f1fac13c241c89d25b963e04b02262ec27"
 > ]
 >
 > ```
@@ -5205,7 +5290,7 @@ $ rgbldk wallet sync
 
 > ```text
 > Wallet synced.
-> BTC balance change: on-chain total +74,582 sats, spendable 0 sats, anchor reserve 0 sats, lightning 0 sats.
+> BTC balance change: on-chain total +76,941 sats, spendable 0 sats, anchor reserve 0 sats, lightning 0 sats.
 >
 > ```
 
@@ -5237,18 +5322,18 @@ $ rgbldk wallet balance
 > +--------------------------+----------------+
 > | Asset                    | Balance        |
 > +===========================================+
-> | BTC On-chain (total)     | 1.01534045 BTC |
+> | BTC On-chain (total)     | 1.01536404 BTC |
 > |--------------------------+----------------|
 > | BTC On-chain (spendable) | 1.01459463 BTC |
 > |--------------------------+----------------|
 > | BTC Anchor reserve       |         0 sats |
 > |--------------------------+----------------|
-> | BTC Lightning (total)    |    71,812 sats |
+> | BTC Lightning (total)    |    76,348 sats |
 > +--------------------------+----------------+
 > +-----------------------------------------------------------+-----------------------------------------------------------+-------+-----------+----------+-------+
 > | RGB L1 Contract                                           | Contract                                                  | Mined | Tentative | Offchain | Total |
 > +==============================================================================================================================================================+
-> | contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE | contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE |     7 |         0 |        0 |     7 |
+> | contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs | contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs |     7 |         0 |        0 |     7 |
 > +-----------------------------------------------------------+-----------------------------------------------------------+-------+-----------+----------+-------+
 >
 > ```
@@ -5277,7 +5362,7 @@ $ rgbldk --connect http://127.0.0.1:8502 wallet balance
 > +-----------------------------------------------------------+-----------------------------------------------------------+-------+-----------+----------+-------+
 > | RGB L1 Contract                                           | Contract                                                  | Mined | Tentative | Offchain | Total |
 > +==============================================================================================================================================================+
-> | contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE | contract:YTO3fn_1-Z_B6nKj-ZbVp6MB-DkT5H4R-ak0sUfv-GxfVGkE |    83 |         0 |        0 |    83 |
+> | contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs | contract:Ls8z9Kxa-s~H69o_-3PQNIpv-bKDEdRC-CGylmcL-nNouDAs |    83 |         0 |        0 |    83 |
 > +-----------------------------------------------------------+-----------------------------------------------------------+-------+-----------+----------+-------+
 >
 > ```
@@ -5295,7 +5380,7 @@ $ rgbldk channel open --node-id <node_id_b> --addr <node_b_p2p> --amount-sats 50
 
 > ```text
 > {
->   "user_channel_id": "05863a3a1273d0a768201a587574d03b"
+>   "user_channel_id": "efdd318fab46661fff142f76753cb0f7"
 > }
 >
 > ```
@@ -5303,7 +5388,7 @@ $ rgbldk channel open --node-id <node_id_b> --addr <node_b_p2p> --amount-sats 50
 **Run:**
 
 ```bash
-$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 bcrt1q044mynz56qmlhn6t4j3shktrg90khe4cts7m7k
+$ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 bcrt1ql2ldkxnh3y06ph73pjdn2kdy9lc2dwaychc5hd
 
 ```
 
@@ -5311,12 +5396,12 @@ $ docker compose -f crates/cli/docker-compose.yaml exec -T bitcoind bitcoin-cli 
 
 > ```text
 > [
->   "4223c23e8f9d418128f0d543fdad986be47f4ac9e81756145b2be0113f8ff096",
->   "59a42c58f0c097bf49822d4c8ee1f0dc71a7c830511f5a9a138d1b4082190fb7",
->   "3482af029f656badffb366eae0fb56352810c191d6e3a6785f0b9fb6b302a6df",
->   "35c4add0f5c5621fee2a6983df0512975b2a4cdb757e1332bdeed634e4217ad1",
->   "256e74b6b66ec49c0cf927d075241ea4cdf9a57e164b5aa8b68078b7cf7e58df",
->   "2ef8ae83feff57720e6f892045dc3eeeb6a2efe10b40c0f48edb3c18cee9192f"
+>   "6f4b7f59d97b6971b618d5a66c4c93ff7a4dacd30e218b56aed8ccddd08f549e",
+>   "027caf515685c97e59f63d8619886346b05840f5357b43478d80374c54dd6415",
+>   "740400ebc4cbed8534ffc9db85a66649c9c18e9498d4e6a1ea100db63c501bbe",
+>   "14dfb1309e2bb21cab7e8a7a423df41fb11fc65508b41d3d3b6ded8625a8d14d",
+>   "69445d1037d982914bf852478803e0ed6ecf0932af3570cafcb2ee0945249922",
+>   "122e2f734b7ffad874754d7d174a5975abcdde946b78c4ff5dcb8f87d5719f0f"
 > ]
 >
 > ```

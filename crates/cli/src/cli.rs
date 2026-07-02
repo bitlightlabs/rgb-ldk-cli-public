@@ -744,6 +744,8 @@ pub enum RgbLnCommand {
 
 #[derive(Subcommand, Debug)]
 pub enum RgbLnInvoiceCommand {
+	/// Estimate RGB LN invoice carrier amounts from current channel state.
+	EstimateCarrier,
 	/// Create a BOLT11 invoice embedding RGB fields.
 	Create(RgbLnInvoiceCreateArgs),
 	/// Create a BOLT11 invoice embedding RGB fields for a specific payment hash.
@@ -763,7 +765,7 @@ pub struct RgbLnInvoiceCreateArgs {
 	#[arg(long, default_value_t = 3600)]
 	pub expiry_secs: u32,
 	#[arg(long)]
-	pub btc_carrier_amount_msat: u64,
+	pub btc_carrier_amount_msat: Option<u64>,
 }
 
 #[derive(Args, Debug)]
@@ -780,7 +782,7 @@ pub struct RgbLnInvoiceCreateForHashArgs {
 	#[arg(long, default_value_t = 3600)]
 	pub expiry_secs: u32,
 	#[arg(long)]
-	pub btc_carrier_amount_msat: u64,
+	pub btc_carrier_amount_msat: Option<u64>,
 }
 
 #[derive(Args, Debug)]

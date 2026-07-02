@@ -46,6 +46,7 @@ import {
   RgbDescriptorResponse,
   RgbIssuersImportResponse,
   RgbIssuersResponse,
+  RgbLnCarrierEstimateResponse,
   RgbLnInvoiceCreateForHashRequest,
   RgbLnInvoiceCreateRequest,
   RgbLnInvoiceDecodeRequest,
@@ -91,7 +92,9 @@ import {
   decodeRgbContractBalanceResponse,
   decodeRgbContractsResponse,
   decodeRgbContractsIssueResponse,
+  decodeRgbLnCarrierEstimateResponse,
   decodeRgbLnInvoiceDecodeResponse,
+  decodeRgbLnInvoiceResponse,
   decodeRgbOnchainInvoiceDecodeResponse,
   decodeRgbOnchainPaymentsResponse,
   decodeRgbOnchainReceiveResponse,
@@ -436,9 +439,18 @@ export class NodeHttpClient {
 
   // ---- RGB Lightning ----
 
+  // POST /rgb/ln/invoice/estimate_carrier
+  rgbLnInvoiceEstimateCarrier(options?: RequestOptions): Promise<RgbLnCarrierEstimateResponse> {
+    return this.request<unknown>("POST", "/rgb/ln/invoice/estimate_carrier", {}, options).then((v) =>
+      decodeRgbLnCarrierEstimateResponse(v)
+    ) as Promise<RgbLnCarrierEstimateResponse>;
+  }
+
   // POST /rgb/ln/invoice/create
   rgbLnInvoiceCreate(req: RgbLnInvoiceCreateRequest, options?: RequestOptions): Promise<RgbLnInvoiceResponse> {
-    return this.request<RgbLnInvoiceResponse>("POST", "/rgb/ln/invoice/create", req, options) as Promise<RgbLnInvoiceResponse>;
+    return this.request<unknown>("POST", "/rgb/ln/invoice/create", req, options).then((v) =>
+      decodeRgbLnInvoiceResponse(v)
+    ) as Promise<RgbLnInvoiceResponse>;
   }
 
   // POST /rgb/ln/invoice/create_for_hash
@@ -446,12 +458,12 @@ export class NodeHttpClient {
     req: RgbLnInvoiceCreateForHashRequest,
     options?: RequestOptions,
   ): Promise<RgbLnInvoiceResponse> {
-    return this.request<RgbLnInvoiceResponse>(
+    return this.request<unknown>(
       "POST",
       "/rgb/ln/invoice/create_for_hash",
       req,
       options,
-    ) as Promise<RgbLnInvoiceResponse>;
+    ).then((v) => decodeRgbLnInvoiceResponse(v)) as Promise<RgbLnInvoiceResponse>;
   }
 
   // POST /rgb/ln/invoice/decode

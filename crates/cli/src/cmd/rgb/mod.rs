@@ -4,13 +4,14 @@ use rgbldk_http_client::dto::{
 	OkResponse, RgbContractBalanceResponse, RgbContractKnownResponse, RgbContractsExportRequest,
 	RgbContractsExportResponse, RgbContractsImportResponse, RgbContractsIssueRequest,
 	RgbContractsIssueResponse, RgbContractsResponse, RgbDescriptorResponse,
-	RgbIssuersImportResponse, RgbIssuersResponse, RgbLnInvoiceCreateForHashRequest,
-	RgbLnInvoiceCreateRequest, RgbLnInvoiceDecodeRequest, RgbLnInvoiceDecodeResponse,
-	RgbLnInvoiceResponse, RgbLnPayRequest, RgbNewAddressResponse, RgbOnchainInvoiceCreateRequest,
-	RgbOnchainInvoiceDecodeRequest, RgbOnchainInvoiceDecodeResponse, RgbOnchainInvoiceResponse,
-	RgbOnchainPaymentsResponse, RgbOnchainReceiveRequest, RgbOnchainReceiveResponse,
-	RgbOnchainSendRequest, RgbOnchainSendResponse, RgbSignMessageAlgorithmDto,
-	RgbSignMessageEncodingDto, RgbSignMessageRequest, RgbSignMessageResponse, SendResponse,
+	RgbIssuersImportResponse, RgbIssuersResponse, RgbLnCarrierEstimateResponse,
+	RgbLnInvoiceCreateForHashRequest, RgbLnInvoiceCreateRequest, RgbLnInvoiceDecodeRequest,
+	RgbLnInvoiceDecodeResponse, RgbLnInvoiceResponse, RgbLnPayRequest, RgbNewAddressResponse,
+	RgbOnchainInvoiceCreateRequest, RgbOnchainInvoiceDecodeRequest,
+	RgbOnchainInvoiceDecodeResponse, RgbOnchainInvoiceResponse, RgbOnchainPaymentsResponse,
+	RgbOnchainReceiveRequest, RgbOnchainReceiveResponse, RgbOnchainSendRequest,
+	RgbOnchainSendResponse, RgbSignMessageAlgorithmDto, RgbSignMessageEncodingDto,
+	RgbSignMessageRequest, RgbSignMessageResponse, SendResponse,
 };
 
 use crate::app::App;
@@ -463,6 +464,17 @@ async fn handle_issuers(app: &App, command: &RgbIssuersCommand) {
 async fn handle_ln(app: &App, command: &RgbLnCommand) {
 	match command {
 		RgbLnCommand::Invoice { command } => match command {
+			RgbLnInvoiceCommand::EstimateCarrier => {
+				let url = join_url(&app.base, "/api/v1/rgb/ln/invoice/estimate_carrier");
+				let resp: RgbLnCarrierEstimateResponse =
+					send_json(app.client.post(url).json(&serde_json::json!({})))
+						.await
+						.unwrap_or_else(|e| die(e));
+				match app.output {
+					ui::OutputMode::Json => print_json(&resp, app.pretty),
+					ui::OutputMode::Text => print_rgb_ln_carrier_estimate(app, &resp),
+				}
+			},
 			RgbLnInvoiceCommand::Create(args) => {
 				let url = join_url(&app.base, "/api/v1/rgb/ln/invoice/create");
 				let req = RgbLnInvoiceCreateRequest {
@@ -541,6 +553,85 @@ async fn handle_ln(app: &App, command: &RgbLnCommand) {
 				ui::OutputMode::Text => println!("{}", resp.payment_id),
 			}
 		},
+	}
+}
+
+fn yes_no(value: bool) -> String {
+	if value { "yes" } else { "no" }.to_string()
+}
+
+fn format_opt_msat(value: Option<u64>) -> String {
+	value.map(ui::format_u64_with_commas).unwrap_or_else(|| "-".to_string())
+}
+
+fn print_rgb_ln_carrier_estimate(app: &App, resp: &RgbLnCarrierEstimateResponse) {
+	let summary_rows = vec![
+		vec!["Receive available".into(), yes_no(resp.receive_available)],
+		vec![
+			"Minimum viable carrier (msat)".into(),
+			ui::format_u64_with_commas(resp.minimum_viable_carrier_amount_msat),
+		],
+		vec!["Minimum viable reason".into(), resp.minimum_viable_reason.clone()],
+		vec![
+			"Default create carrier (msat)".into(),
+			ui::format_u64_with_commas(resp.default_create_carrier_amount_msat),
+		],
+		vec!["Default create reason".into(), resp.default_create_reason.clone()],
+		vec![
+			"Admission threshold (msat)".into(),
+			ui::format_u64_with_commas(resp.carrier_admission_threshold_msat),
+		],
+		vec![
+			"Minimum allowed carrier (msat)".into(),
+			ui::format_u64_with_commas(resp.minimum_allowed_carrier_amount_msat),
+		],
+		vec![
+			"Holder reserve threshold (msat)".into(),
+			ui::format_u64_with_commas(resp.holder_reserve_threshold_msat),
+		],
+		vec!["Estimate only".into(), yes_no(resp.estimate_only)],
+	];
+	ui::print_table(app.theme, &["Field", "Value"], summary_rows);
+
+	if !resp.channels.is_empty() {
+		let rows = resp
+			.channels
+			.iter()
+			.map(|c| {
+				vec![
+					c.channel_id.clone(),
+					yes_no(c.is_usable),
+					ui::format_u64_with_commas(c.inbound_capacity_msat),
+					ui::format_u64_with_commas(c.local_balance_output_sats),
+					yes_no(c.has_holder_reserve),
+					yes_no(c.receive_available),
+					format_opt_msat(c.minimum_viable_carrier_amount_msat),
+					c.minimum_viable_reason.clone().unwrap_or_else(|| "-".to_string()),
+					format_opt_msat(c.default_create_carrier_amount_msat),
+					c.default_create_reason.clone().unwrap_or_else(|| "-".to_string()),
+				]
+			})
+			.collect::<Vec<_>>();
+		ui::print_table(
+			app.theme,
+			&[
+				"Channel",
+				"Usable",
+				"Inbound msat",
+				"Local sats",
+				"Reserve",
+				"Receive",
+				"Min msat",
+				"Min reason",
+				"Default msat",
+				"Default reason",
+			],
+			rows,
+		);
+	}
+
+	if !resp.warning.is_empty() {
+		println!("{}", resp.warning);
 	}
 }
 

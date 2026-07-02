@@ -87,6 +87,7 @@ COMMAND_TREE: dict[str, Any] = {
         "consignments": {"download": None},
         "ln": {
             "invoice": {
+                "estimate-carrier": None,
                 "create": None,
                 "create-for-hash": None,
                 "decode": None,
@@ -2285,6 +2286,7 @@ def main() -> int:
                     "Create an RGB LN invoice on node-b and pay it from node-a over the RGB-enabled channel.\n"
                 )
                 run_step("rgbldk ctx use node-b")
+                run_step("rgbldk rgb ln invoice estimate-carrier")
                 rgb_ln_preimage_hex = "44" * 32
                 rgb_ln_payment_hash_hex = hashlib.sha256(bytes.fromhex(rgb_ln_preimage_hex)).hexdigest()
                 rgb_inv_for_hash = run_step_json(
@@ -2325,6 +2327,7 @@ def main() -> int:
 
                 md.heading(4, "RGB Lightning transfer (L2, node-b → node-a)")
                 run_step("rgbldk ctx use node-a")
+                run_step("rgbldk rgb ln invoice estimate-carrier")
                 rgb_inv2 = run_step_json(
                     f"rgbldk rgb ln invoice create --contract-id {contract_id} --asset-amount 3 --desc \"rgb ln demo back\" --btc-carrier-amount-msat 4000000",
                     display_cmd="rgbldk --color never --output json --pretty rgb ln invoice create --contract-id <contract_id> --asset-amount 3 --desc \"rgb ln demo back\" --btc-carrier-amount-msat 4000000",
