@@ -14,7 +14,7 @@ use rgbldk_http_client::dto::{
 	PaymentWaitRequest, PaymentWaitResponse, SendResponse, SpontaneousSendRequest,
 };
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::app::App;
 use crate::cli::{
@@ -52,11 +52,26 @@ fn print_wait_error_text(app: &App, v: &serde_json::Value) {
 	}
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct PaymentDetailsView {
+	id: String,
+	direction: String,
+	status: String,
+	amount_msat: Option<String>,
+	kind: String,
+	fee_paid_msat: Option<String>,
+	#[serde(default)]
+	payment_hash: Option<String>,
+	#[serde(default)]
+	htlc_locked: bool,
+	kind_details: Option<serde_json::Value>,
+}
+
 pub(crate) async fn handle(app: &App, command: &PayCommand) {
 	match command {
 		PayCommand::Ls => {
 			let url = join_url(&app.base, "/api/v1/payments");
-			let ps: Vec<PaymentDetailsDto> =
+			let ps: Vec<PaymentDetailsView> =
 				send_json(app.client.get(url)).await.unwrap_or_else(|e| die(e));
 			match app.output {
 				ui::OutputMode::Json => print_json(&ps, app.pretty),
@@ -66,23 +81,47 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 						.map(|p| {
 							let id =
 								if app.no_truncate { p.id.clone() } else { ui::truncate_id(&p.id) };
+							let payment_hash = p
+								.payment_hash
+								.as_deref()
+								.map(|v| {
+									if app.no_truncate {
+										v.to_string()
+									} else {
+										ui::truncate_id(v)
+									}
+								})
+								.unwrap_or_else(|| "-".into());
 							vec![
 								id,
+								payment_hash,
 								p.status,
 								p.kind,
 								p.direction,
 								p.amount_msat
-									.map(ui::format_u64_with_commas)
+									.as_deref()
+									.map(format_decimal)
 									.unwrap_or_else(|| "-".into()),
 								p.fee_paid_msat
-									.map(ui::format_u64_with_commas)
+									.as_deref()
+									.map(format_decimal)
 									.unwrap_or_else(|| "-".into()),
+								p.htlc_locked.to_string(),
 							]
 						})
 						.collect::<Vec<_>>();
 					ui::print_table(
 						app.theme,
-						&["ID", "Status", "Kind", "Dir", "Amount (msat)", "Fee (msat)"],
+						&[
+							"ID",
+							"Payment Hash",
+							"Status",
+							"Kind",
+							"Dir",
+							"Amount (msat)",
+							"Fee (msat)",
+							"HTLC locked",
+						],
 						rows,
 					);
 				},
@@ -124,7 +163,7 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 		},
 		PayCommand::Get { payment_id } => {
 			let url = join_url(&app.base, &format!("/api/v1/payment/{}", payment_id));
-			let p: PaymentDetailsDto =
+			let p: PaymentDetailsView =
 				send_json(app.client.get(url)).await.unwrap_or_else(|e| die(e));
 			match app.output {
 				ui::OutputMode::Json => print_json(&p, app.pretty),
@@ -155,9 +194,11 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 					};
 					let rows = vec![
 						vec!["id".into(), p.id],
+						vec!["payment_hash".into(), p.payment_hash.unwrap_or_else(|| "-".into())],
 						vec!["direction".into(), p.direction],
 						vec!["status".into(), status_value],
 						vec!["kind".into(), p.kind],
+						vec!["htlc_locked".into(), p.htlc_locked.to_string()],
 						vec![
 							"kind_details".into(),
 							p.kind_details
@@ -168,13 +209,15 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 						vec![
 							"amount (msat)".into(),
 							p.amount_msat
-								.map(|v| format!("{} msat", ui::format_u64_with_commas(v)))
+								.as_deref()
+								.map(|v| format!("{} msat", format_decimal(v)))
 								.unwrap_or_else(|| "-".into()),
 						],
 						vec![
 							"fee paid (msat)".into(),
 							p.fee_paid_msat
-								.map(|v| format!("{} msat", ui::format_u64_with_commas(v)))
+								.as_deref()
+								.map(|v| format!("{} msat", format_decimal(v)))
 								.unwrap_or_else(|| "-".into()),
 						],
 					];
@@ -512,4 +555,8 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 			},
 		},
 	}
+}
+
+fn format_decimal(value: &str) -> String {
+	value.parse::<u64>().map(ui::format_u64_with_commas).unwrap_or_else(|_| value.to_string())
 }

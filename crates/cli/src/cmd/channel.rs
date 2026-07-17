@@ -1,7 +1,8 @@
 use rgbldk_http_client::dto::{
-	ChannelDetailsExtendedDto, CloseChannelRequest, OkResponse, OpenChannelRequest,
-	OpenChannelResponse, RgbOpenChannelRequest, SpliceInRequest, SpliceOutRequest,
+	CloseChannelRequest, OkResponse, OpenChannelRequest, OpenChannelResponse,
+	RgbOpenChannelRequest, SpliceInRequest, SpliceOutRequest,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::app::App;
 use crate::cli::ChannelCommand;
@@ -9,11 +10,47 @@ use crate::client::{join_url, send_json};
 use crate::ui;
 use crate::utils::{confirm_or_exit, die, print_json};
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct ChannelDetailsView {
+	channel_id: String,
+	user_channel_id: String,
+	counterparty_node_id: String,
+	channel_point: Option<String>,
+	#[serde(default)]
+	short_channel_id: Option<String>,
+	#[serde(default)]
+	outbound_scid_alias: Option<String>,
+	#[serde(default)]
+	inbound_scid_alias: Option<String>,
+	channel_value_sats: String,
+	outbound_capacity_msat: String,
+	inbound_capacity_msat: String,
+	#[serde(default)]
+	local_balance_msat: Option<String>,
+	#[serde(default)]
+	remote_balance_msat: Option<String>,
+	#[serde(default)]
+	local_unspendable_punishment_reserve_sats: Option<String>,
+	#[serde(default)]
+	remote_unspendable_punishment_reserve_sats: Option<String>,
+	is_channel_ready: bool,
+	is_usable: bool,
+	is_announced: bool,
+	rgb_balance: Option<RgbChannelBalanceView>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct RgbChannelBalanceView {
+	contract_id: String,
+	local_amount: String,
+	remote_amount: String,
+}
+
 pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
 	match command {
 		ChannelCommand::Ls => {
 			let url = join_url(&app.base, "/api/v1/channels");
-			let chans: Vec<ChannelDetailsExtendedDto> =
+			let chans: Vec<ChannelDetailsView> =
 				send_json(app.client.get(url)).await.unwrap_or_else(|e| die(e));
 			match app.output {
 				crate::ui::OutputMode::Json => print_json(&chans, app.pretty),
@@ -25,7 +62,10 @@ pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
 							let mut row = vec![
 								c.user_channel_id,
 								c.counterparty_node_id,
-								c.channel_value_sats.to_string(),
+								c.short_channel_id.unwrap_or_else(|| "-".into()),
+								c.outbound_scid_alias.unwrap_or_else(|| "-".into()),
+								c.inbound_scid_alias.unwrap_or_else(|| "-".into()),
+								format_decimal(&c.channel_value_sats),
 								c.is_channel_ready.to_string(),
 								c.is_usable.to_string(),
 							];
@@ -37,8 +77,8 @@ pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
 										crate::ui::truncate_id(&rgb.contract_id)
 									};
 									row.push(contract);
-									row.push(crate::ui::format_u64_with_commas(rgb.local_amount));
-									row.push(crate::ui::format_u64_with_commas(rgb.remote_amount));
+									row.push(format_decimal(&rgb.local_amount));
+									row.push(format_decimal(&rgb.remote_amount));
 								} else {
 									row.extend(["-".into(), "-".into(), "-".into()]);
 								}
@@ -56,6 +96,9 @@ pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
 					let mut headers = vec![
 						"User Channel ID",
 						"Counterparty",
+						"SCID",
+						"Out Alias",
+						"In Alias",
 						"Capacity (sats)",
 						"Ready",
 						"Usable",
@@ -184,4 +227,11 @@ pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
 			}
 		},
 	}
+}
+
+fn format_decimal(value: &str) -> String {
+	value
+		.parse::<u64>()
+		.map(crate::ui::format_u64_with_commas)
+		.unwrap_or_else(|_| value.to_string())
 }

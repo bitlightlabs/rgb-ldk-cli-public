@@ -8,4 +8,5 @@ pub(crate) mod node;
 pub(crate) mod pay;
 pub(crate) mod peer;
 pub(crate) mod rgb;
+pub(crate) mod swap;
 pub(crate) mod wallet;

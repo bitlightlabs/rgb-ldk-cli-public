@@ -38,6 +38,7 @@ async fn main() {
 			| Command::Channel { .. }
 			| Command::Graph { .. }
 			| Command::Pay { .. }
+			| Command::Swap { .. }
 			| Command::Events { .. }
 	);
 
@@ -116,6 +117,10 @@ async fn main() {
 
 		Command::Pay { ref command } => {
 			cmd::pay::handle(&app, command).await;
+		},
+
+		Command::Swap { ref command } => {
+			cmd::swap::handle(&app, command).await;
 		},
 
 		Command::Events { ref command } => {

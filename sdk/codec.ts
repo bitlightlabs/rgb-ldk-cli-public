@@ -21,6 +21,8 @@ import type {
   RgbUtxosReserveResponse,
   RgbUtxosResponse,
   RgbUtxosSummaryResponse,
+  SwapInfoDto,
+  SwapOfferResponse,
 } from "./types.js";
 import { U64 } from "./u64.js";
 
@@ -83,6 +85,9 @@ export function decodeChannelDetailsExtendedDto(value: unknown): ChannelDetailsE
   v.channel_value_sats = decodeU64(v.channel_value_sats);
   v.outbound_capacity_msat = decodeU64(v.outbound_capacity_msat);
   v.inbound_capacity_msat = decodeU64(v.inbound_capacity_msat);
+  v.short_channel_id = decodeU64Nullable(v.short_channel_id);
+  v.outbound_scid_alias = decodeU64Nullable(v.outbound_scid_alias);
+  v.inbound_scid_alias = decodeU64Nullable(v.inbound_scid_alias);
   return v as ChannelDetailsExtendedDto;
 }
 
@@ -135,12 +140,16 @@ export function decodeRgbLnCarrierEstimateResponse(value: unknown): RgbLnCarrier
   v.carrier_admission_threshold_msat = decodeU64(v.carrier_admission_threshold_msat);
   v.minimum_allowed_carrier_amount_msat = decodeU64(v.minimum_allowed_carrier_amount_msat);
   v.holder_reserve_threshold_msat = decodeU64(v.holder_reserve_threshold_msat);
+  v.required_carrier_msat = decodeU64Nullable(v.required_carrier_msat);
+  v.available_inbound_capacity_msat = decodeU64Nullable(v.available_inbound_capacity_msat);
   v.channels = asArray(v.channels).map((channel) => {
     const c = asRecord(channel);
     c.inbound_capacity_msat = decodeU64(c.inbound_capacity_msat);
     c.inbound_htlc_minimum_msat = decodeU64(c.inbound_htlc_minimum_msat);
     c.inbound_htlc_maximum_msat = decodeU64Nullable(c.inbound_htlc_maximum_msat);
     c.local_balance_output_sats = decodeU64(c.local_balance_output_sats);
+    c.required_carrier_msat = decodeU64Nullable(c.required_carrier_msat);
+    c.available_inbound_capacity_msat = decodeU64(c.available_inbound_capacity_msat);
     c.minimum_viable_carrier_amount_msat = decodeU64Nullable(c.minimum_viable_carrier_amount_msat);
     c.default_create_carrier_amount_msat = decodeU64Nullable(c.default_create_carrier_amount_msat);
     return c;
@@ -232,6 +241,22 @@ export function decodePaymentDetailsDto(value: unknown): PaymentDetailsDto {
   v.amount_msat = decodeU64Nullable(v.amount_msat);
   v.fee_paid_msat = decodeU64Nullable(v.fee_paid_msat);
   return v as PaymentDetailsDto;
+}
+
+export function decodeSwapInfoDto(value: unknown): SwapInfoDto {
+  const v = asRecord(value);
+  v.channel_scid = decodeU64(v.channel_scid);
+  v.asset_amount = decodeU64(v.asset_amount);
+  v.btc_amount_msat = decodeU64(v.btc_amount_msat);
+  v.btc_carrier_amount_msat = decodeU64(v.btc_carrier_amount_msat);
+  v.created_at_unix_secs = decodeU64(v.created_at_unix_secs);
+  return v as SwapInfoDto;
+}
+
+export function decodeSwapOfferResponse(value: unknown): SwapOfferResponse {
+  const v = asRecord(value);
+  v.info = decodeSwapInfoDto(v.info);
+  return v as SwapOfferResponse;
 }
 
 export function decodePaymentWaitResponse(value: unknown): PaymentWaitResponse {

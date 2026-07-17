@@ -67,6 +67,25 @@ present in a consignment.
 
 - TypeScript SDK: [`sdk/README.md`](sdk/README.md)
 
+## Atomic BTC/RGB swaps
+
+The CLI exposes the node's swap lifecycle, including multi-hop offers and the
+asynchronous settlement status:
+
+```bash
+rgbldk swap create --counterparty-node-id <node_id> --channel-scid <scid> \
+  --contract-id <contract_id> --asset-amount <amount> \
+  --btc-amount-msat <amount> --btc-carrier-amount-msat <amount> \
+  --maker-gives-rgb
+rgbldk swap decode --swap-string 'rgb-swap:v1:...'
+rgbldk swap accept --swap-string 'rgb-swap:v1:...'
+rgbldk swap execute --swap-string 'rgb-swap:v1:...'
+rgbldk swap get <payment_hash>
+```
+
+`swap execute` only initiates the circular payment. Poll `swap get` until the
+status is `Settled` or `Failed`; a successful HTTP response is not settlement.
+
 ## License
 
 Dual-licensed under Apache-2.0 and MIT. See [`LICENSE-APACHE`](LICENSE-APACHE) and [`LICENSE-MIT`](LICENSE-MIT).

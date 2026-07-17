@@ -1950,7 +1950,7 @@ dependencies = [
 [[package]]
 name = "rgbldk_http_client"
 version = "0.0.0"
-source = "git+https://github.com/bitlightlabs/rgb-ldk-api-public.git?branch=main#4aab3b0c0256830d381ae942d345173bcb87535a"
+source = "git+https://github.com/bitlightlabs/rgb-ldk-api-public.git?branch=main#f945843a6b9ae6a7293db8ac6b7f63a2db828b10"
 dependencies = [
  "reqwest",
  "rgbldk_http_dto",
@@ -1962,8 +1962,8 @@ dependencies = [
 
 [[package]]
 name = "rgbldk_http_dto"
-version = "0.7.0-bitlight.1"
-source = "git+https://github.com/bitlightlabs/rgb-ldk-api-public.git?branch=main#4aab3b0c0256830d381ae942d345173bcb87535a"
+version = "0.7.0-bitlight.2"
+source = "git+https://github.com/bitlightlabs/rgb-ldk-api-public.git?branch=main#f945843a6b9ae6a7293db8ac6b7f63a2db828b10"
 dependencies = [
  "serde",
  "serde_json",

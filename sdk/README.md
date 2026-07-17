@@ -43,12 +43,29 @@ Usage
       await client.paymentAbandon(p.payment_id);
     }
 
+    // Atomic BTC/RGB swap offers are out-of-band and settle asynchronously.
+    const swapOffer = await client.swapCreateOffer({
+      counterparty_node_id: "<node_id>",
+      channel_scid: u64(123),
+      contract_id: "contract:...",
+      asset_amount: u64(10),
+      btc_amount_msat: u64(1000),
+      btc_carrier_amount_msat: u64(330000),
+      maker_gives_rgb: true,
+      expiry_secs: 3600,
+    });
+    await client.swapAccept({ swap_string: swapOffer.swap_string });
+    await client.swapExecute({ swap_string: swapOffer.swap_string });
+    const swap = await client.swapGet(swapOffer.payment_hash);
+    // Only `Settled` proves that the circular payment completed.
+
 Notes
 -----
 
 - The client uses global fetch by default. In Node, pass a fetch implementation: new NodeHttpClient(baseUrl, { fetch: (await import('node-fetch')).default })
 - For long-polling events, you can pass timeoutMs to abort: client.eventsWaitNext({ timeoutMs: 30000 })
 - u64 fields (for example `*_msat` / `*_sats`) are represented as an opaque `U64` wrapper backed by `bigint`.
+- `swapExecute` only initiates a swap; poll `swapGet` and inspect `status` (`Settled` or `Failed`) for the final result.
 - When the daemon is locked, most endpoints return HTTP 423. Catch `HttpError` and check `err.status === 423` (or use `isLockedHttpError(err)`).
 
 Native Messaging (unlock bridge)

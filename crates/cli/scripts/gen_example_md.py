@@ -111,6 +111,16 @@ COMMAND_TREE: dict[str, Any] = {
         "splice-in": None,
         "splice-out": None,
     },
+    "swap": {
+        "create": None,
+        "create-multihop": None,
+        "decode": None,
+        "accept": None,
+        "execute": None,
+        "ls": None,
+        "get": None,
+        "cancel": None,
+    },
     "graph": {"nodes": None, "node": None, "channels": None, "channel": None},
     "pay": {
         "invoice": {
@@ -1231,6 +1241,44 @@ def main() -> int:
                     f"Last response: {last_obj!r}"
                 )
 
+            def wait_for_swap_status(
+                connect: str, payment_hash: str, status: str, *, timeout_s: float = 90.0,
+            ) -> dict[str, Any]:
+                """Poll a swap until the requested state is reached."""
+                deadline = time.time() + timeout_s
+                last_obj: Any = None
+                last_err: Optional[str] = None
+                while time.time() < deadline:
+                    ensure_within_runtime(f"wait_for_swap_status({connect}, {payment_hash}, {status})")
+                    rr = runner.run(
+                        normalize_rgbldk_json_cmd(
+                            f"rgbldk --connect {connect} swap get {shlex.quote(payment_hash)}"
+                        ),
+                        check=False,
+                        timeout_s=clamp_timeout(10.0, f"swap get ({connect})"),
+                    )
+                    if rr.returncode == 0:
+                        try:
+                            obj = json.loads(rr.stdout)
+                        except json.JSONDecodeError as e:
+                            last_err = f"failed to parse swap JSON: {e}: {rr.stdout!r}"
+                        else:
+                            last_obj = obj
+                            if isinstance(obj, dict) and obj.get("status") == status:
+                                return obj
+                            if isinstance(obj, dict) and obj.get("status") == "Failed":
+                                raise RuntimeError(
+                                    f"Swap {payment_hash} failed on {connect}: {obj.get('last_error')!r}"
+                                )
+                    else:
+                        last_err = (rr.stdout + "\n" + rr.stderr).strip()
+                    time.sleep(1.0)
+
+                raise RuntimeError(
+                    f"Timed out waiting for swap {payment_hash} on {connect} to reach status {status}. "
+                    f"Last response: {last_obj!r}; last error: {last_err!r}"
+                )
+
             # Give daemons a moment after docker up (do not include in the markdown).
             if not args.skip_docker_up:
                 ensure_within_runtime("docker compose up")
@@ -2062,7 +2110,122 @@ def main() -> int:
                 run_step(f"rgbldk rgb contracts balance {contract_id}")
                 run_step("rgbldk ctx use node-a")
 
-            md.heading(2, "8) Payments (BTC Lightning L2 + keysend + BOLT12 + RGB Lightning)")
+            if contract_id:
+                md.heading(2, "8) RGB/BTC swaps (single-hop lifecycle + multi-hop offer)")
+                md.paragraph(
+                    "Create a single-hop swap offer on node-a, preview and accept it on node-b, wait for the maker "
+                    "to observe the acceptance, execute the circular payment, and poll both nodes until the swap is "
+                    "actually `Settled`. The two-node example also creates and cancels an unexecuted offer, and "
+                    "covers multi-hop offer encoding/cancellation. A real multi-hop settlement needs an intermediary "
+                    "node and is intentionally outside this two-node environment.\n"
+                )
+
+                run_step("rgbldk ctx use node-a")
+                wait_for_usable_channel(node_a, timeout_s=90.0)
+                channels_for_swap = run_hidden_json("rgbldk channel ls", timeout_s=10.0)
+                swap_channel: Optional[dict[str, Any]] = None
+                if isinstance(channels_for_swap, list):
+                    swap_channel = next(
+                        (
+                            c
+                            for c in channels_for_swap
+                            if isinstance(c, dict)
+                            and c.get("user_channel_id") == chan_100k
+                            and c.get("is_usable") is True
+                        ),
+                        None,
+                    )
+                if not isinstance(swap_channel, dict):
+                    raise RuntimeError(
+                        f"Could not find usable RGB channel {chan_100k} for swap: {channels_for_swap!r}"
+                    )
+                swap_channel_scid: Optional[int] = None
+                for scid_field in ("short_channel_id", "outbound_scid_alias", "inbound_scid_alias"):
+                    if swap_channel.get(scid_field) is not None:
+                        swap_channel_scid = parse_sats(
+                            swap_channel.get(scid_field), field=f"swap channel {scid_field}"
+                        )
+                        break
+                if swap_channel_scid is None:
+                    raise RuntimeError(f"RGB channel has no usable SCID or alias: {swap_channel!r}")
+                if not node_id_a or not node_id_b:
+                    raise RuntimeError("missing node ids (expected them to be set in the node basics section)")
+
+                swap_offer_obj = run_step_json(
+                    f"rgbldk swap create --counterparty-node-id {node_id_b} --channel-scid {swap_channel_scid} --contract-id {contract_id} --asset-amount 2 --btc-amount-msat 10000000 --btc-carrier-amount-msat 5000000 --maker-gives-rgb --expiry-secs 3600",
+                    display_cmd="rgbldk --color never --output json --pretty swap create --counterparty-node-id <node_id_b> --channel-scid <channel_scid> --contract-id <contract_id> --asset-amount 2 --btc-amount-msat 10000000 --btc-carrier-amount-msat 5000000 --maker-gives-rgb --expiry-secs 3600",
+                    retries=5,
+                )
+                swap_string = swap_offer_obj.get("swap_string")
+                swap_payment_hash = swap_offer_obj.get("payment_hash")
+                if not isinstance(swap_string, str) or not swap_string:
+                    raise RuntimeError(f"Invalid swap_string from swap create: {swap_offer_obj}")
+                if not isinstance(swap_payment_hash, str) or not swap_payment_hash:
+                    raise RuntimeError(f"Invalid payment_hash from swap create: {swap_offer_obj}")
+
+                run_step("rgbldk ctx use node-b")
+                run_step_json(
+                    f"rgbldk swap decode --swap-string {shlex.quote(swap_string)}",
+                    display_cmd="rgbldk --color never --output json --pretty swap decode --swap-string <swap_string>",
+                )
+                run_step_json(
+                    f"rgbldk swap accept --swap-string {shlex.quote(swap_string)}",
+                    display_cmd="rgbldk --color never --output json --pretty swap accept --swap-string <swap_string>",
+                )
+
+                run_step("rgbldk ctx use node-a")
+                wait_for_swap_status(node_a, swap_payment_hash, "Accepted", timeout_s=60.0)
+                run_step(f"rgbldk swap get {swap_payment_hash}")
+                execute_obj = run_step_json(
+                    f"rgbldk swap execute --payment-hash {swap_payment_hash}",
+                    display_cmd="rgbldk --color never --output json --pretty swap execute --payment-hash <payment_hash>",
+                    retries=5,
+                )
+                if execute_obj.get("ok") is not True:
+                    raise RuntimeError(f"Swap execution was not initiated: {execute_obj}")
+                wait_for_swap_status(node_a, swap_payment_hash, "Settled", timeout_s=90.0)
+                run_step(f"rgbldk swap get {swap_payment_hash}")
+
+                run_step("rgbldk ctx use node-b")
+                wait_for_swap_status(node_b, swap_payment_hash, "Settled", timeout_s=90.0)
+                run_step(f"rgbldk swap get {swap_payment_hash}")
+                run_step("rgbldk swap ls")
+                run_step("rgbldk ctx use node-a")
+
+                cancel_offer_obj = run_step_json(
+                    f"rgbldk swap create --counterparty-node-id {node_id_b} --channel-scid {swap_channel_scid} --contract-id {contract_id} --asset-amount 1 --btc-amount-msat 1000000 --btc-carrier-amount-msat 1000000 --maker-gives-rgb --expiry-secs 3600",
+                    display_cmd="rgbldk --color never --output json --pretty swap create --counterparty-node-id <node_id_b> --channel-scid <channel_scid> --contract-id <contract_id> --asset-amount 1 --btc-amount-msat 1000000 --btc-carrier-amount-msat 1000000 --maker-gives-rgb --expiry-secs 3600",
+                    retries=5,
+                )
+                cancel_payment_hash = cancel_offer_obj.get("payment_hash")
+                if not isinstance(cancel_payment_hash, str) or not cancel_payment_hash:
+                    raise RuntimeError(f"Invalid payment_hash from cancellable swap offer: {cancel_offer_obj}")
+                run_step(
+                    f"rgbldk swap cancel {cancel_payment_hash}",
+                    display_cmd="rgbldk swap cancel <payment_hash>",
+                )
+
+                multihop_offer_obj = run_step_json(
+                    f"rgbldk swap create-multihop --rgb-hop {node_id_b}:{swap_channel_scid} --btc-hop {node_id_a}:{swap_channel_scid} --contract-id {contract_id} --asset-amount 1 --btc-amount-msat 1000000 --btc-carrier-amount-msat 1000000 --maker-gives-rgb --expiry-secs 3600",
+                    display_cmd="rgbldk --color never --output json --pretty swap create-multihop --rgb-hop <node_id_b>:<channel_scid> --btc-hop <node_id_a>:<channel_scid> --contract-id <contract_id> --asset-amount 1 --btc-amount-msat 1000000 --btc-carrier-amount-msat 1000000 --maker-gives-rgb --expiry-secs 3600",
+                    retries=5,
+                )
+                multihop_payment_hash = multihop_offer_obj.get("payment_hash")
+                if not isinstance(multihop_payment_hash, str) or not multihop_payment_hash:
+                    raise RuntimeError(f"Invalid payment_hash from multi-hop swap offer: {multihop_offer_obj}")
+                run_step(
+                    f"rgbldk swap cancel {multihop_payment_hash}",
+                    display_cmd="rgbldk swap cancel <multihop_payment_hash>",
+                )
+
+                run_step("rgbldk ctx use node-a")
+            else:
+                md.paragraph(
+                    "Note: swap examples are skipped because no RGB contract was created; the swap API requires an "
+                    "existing RGB contract and channel.\n"
+                )
+
+            md.heading(2, "9) Payments (BTC Lightning L2 + keysend + BOLT12 + RGB Lightning)")
             md.paragraph(
                 "Create Bolt11 invoices on node-b and pay them from node-a. Use `pay wait` to block until the payment reaches "
                 "a terminal state, and `pay get` to inspect details. Also demonstrate a spontaneous (keysend) payment.\n"
@@ -2390,7 +2553,7 @@ def main() -> int:
             run_step(f"rgbldk pay get {pay_keysend_b_to_a}")
             run_step("rgbldk ctx use node-a")
 
-            md.heading(2, "9) Events (next/handled)")
+            md.heading(2, "10) Events (next/handled)")
             md.paragraph(
                 "Demonstrate the event queue API: fetch the next event (`events next`) and acknowledge it (`events handled`) "
                 "so the daemon can advance the queue.\n"
@@ -2416,7 +2579,7 @@ def main() -> int:
             run_step(f"rgbldk --connect {node_b} events next")
             run_step(f"rgbldk --connect {node_b} events handled")
 
-            md.heading(2, "10) BTC on-chain settlement (L1, node-a → node-b via channel push+close) + Channel force-close")
+            md.heading(2, "11) BTC on-chain settlement (L1, node-a → node-b via channel push+close) + Channel force-close")
             md.paragraph(
                 "Demonstrate graceful close vs force-close. Force-close is destructive and requires `--yes` for non-interactive safety.\n"
             )
@@ -2447,7 +2610,7 @@ def main() -> int:
                 display_cmd="rgbldk --yes channel force-close --user-channel-id <user_channel_id> --counterparty-node-id <node_id_b>",
             )
 
-            md.heading(2, "11) Cleanup")
+            md.heading(2, "12) Cleanup")
             md.paragraph("Tear down the docker-compose stack and remove volumes.\n")
             md.heading(3, "Disconnect peers")
             if not node_id_b:

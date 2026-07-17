@@ -86,6 +86,8 @@ export interface PaymentDetailsDto {
   amount_msat: U64 | null;
   kind: PaymentKind;
   fee_paid_msat: U64 | null;
+  payment_hash?: string | null;
+  htlc_locked: boolean;
   kind_details?: any;
 }
 
@@ -107,6 +109,9 @@ export interface ChannelDetailsExtendedDto {
   is_channel_ready: boolean;
   is_usable: boolean;
   is_announced: boolean;
+  short_channel_id?: U64 | null;
+  outbound_scid_alias?: U64 | null;
+  inbound_scid_alias?: U64 | null;
 }
 
 export interface OpenChannelRequest {
@@ -384,6 +389,12 @@ export interface RgbLnCarrierEstimateChannelDto {
   local_balance_output_sats: U64;
   has_holder_reserve: boolean;
   receive_available: boolean;
+  can_receive_rgb_invoice: boolean;
+  blocking_reason?: string | null;
+  required_carrier_msat?: U64 | null;
+  required_carrier_reason?: string | null;
+  available_inbound_capacity_msat: U64;
+  suggested_action?: string | null;
   minimum_viable_carrier_amount_msat?: U64 | null;
   minimum_viable_reason?: string | null;
   default_create_carrier_amount_msat?: U64 | null;
@@ -392,6 +403,12 @@ export interface RgbLnCarrierEstimateChannelDto {
 
 export interface RgbLnCarrierEstimateResponse {
   receive_available: boolean;
+  can_create_rgb_invoice: boolean;
+  blocking_reason?: string | null;
+  required_carrier_msat?: U64 | null;
+  required_carrier_reason?: string | null;
+  available_inbound_capacity_msat?: U64 | null;
+  suggested_action?: string | null;
   minimum_viable_carrier_amount_msat: U64;
   minimum_viable_reason: string;
   default_create_carrier_amount_msat: U64;
@@ -402,6 +419,72 @@ export interface RgbLnCarrierEstimateResponse {
   channels: RgbLnCarrierEstimateChannelDto[];
   estimate_only: boolean;
   warning: string;
+}
+
+export interface SwapCreateOfferRequest {
+  counterparty_node_id: string;
+  channel_scid: U64;
+  contract_id: string;
+  asset_amount: U64;
+  btc_amount_msat: U64;
+  btc_carrier_amount_msat: U64;
+  maker_gives_rgb: boolean;
+  expiry_secs: number;
+}
+
+export interface SwapHopDto {
+  node_id: string;
+  channel_scid: U64;
+}
+
+export interface SwapCreateMultihopOfferRequest {
+  rgb_path: SwapHopDto[];
+  btc_path: SwapHopDto[];
+  contract_id: string;
+  asset_amount: U64;
+  btc_amount_msat: U64;
+  btc_carrier_amount_msat: U64;
+  maker_gives_rgb: boolean;
+  expiry_secs: number;
+}
+
+export interface SwapStringRequest {
+  swap_string: string;
+}
+
+export interface SwapExecuteRequest {
+  swap_string?: string | null;
+  payment_hash?: string | null;
+  force?: boolean | null;
+}
+
+export interface SwapExecuteResponse {
+  ok: boolean;
+  payment_hash: string;
+  status: string;
+}
+
+export interface SwapInfoDto {
+  payment_hash: string;
+  role: string;
+  status: string;
+  counterparty_node_id: string;
+  channel_scid: U64;
+  contract_id: string;
+  asset_amount: U64;
+  btc_amount_msat: U64;
+  btc_carrier_amount_msat: U64;
+  maker_gives_rgb: boolean;
+  expiry_secs: number;
+  created_at_unix_secs: U64;
+  is_multihop: boolean;
+  last_error?: string | null;
+}
+
+export interface SwapOfferResponse {
+  swap_string: string;
+  payment_hash: string;
+  info: SwapInfoDto;
 }
 
 export interface RgbLnInvoiceCreateRequest {

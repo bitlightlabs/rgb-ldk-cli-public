@@ -99,6 +99,11 @@ pub enum Command {
 		#[command(subcommand)]
 		command: RgbCommand,
 	},
+	/// Atomic BTC/RGB swap operations.
+	Swap {
+		#[command(subcommand)]
+		command: SwapCommand,
+	},
 	/// Peer operations.
 	Peer {
 		#[command(subcommand)]
@@ -374,6 +379,91 @@ pub struct ChannelSpliceOutArgs {
 	pub address: String,
 	#[arg(long)]
 	pub splice_amount_sats: u64,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum SwapCommand {
+	/// Create a single-hop swap offer as maker.
+	Create(SwapCreateArgs),
+	/// Create a multi-hop swap offer as maker.
+	CreateMultihop(SwapCreateMultihopArgs),
+	/// Decode an out-of-band swap offer without persisting it.
+	Decode(SwapStringArgs),
+	/// Accept an out-of-band swap offer as taker.
+	Accept(SwapStringArgs),
+	/// Initiate a previously created swap as maker.
+	Execute(SwapExecuteArgs),
+	/// List swaps known by this node.
+	Ls,
+	/// Show one swap by payment hash.
+	Get { payment_hash: String },
+	/// Cancel a maker swap before it starts forwarding.
+	Cancel { payment_hash: String },
+}
+
+#[derive(Args, Debug)]
+pub struct SwapCreateArgs {
+	#[arg(long)]
+	pub counterparty_node_id: String,
+	/// Short channel id or channel alias used for the forwarding hop.
+	#[arg(long)]
+	pub channel_scid: u64,
+	#[arg(long)]
+	pub contract_id: String,
+	#[arg(long)]
+	pub asset_amount: u64,
+	#[arg(long)]
+	pub btc_amount_msat: u64,
+	#[arg(long)]
+	pub btc_carrier_amount_msat: u64,
+	/// If set, the maker gives RGB and receives BTC; otherwise the maker gives BTC.
+	#[arg(long)]
+	pub maker_gives_rgb: bool,
+	#[arg(long, default_value_t = 3600)]
+	pub expiry_secs: u32,
+}
+
+#[derive(Args, Debug)]
+pub struct SwapCreateMultihopArgs {
+	/// Repeated hops in maker -> taker direction, as NODE_ID:SCID.
+	#[arg(long = "rgb-hop", value_name = "NODE_ID:SCID", required = true)]
+	pub rgb_hop: Vec<String>,
+	/// Repeated hops in taker -> maker direction, as NODE_ID:SCID.
+	#[arg(long = "btc-hop", value_name = "NODE_ID:SCID", required = true)]
+	pub btc_hop: Vec<String>,
+	#[arg(long)]
+	pub contract_id: String,
+	#[arg(long)]
+	pub asset_amount: u64,
+	#[arg(long)]
+	pub btc_amount_msat: u64,
+	#[arg(long)]
+	pub btc_carrier_amount_msat: u64,
+	/// If set, the maker gives RGB and receives BTC; otherwise the maker gives BTC.
+	#[arg(long)]
+	pub maker_gives_rgb: bool,
+	#[arg(long, default_value_t = 3600)]
+	pub expiry_secs: u32,
+}
+
+#[derive(Args, Debug)]
+pub struct SwapStringArgs {
+	/// Out-of-band swap offer string (`rgb-swap:v1:...` or `rgb-swap:v2:...`).
+	#[arg(long)]
+	pub swap_string: String,
+}
+
+#[derive(Args, Debug)]
+pub struct SwapExecuteArgs {
+	/// Original offer string; required for multi-hop swaps.
+	#[arg(long, required_unless_present = "payment_hash")]
+	pub swap_string: Option<String>,
+	/// Hex-encoded payment hash for a single-hop swap.
+	#[arg(long, required_unless_present = "swap_string")]
+	pub payment_hash: Option<String>,
+	/// Bypass the taker-accepted gate for coordinated legacy flows.
+	#[arg(long)]
+	pub force: bool,
 }
 
 #[derive(Subcommand, Debug)]

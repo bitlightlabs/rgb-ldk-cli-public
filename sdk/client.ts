@@ -73,6 +73,13 @@ import {
   RgbUtxosSummaryResponse,
   SendResponse,
   SpontaneousSendRequest,
+  SwapCreateMultihopOfferRequest,
+  SwapCreateOfferRequest,
+  SwapExecuteRequest,
+  SwapExecuteResponse,
+  SwapInfoDto,
+  SwapOfferResponse,
+  SwapStringRequest,
   LockedStatusDto,
   StatusDto,
   UnlockedStatusDto,
@@ -101,6 +108,8 @@ import {
   decodeRgbUtxosReserveResponse,
   decodeRgbUtxosResponse,
   decodeRgbUtxosSummaryResponse,
+  decodeSwapInfoDto,
+  decodeSwapOfferResponse,
 } from "./codec.js";
 
 export interface RequestOptions {
@@ -513,6 +522,74 @@ export class NodeHttpClient {
     return this.request<unknown>("POST", "/rgb/onchain/receive", req, options).then((v) =>
       decodeRgbOnchainReceiveResponse(v)
     ) as Promise<RgbOnchainReceiveResponse>;
+  }
+
+  // ---- Atomic BTC/RGB swaps ----
+
+  // POST /swap/offers
+  swapCreateOffer(req: SwapCreateOfferRequest, options?: RequestOptions): Promise<SwapOfferResponse> {
+    return this.request<unknown>("POST", "/swap/offers", req, options).then((v) =>
+      decodeSwapOfferResponse(v)
+    ) as Promise<SwapOfferResponse>;
+  }
+
+  // POST /swap/offers/multihop
+  swapCreateOfferMultihop(
+    req: SwapCreateMultihopOfferRequest,
+    options?: RequestOptions,
+  ): Promise<SwapOfferResponse> {
+    return this.request<unknown>("POST", "/swap/offers/multihop", req, options).then((v) =>
+      decodeSwapOfferResponse(v)
+    ) as Promise<SwapOfferResponse>;
+  }
+
+  // POST /swap/decode
+  swapDecode(req: SwapStringRequest, options?: RequestOptions): Promise<SwapInfoDto> {
+    return this.request<unknown>("POST", "/swap/decode", req, options).then((v) =>
+      decodeSwapInfoDto(v)
+    ) as Promise<SwapInfoDto>;
+  }
+
+  // POST /swap/accept
+  swapAccept(req: SwapStringRequest, options?: RequestOptions): Promise<SwapInfoDto> {
+    return this.request<unknown>("POST", "/swap/accept", req, options).then((v) =>
+      decodeSwapInfoDto(v)
+    ) as Promise<SwapInfoDto>;
+  }
+
+  // POST /swap/execute
+  swapExecute(req: SwapExecuteRequest, options?: RequestOptions): Promise<SwapExecuteResponse> {
+    return this.request<SwapExecuteResponse>("POST", "/swap/execute", req, options) as Promise<SwapExecuteResponse>;
+  }
+
+  // GET /swap/list
+  swapList(options?: RequestOptions): Promise<SwapInfoDto[]> {
+    const decode = decodeArray(decodeSwapInfoDto);
+    return this.request<unknown>("GET", "/swap/list", undefined, options).then((v) => decode(v)) as Promise<
+      SwapInfoDto[]
+    >;
+  }
+
+  // GET /swap/{paymentHash}
+  swapGet(paymentHash: string, options?: RequestOptions): Promise<SwapInfoDto | null> {
+    if (!paymentHash) throw new Error("paymentHash is required");
+    return this.request<unknown>(
+      "GET",
+      `/swap/${encodeURIComponent(paymentHash)}`,
+      undefined,
+      { ...options, returnNullOn404: true },
+    ).then((v) => (v ? decodeSwapInfoDto(v) : null)) as Promise<SwapInfoDto | null>;
+  }
+
+  // DELETE /swap/{paymentHash}
+  swapCancel(paymentHash: string, options?: RequestOptions): Promise<OkResponse> {
+    if (!paymentHash) throw new Error("paymentHash is required");
+    return this.request<OkResponse>(
+      "DELETE",
+      `/swap/${encodeURIComponent(paymentHash)}`,
+      undefined,
+      options,
+    ) as Promise<OkResponse>;
   }
 
   // GET /balances
