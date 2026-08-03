@@ -105,6 +105,7 @@ COMMAND_TREE: dict[str, Any] = {
     "peer": {"ls": None, "connect": None, "disconnect": None},
     "channel": {
         "ls": None,
+        "closing": None,
         "open": None,
         "close": None,
         "force-close": None,
@@ -1219,6 +1220,212 @@ def main() -> int:
 
                 raise RuntimeError(f"Timed out waiting for a usable channel on {connect}. Last error: {last_err!r}")
 
+            def wait_for_closing_settled(
+                connect: str,
+                *,
+                timeout_s: float = 180.0,
+                miner_addr_for_blocks: Optional[str] = None,
+                require_empty: bool = True,
+                also_sync: Optional[str] = None,
+            ) -> None:
+                """
+                Wait until `channel closing` is empty on `connect` (funds settled).
+
+                Not included in markdown. Optionally mines extra blocks while waiting so
+                anti-reorg / sweep confirmations can complete on regtest.
+
+                When `require_empty` is False, a timeout leaves the last observed closing
+                list in place (useful for RGB channels that can linger in `negotiating`
+                after a long payment session).
+                """
+                deadline = time.time() + timeout_s
+                last_err: Optional[str] = None
+                last_obj: Any = None
+                blocks_mined = 0
+                last_mine_ts = 0.0
+                while time.time() < deadline:
+                    ensure_within_runtime(f"wait_for_closing_settled({connect})")
+                    for peer in (connect, also_sync):
+                        if not peer:
+                            continue
+                        sync_rr = runner.run(
+                            normalize_rgbldk_cmd(f"rgbldk --connect {peer} wallet sync"),
+                            retries=3,
+                            retry_sleep_s=1.0,
+                            check=False,
+                            timeout_s=clamp_timeout(DEFAULT_STEP_TIMEOUT_S, f"wallet sync ({peer})"),
+                        )
+                        if sync_rr.returncode != 0:
+                            last_err = (sync_rr.stdout + "\n" + sync_rr.stderr).strip()
+
+                    rr = runner.run(
+                        f"rgbldk --color never --output json --connect {connect} channel closing",
+                        retries=1,
+                        retry_sleep_s=1.0,
+                        check=False,
+                        timeout_s=clamp_timeout(DEFAULT_STEP_TIMEOUT_S, f"channel closing ({connect})"),
+                    )
+                    if rr.returncode != 0:
+                        last_err = (rr.stdout + "\n" + rr.stderr).strip()
+                        time.sleep(1.0)
+                        continue
+                    try:
+                        obj = json.loads(rr.stdout)
+                    except json.JSONDecodeError as e:
+                        last_err = f"invalid json: {e}: {rr.stdout!r}"
+                        time.sleep(1.0)
+                        continue
+                    last_obj = obj
+                    if isinstance(obj, list) and len(obj) == 0:
+                        return
+
+                    # Keep the chain moving so confirmations/sweeps can finish (throttled).
+                    now = time.time()
+                    if (
+                        miner_addr_for_blocks
+                        and blocks_mined < 24
+                        and (now - last_mine_ts) >= 2.0
+                    ):
+                        bitcoind_cli(f"generatetoaddress 1 {miner_addr_for_blocks}")
+                        blocks_mined += 1
+                        last_mine_ts = now
+
+                    time.sleep(1.0)
+
+                if require_empty:
+                    raise RuntimeError(
+                        f"Timed out waiting for channel closing to settle on {connect}. "
+                        f"Last error: {last_err!r}. Last response: {last_obj!r}"
+                    )
+
+            def wait_for_chain_and_wallet_sync(
+                connect: str,
+                *,
+                blocks: int = 6,
+                timeout_s: float = 120.0,
+            ) -> None:
+                """
+                Optionally mine `blocks`, then wait until bitcoind height advances and
+                wallet/rgb syncs settle.
+
+                Not included in markdown. Helps when esplora lags behind bitcoind after
+                generatetoaddress bursts (common after long closing waits).
+                """
+                before = bitcoind_cli_json("getblockcount")
+                if not isinstance(before, int):
+                    before = int(before)
+                target = before + max(blocks, 0)
+                if blocks > 0:
+                    bitcoind_cli(f"generatetoaddress {blocks} {miner_addr}")
+                deadline = time.time() + timeout_s
+                last_h: Any = None
+                while time.time() < deadline:
+                    ensure_within_runtime(f"wait_for_chain_and_wallet_sync({connect})")
+                    h = bitcoind_cli_json("getblockcount")
+                    if not isinstance(h, int):
+                        h = int(h)
+                    last_h = h
+                    if h >= target:
+                        # Give esplora a chance to index; keep wallets warm.
+                        for _ in range(8):
+                            runner.run(
+                                normalize_rgbldk_cmd(f"rgbldk --connect {connect} wallet sync"),
+                                retries=2,
+                                retry_sleep_s=1.0,
+                                check=False,
+                                timeout_s=clamp_timeout(DEFAULT_STEP_TIMEOUT_S, f"wallet sync ({connect})"),
+                            )
+                            runner.run(
+                                normalize_rgbldk_cmd(f"rgbldk --connect {connect} rgb sync"),
+                                retries=2,
+                                retry_sleep_s=1.0,
+                                check=False,
+                                timeout_s=clamp_timeout(DEFAULT_STEP_TIMEOUT_S, f"rgb sync ({connect})"),
+                            )
+                            time.sleep(1.0)
+                        return
+                    time.sleep(0.5)
+                raise RuntimeError(
+                    f"Timed out waiting for bitcoind height>={target} (last={last_h}) after mining {blocks}"
+                )
+
+            def wait_for_l1_wallet_outpoint(
+                connect: str,
+                outpoint: str,
+                *,
+                min_value_sats: int = 1,
+                timeout_s: float = 60.0,
+            ) -> dict[str, Any]:
+                """
+                Poll `wallet utxos` until `outpoint` is observed unlocked in the L1 wallet.
+
+                Not included in markdown (used to avoid rgb utxos fund races after send+mine).
+                """
+                deadline = time.time() + timeout_s
+                last_err: Optional[str] = None
+                last_obj: Any = None
+                while time.time() < deadline:
+                    ensure_within_runtime(f"wait_for_l1_wallet_outpoint({connect}, {outpoint})")
+                    sync_rr = runner.run(
+                        normalize_rgbldk_cmd(f"rgbldk --connect {connect} wallet sync"),
+                        retries=3,
+                        retry_sleep_s=1.0,
+                        check=False,
+                        timeout_s=clamp_timeout(DEFAULT_STEP_TIMEOUT_S, f"wallet sync ({connect})"),
+                    )
+                    if sync_rr.returncode != 0:
+                        last_err = (sync_rr.stdout + "\n" + sync_rr.stderr).strip()
+                        time.sleep(1.0)
+                        continue
+
+                    rr = runner.run(
+                        f"rgbldk --color never --output json --connect {connect} wallet utxos",
+                        retries=1,
+                        retry_sleep_s=1.0,
+                        check=False,
+                        timeout_s=clamp_timeout(DEFAULT_STEP_TIMEOUT_S, f"wallet utxos ({connect})"),
+                    )
+                    if rr.returncode != 0:
+                        last_err = (rr.stdout + "\n" + rr.stderr).strip()
+                        time.sleep(1.0)
+                        continue
+                    try:
+                        obj = json.loads(rr.stdout)
+                    except json.JSONDecodeError as e:
+                        last_err = f"invalid json: {e}: {rr.stdout!r}"
+                        time.sleep(1.0)
+                        continue
+                    last_obj = obj
+                    utxos = obj.get("utxos") if isinstance(obj, dict) else None
+                    if isinstance(utxos, list):
+                        for utxo in utxos:
+                            if not isinstance(utxo, dict):
+                                continue
+                            if utxo.get("outpoint") != outpoint:
+                                continue
+                            lock = utxo.get("lock")
+                            if isinstance(lock, dict) and lock.get("locked") is True:
+                                last_err = f"outpoint {outpoint} is locked: {lock!r}"
+                                break
+                            value = utxo.get("value_sats")
+                            try:
+                                value_sats = int(value) if value is not None else 0
+                            except (TypeError, ValueError):
+                                value_sats = 0
+                            if value_sats < min_value_sats:
+                                last_err = (
+                                    f"outpoint {outpoint} value {value_sats} < min {min_value_sats}"
+                                )
+                                break
+                            return utxo
+
+                    time.sleep(1.0)
+
+                raise RuntimeError(
+                    f"Timed out waiting for L1 wallet outpoint {outpoint} on {connect}. "
+                    f"Last error: {last_err!r}. Last response: {last_obj!r}"
+                )
+
             def wait_for_payment_status(
                 connect: str, payment_id: str, status: str, *, timeout_s: float = 60.0,
             ) -> dict[str, Any]:
@@ -1478,7 +1685,8 @@ def main() -> int:
                 "This demonstrates a BTC L1 transfer between the two nodes by using a channel open with `--push-msat` "
                 "(gives the receiver an initial balance), inspecting the public network graph once the channel confirms, "
                 "trying both splice directions on the pure-BTC channel, and then using a cooperative `channel close` "
-                "to settle on-chain.\n"
+                "to settle on-chain. While the close is in flight, `channel closing` lists the channel until funds "
+                "land back in the wallet (absent from both `channel ls` and `channel closing` means fully settled).\n"
             )
             md.heading(3, "Commands")
             if not node_id_a:
@@ -1581,7 +1789,20 @@ def main() -> int:
                 f"rgbldk channel close --user-channel-id {chan_b_to_a} --counterparty-node-id {node_id_a}",
                 display_cmd="rgbldk channel close --user-channel-id <user_channel_id> --counterparty-node-id <node_id_a>",
             )
+            md.heading(4, "Closing observability")
+            md.paragraph(
+                "Immediately after close initiation, poll `channel closing` on both peers. Entries progress through "
+                "`negotiating` → `broadcasting` → `confirming` (and optionally `sweeping`) until they disappear.\n"
+            )
+            run_step("rgbldk channel closing")
+            run_step("rgbldk ctx use node-a")
+            run_step("rgbldk channel closing")
             bitcoind_cli(f"generatetoaddress 6 {miner_addr}")
+            wait_for_closing_settled(node_a, timeout_s=180.0, miner_addr_for_blocks=miner_addr)
+            wait_for_closing_settled(node_b, timeout_s=180.0, miner_addr_for_blocks=miner_addr)
+            run_step("rgbldk channel closing")
+            run_step("rgbldk ctx use node-b")
+            run_step("rgbldk channel closing")
             run_step("rgbldk ctx use node-a")
             run_step("rgbldk wallet sync")
             run_step("rgbldk wallet balance")
@@ -1725,6 +1946,9 @@ def main() -> int:
                         display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
                     )
                     run_step("rgbldk rgb sync", retries=10, retry_sleep_s=1.0)
+                    # Esplora may lag a block or two after generate; do not proceed until
+                    # node-b actually observes a spendable RGB wallet UTXO for blinding.
+                    wait_for_reservable_rgb_utxo(node_b, timeout_s=90.0)
                     run_step(
                         f"rgbldk rgb contracts import --contract-id {contract_id} --file {consignment_file}"
                     )
@@ -1734,123 +1958,6 @@ def main() -> int:
                         f"rgbldk rgb contracts known {contract_id}",
                         display_cmd="rgbldk rgb contracts known <contract_id>",
                     )
-
-                    md.heading(4, "RGB UTXO lifecycle (fund/top-up/sweep)")
-                    md.paragraph(
-                        "`fund` creates empty RGB wallet outputs, `top-up` increases a single-asset RGB UTXO's bitcoin "
-                        "capacity, and `sweep` spends an empty RGB wallet output back to the BTC wallet. These low-level "
-                        "UTXO tools are different from `rgb onchain send`, which moves contract allocations between wallets.\n"
-                    )
-                    run_step("rgbldk ctx use node-a")
-                    top_up_rgb_utxo = wait_for_allocated_rgb_utxo(node_a, contract_id, timeout_s=90.0)
-                    top_up_rgb_outpoint = top_up_rgb_utxo.get("outpoint")
-                    top_up_old_value_sats = parse_sats(
-                        top_up_rgb_utxo.get("value_sats"), field="allocated RGB UTXO value_sats"
-                    )
-                    if not isinstance(top_up_rgb_outpoint, str) or not top_up_rgb_outpoint:
-                        raise RuntimeError(f"Invalid allocated RGB outpoint for rgb utxos top-up: {top_up_rgb_utxo}")
-                    top_up_target_value_sats = top_up_old_value_sats + 40_000
-
-                    fund_l1_addr = run_step_json("rgbldk wallet address").get("address")
-                    if not isinstance(fund_l1_addr, str) or not fund_l1_addr:
-                        raise RuntimeError(f"Invalid wallet address for rgb utxos fund input: {fund_l1_addr}")
-                    fund_txid = first_nonempty_line(
-                        run_step(
-                            f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress {fund_l1_addr} 0.01",
-                            display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress <wallet_address> 0.01",
-                        ).stdout
-                    )
-                    run_step(
-                        f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
-                        display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
-                    )
-                    run_step("rgbldk wallet sync")
-                    fund_input_outpoint = tx_outpoint_for_address(fund_txid, fund_l1_addr)
-                    fund_rgb_addr_1 = run_step_json("rgbldk rgb address").get("address")
-                    fund_rgb_addr_2 = run_step_json("rgbldk rgb address").get("address")
-                    fund_change_addr = run_step_json("rgbldk wallet address").get("address")
-                    if not isinstance(fund_rgb_addr_1, str) or not isinstance(fund_rgb_addr_2, str):
-                        raise RuntimeError("Invalid RGB output addresses for rgb utxos fund")
-                    if not isinstance(fund_change_addr, str) or not fund_change_addr:
-                        raise RuntimeError(f"Invalid wallet change address for rgb utxos fund: {fund_change_addr}")
-                    fund_resp = run_step_json(
-                        f"rgbldk rgb utxos fund --input {fund_input_outpoint} --output {fund_rgb_addr_1}:30000 --output {fund_rgb_addr_2}:28000 --change-address {fund_change_addr} --fee-rate-sats-per-vb 1.0",
-                        display_cmd="rgbldk rgb utxos fund --input <wallet_outpoint> --output <rgb_address_1>:30000 --output <rgb_address_2>:28000 --change-address <wallet_change_address> --fee-rate-sats-per-vb 1.0",
-                    )
-                    fund_txid_resp = fund_resp.get("txid")
-                    fund_outputs = fund_resp.get("outputs")
-                    if not isinstance(fund_txid_resp, str) or not fund_txid_resp:
-                        raise RuntimeError(f"Invalid txid from rgb utxos fund: {fund_resp}")
-                    if not isinstance(fund_outputs, list) or len(fund_outputs) < 2:
-                        raise RuntimeError(f"Invalid outputs from rgb utxos fund: {fund_resp}")
-                    fund_outpoint_1 = None
-                    fund_outpoint_2 = None
-                    for output in fund_outputs:
-                        if not isinstance(output, dict):
-                            continue
-                        addr = output.get("address")
-                        vout = output.get("vout")
-                        if not isinstance(addr, str) or not isinstance(vout, int):
-                            continue
-                        if addr == fund_rgb_addr_1:
-                            fund_outpoint_1 = f"{fund_txid_resp}:{vout}"
-                        if addr == fund_rgb_addr_2:
-                            fund_outpoint_2 = f"{fund_txid_resp}:{vout}"
-                    if not isinstance(fund_outpoint_1, str) or not isinstance(fund_outpoint_2, str):
-                        raise RuntimeError(f"Could not derive funded RGB outpoints from: {fund_resp}")
-                    run_step(
-                        f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
-                        display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
-                    )
-                    run_step("rgbldk wallet sync")
-                    run_step("rgbldk rgb sync", retries=10, retry_sleep_s=1.0)
-
-                    top_up_l1_addr = run_step_json("rgbldk wallet address").get("address")
-                    if not isinstance(top_up_l1_addr, str) or not top_up_l1_addr:
-                        raise RuntimeError(f"Invalid wallet address for rgb utxos top-up input: {top_up_l1_addr}")
-                    top_up_input_txid = first_nonempty_line(
-                        run_step(
-                            f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress {top_up_l1_addr} 0.005",
-                            display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress <wallet_address> 0.005",
-                        ).stdout
-                    )
-                    run_step(
-                        f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
-                        display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
-                    )
-                    run_step("rgbldk wallet sync")
-                    top_up_input_outpoint = tx_outpoint_for_address(top_up_input_txid, top_up_l1_addr)
-                    top_up_rgb_addr = run_step_json("rgbldk rgb address").get("address")
-                    top_up_change_addr = run_step_json("rgbldk wallet address").get("address")
-                    if not isinstance(top_up_rgb_addr, str) or not top_up_rgb_addr:
-                        raise RuntimeError(f"Invalid RGB address for rgb utxos top-up output: {top_up_rgb_addr}")
-                    if not isinstance(top_up_change_addr, str) or not top_up_change_addr:
-                        raise RuntimeError(f"Invalid wallet change address for rgb utxos top-up: {top_up_change_addr}")
-                    run_step(
-                        f"rgbldk rgb utxos top-up --rgb-outpoint {top_up_rgb_outpoint} --l1-input {top_up_input_outpoint} --rgb-address {top_up_rgb_addr} --target-value-sats {top_up_target_value_sats} --change-address {top_up_change_addr} --fee-rate-sats-per-vb 1.0",
-                        display_cmd="rgbldk rgb utxos top-up --rgb-outpoint <allocated_rgb_outpoint> --l1-input <wallet_outpoint> --rgb-address <rgb_address> --target-value-sats <larger_value_sats> --change-address <wallet_change_address> --fee-rate-sats-per-vb 1.0",
-                    )
-                    run_step(
-                        f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
-                        display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
-                    )
-                    run_step("rgbldk wallet sync")
-                    run_step("rgbldk rgb sync", retries=10, retry_sleep_s=1.0)
-
-                    sweep_dest_addr = run_step_json("rgbldk wallet address").get("address")
-                    if not isinstance(sweep_dest_addr, str) or not sweep_dest_addr:
-                        raise RuntimeError(f"Invalid sweep destination address: {sweep_dest_addr}")
-                    run_step(
-                        f"rgbldk rgb utxos sweep --outpoint {fund_outpoint_2} --destination-address {sweep_dest_addr} --fee-rate-sats-per-vb 1.0",
-                        display_cmd="rgbldk rgb utxos sweep --outpoint <rgb_outpoint> --destination-address <wallet_address> --fee-rate-sats-per-vb 1.0",
-                    )
-                    run_step(
-                        f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
-                        display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
-                    )
-                    run_step("rgbldk wallet sync")
-                    run_step("rgbldk rgb sync", retries=10, retry_sleep_s=1.0)
-                    run_step("rgbldk ctx use node-b")
 
                     md.heading(4, "RGB on-chain transfer (L1, node-a → node-b)")
                     md.paragraph(
@@ -1863,6 +1970,8 @@ def main() -> int:
                     inv_split = run_step_json(
                         f"rgbldk rgb onchain invoice-create --contract-id {contract_id} --amount 90",
                         display_cmd="rgbldk rgb onchain invoice-create --contract-id <contract_id> --amount 90",
+                        retries=5,
+                        retry_sleep_s=2.0,
                     ).get("invoice")
                     if not isinstance(inv_split, str) or not inv_split:
                         raise RuntimeError(f"Invalid RGB on-chain invoice from node-b: {inv_split}")
@@ -1909,7 +2018,10 @@ def main() -> int:
                         f"rgbldk rgb onchain receive --file {cons_split} --format zip --payment-id {inv_split_payment_id}",
                         display_cmd="rgbldk rgb onchain receive --file <a-to-b.zip> --format zip --payment-id <payment_id>",
                     )
-                    bitcoind_cli(f"generatetoaddress 6 {miner_addr}")
+                    # Hidden: mine + wait for bitcoind/esplora/wallet to catch up so the 10-unit
+                    # change UTXO on node-a is Selectable for the subsequent RGB channel open.
+                    wait_for_chain_and_wallet_sync(node_a, blocks=6, timeout_s=120.0)
+                    wait_for_chain_and_wallet_sync(node_b, blocks=0, timeout_s=60.0)
                     run_step("rgbldk wallet sync")
                     run_step("rgbldk rgb sync", retries=10, retry_sleep_s=1.0)
                     run_step(f"rgbldk rgb contracts balance {contract_id}")
@@ -1921,6 +2033,8 @@ def main() -> int:
                     run_step("rgbldk wallet sync")
                     run_step("rgbldk rgb sync", retries=10, retry_sleep_s=1.0)
                     run_step(f"rgbldk rgb contracts balance {contract_id}")
+                    wait_for_allocated_rgb_utxo(node_a, contract_id, timeout_s=90.0)
+                    wait_for_spendable_onchain_sats(node_a, 150_000, timeout_s=90.0)
                     run_step("rgbldk ctx use node-b")
 
                 else:
@@ -2110,6 +2224,146 @@ def main() -> int:
                 run_step(f"rgbldk rgb contracts balance {contract_id}")
                 run_step("rgbldk ctx use node-a")
 
+                md.heading(4, "RGB UTXO lifecycle (fund/top-up/sweep)")
+                md.paragraph(
+                    "`fund` creates empty RGB wallet outputs, `top-up` increases a single-asset RGB UTXO's bitcoin "
+                    "capacity, and `sweep` spends an empty RGB wallet output back to the BTC wallet. These low-level "
+                    "UTXO tools are different from `rgb onchain send`, which moves contract allocations between wallets.\n\n"
+                    "Run this lifecycle on node-b (which now holds 90 units) so node-a's remaining 10-unit UTXO stays "
+                    "eligible for the RGB channel open that follows.\n"
+                )
+                # Lifecycle on node-b: leave node-a's change UTXO untouched for channel funding.
+                run_step("rgbldk ctx use node-b")
+                top_up_rgb_utxo = wait_for_allocated_rgb_utxo(node_b, contract_id, timeout_s=90.0)
+                top_up_rgb_outpoint = top_up_rgb_utxo.get("outpoint")
+                top_up_old_value_sats = parse_sats(
+                    top_up_rgb_utxo.get("value_sats"), field="allocated RGB UTXO value_sats"
+                )
+                if not isinstance(top_up_rgb_outpoint, str) or not top_up_rgb_outpoint:
+                    raise RuntimeError(f"Invalid allocated RGB outpoint for rgb utxos top-up: {top_up_rgb_utxo}")
+                top_up_target_value_sats = top_up_old_value_sats + 40_000
+
+                fund_l1_addr = run_step_json("rgbldk wallet address").get("address")
+                if not isinstance(fund_l1_addr, str) or not fund_l1_addr:
+                    raise RuntimeError(f"Invalid wallet address for rgb utxos fund input: {fund_l1_addr}")
+                fund_txid = first_nonempty_line(
+                    run_step(
+                        f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress {fund_l1_addr} 0.01",
+                        display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress <wallet_address> 0.01",
+                    ).stdout
+                )
+                run_step(
+                    f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
+                    display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
+                )
+                run_step("rgbldk wallet sync")
+                fund_input_outpoint = tx_outpoint_for_address(fund_txid, fund_l1_addr)
+                # Ensure the orchestrator/L1 view has the sendtoaddress UTXO before fund.
+                wait_for_l1_wallet_outpoint(
+                    node_b,
+                    fund_input_outpoint,
+                    min_value_sats=58_000,
+                    timeout_s=90.0,
+                )
+                fund_rgb_addr_1 = run_step_json("rgbldk rgb address").get("address")
+                fund_rgb_addr_2 = run_step_json("rgbldk rgb address").get("address")
+                fund_change_addr = run_step_json("rgbldk wallet address").get("address")
+                if not isinstance(fund_rgb_addr_1, str) or not isinstance(fund_rgb_addr_2, str):
+                    raise RuntimeError("Invalid RGB output addresses for rgb utxos fund")
+                if not isinstance(fund_change_addr, str) or not fund_change_addr:
+                    raise RuntimeError(f"Invalid wallet change address for rgb utxos fund: {fund_change_addr}")
+                fund_resp = run_step_json(
+                    f"rgbldk rgb utxos fund --input {fund_input_outpoint} --output {fund_rgb_addr_1}:30000 --output {fund_rgb_addr_2}:28000 --change-address {fund_change_addr} --fee-rate-sats-per-vb 1.0",
+                    display_cmd="rgbldk rgb utxos fund --input <wallet_outpoint> --output <rgb_address_1>:30000 --output <rgb_address_2>:28000 --change-address <wallet_change_address> --fee-rate-sats-per-vb 1.0",
+                    retries=5,
+                    retry_sleep_s=2.0,
+                )
+                fund_txid_resp = fund_resp.get("txid")
+                fund_outputs = fund_resp.get("outputs")
+                if not isinstance(fund_txid_resp, str) or not fund_txid_resp:
+                    raise RuntimeError(f"Invalid txid from rgb utxos fund: {fund_resp}")
+                if not isinstance(fund_outputs, list) or len(fund_outputs) < 2:
+                    raise RuntimeError(f"Invalid outputs from rgb utxos fund: {fund_resp}")
+                fund_outpoint_1 = None
+                fund_outpoint_2 = None
+                for output in fund_outputs:
+                    if not isinstance(output, dict):
+                        continue
+                    addr = output.get("address")
+                    vout = output.get("vout")
+                    if not isinstance(addr, str) or not isinstance(vout, int):
+                        continue
+                    if addr == fund_rgb_addr_1:
+                        fund_outpoint_1 = f"{fund_txid_resp}:{vout}"
+                    if addr == fund_rgb_addr_2:
+                        fund_outpoint_2 = f"{fund_txid_resp}:{vout}"
+                if not isinstance(fund_outpoint_1, str) or not isinstance(fund_outpoint_2, str):
+                    raise RuntimeError(f"Could not derive funded RGB outpoints from: {fund_resp}")
+                run_step(
+                    f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
+                    display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
+                )
+                run_step("rgbldk wallet sync")
+                run_step("rgbldk rgb sync", retries=10, retry_sleep_s=1.0)
+
+                top_up_l1_addr = run_step_json("rgbldk wallet address").get("address")
+                if not isinstance(top_up_l1_addr, str) or not top_up_l1_addr:
+                    raise RuntimeError(f"Invalid wallet address for rgb utxos top-up input: {top_up_l1_addr}")
+                top_up_input_txid = first_nonempty_line(
+                    run_step(
+                        f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress {top_up_l1_addr} 0.005",
+                        display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin sendtoaddress <wallet_address> 0.005",
+                    ).stdout
+                )
+                run_step(
+                    f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
+                    display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 1 {miner_addr}",
+                )
+                run_step("rgbldk wallet sync")
+                top_up_input_outpoint = tx_outpoint_for_address(top_up_input_txid, top_up_l1_addr)
+                wait_for_l1_wallet_outpoint(
+                    node_b,
+                    top_up_input_outpoint,
+                    min_value_sats=50_000,
+                    timeout_s=90.0,
+                )
+                top_up_rgb_addr = run_step_json("rgbldk rgb address").get("address")
+                top_up_change_addr = run_step_json("rgbldk wallet address").get("address")
+                if not isinstance(top_up_rgb_addr, str) or not top_up_rgb_addr:
+                    raise RuntimeError(f"Invalid RGB address for rgb utxos top-up output: {top_up_rgb_addr}")
+                if not isinstance(top_up_change_addr, str) or not top_up_change_addr:
+                    raise RuntimeError(f"Invalid wallet change address for rgb utxos top-up: {top_up_change_addr}")
+                run_step(
+                    f"rgbldk rgb utxos top-up --rgb-outpoint {top_up_rgb_outpoint} --l1-input {top_up_input_outpoint} --rgb-address {top_up_rgb_addr} --target-value-sats {top_up_target_value_sats} --change-address {top_up_change_addr} --fee-rate-sats-per-vb 1.0",
+                    display_cmd="rgbldk rgb utxos top-up --rgb-outpoint <allocated_rgb_outpoint> --l1-input <wallet_outpoint> --rgb-address <rgb_address> --target-value-sats <larger_value_sats> --change-address <wallet_change_address> --fee-rate-sats-per-vb 1.0",
+                    retries=5,
+                    retry_sleep_s=2.0,
+                )
+                # Deepen beyond anti-reorg so the re-allocated RGB state is spendable.
+                run_step(
+                    f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 {miner_addr}",
+                    display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 {miner_addr}",
+                )
+                run_step("rgbldk wallet sync")
+                run_step("rgbldk rgb sync", retries=10, retry_sleep_s=1.0)
+                wait_for_allocated_rgb_utxo(node_b, contract_id, timeout_s=90.0)
+
+                sweep_dest_addr = run_step_json("rgbldk wallet address").get("address")
+                if not isinstance(sweep_dest_addr, str) or not sweep_dest_addr:
+                    raise RuntimeError(f"Invalid sweep destination address: {sweep_dest_addr}")
+                run_step(
+                    f"rgbldk rgb utxos sweep --outpoint {fund_outpoint_2} --destination-address {sweep_dest_addr} --fee-rate-sats-per-vb 1.0",
+                    display_cmd="rgbldk rgb utxos sweep --outpoint <rgb_outpoint> --destination-address <wallet_address> --fee-rate-sats-per-vb 1.0",
+                )
+                run_step(
+                    f"docker compose -f {compose_file} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 {miner_addr}",
+                    display_cmd=f"docker compose -f {compose_file_display} exec -T bitcoind bitcoin-cli -regtest -rpcuser=bitcoin -rpcpassword=bitcoin generatetoaddress 6 {miner_addr}",
+                )
+                run_step("rgbldk wallet sync")
+                run_step("rgbldk rgb sync", retries=10, retry_sleep_s=1.0)
+                wait_for_allocated_rgb_utxo(node_b, contract_id, timeout_s=90.0)
+
+
             if contract_id:
                 md.heading(2, "8) RGB/BTC swaps (single-hop lifecycle + multi-hop offer)")
                 md.paragraph(
@@ -2255,7 +2509,7 @@ def main() -> int:
             ).get("payment_id")
             if not isinstance(pay1, str) or not pay1:
                 raise RuntimeError(f"Invalid payment_id from invoice pay: {pay1}")
-            run_step(f"rgbldk pay wait {pay1} --timeout-secs 60")
+            run_step(f"rgbldk pay wait {pay1} --timeout-secs 60", timeout_s=120.0)
             run_step(f"rgbldk pay get {pay1}")
 
             run_step("rgbldk ctx use node-b")
@@ -2273,7 +2527,7 @@ def main() -> int:
             ).get("payment_id")
             if not isinstance(pay_send, str) or not pay_send:
                 raise RuntimeError(f"Invalid payment_id from invoice send: {pay_send}")
-            run_step(f"rgbldk pay wait {pay_send} --timeout-secs 60")
+            run_step(f"rgbldk pay wait {pay_send} --timeout-secs 60", timeout_s=120.0)
             run_step(f"rgbldk pay get {pay_send}")
 
             run_step("rgbldk ctx use node-b")
@@ -2289,7 +2543,7 @@ def main() -> int:
             ).get("payment_id")
             if not isinstance(pay2, str) or not pay2:
                 raise RuntimeError(f"Invalid payment_id from invoice send-using-amount: {pay2}")
-            run_step(f"rgbldk pay wait {pay2} --timeout-secs 60")
+            run_step(f"rgbldk pay wait {pay2} --timeout-secs 60", timeout_s=120.0)
             run_step(f"rgbldk pay get {pay2}")
 
             claim_preimage_hex = "42" * 32
@@ -2321,7 +2575,7 @@ def main() -> int:
                 display_cmd="rgbldk pay invoice claim-for-hash --payment-hash <payment_hash> --preimage <preimage> --claimable-amount-msat 14000",
             )
             run_step("rgbldk ctx use node-a")
-            run_step(f"rgbldk pay wait {hold_claim_pid} --timeout-secs 60")
+            run_step(f"rgbldk pay wait {hold_claim_pid} --timeout-secs 60", timeout_s=120.0)
             run_step(f"rgbldk pay get {hold_claim_pid}")
 
             fail_preimage_hex = "43" * 32
@@ -2348,7 +2602,8 @@ def main() -> int:
                 f"rgbldk pay invoice fail-for-hash {fail_payment_hash_hex}",
                 display_cmd="rgbldk pay invoice fail-for-hash <payment_hash>",
             )
-            wait_for_payment_status(node_a, hold_fail_pid, "Failed", timeout_s=90.0)
+            # Outbound side can take a while to observe the failure after fail-for-hash.
+            wait_for_payment_status(node_a, hold_fail_pid, "Failed", timeout_s=180.0)
             run_step("rgbldk ctx use node-a")
             run_step(f"rgbldk pay get {hold_fail_pid}")
 
@@ -2368,7 +2623,7 @@ def main() -> int:
             ).get("payment_id")
             if not isinstance(pay3_b_to_a, str) or not pay3_b_to_a:
                 raise RuntimeError(f"Invalid payment_id from invoice pay: {pay3_b_to_a}")
-            run_step(f"rgbldk pay wait {pay3_b_to_a} --timeout-secs 60")
+            run_step(f"rgbldk pay wait {pay3_b_to_a} --timeout-secs 60", timeout_s=120.0)
             run_step(f"rgbldk pay get {pay3_b_to_a}")
             run_step("rgbldk ctx use node-a")
 
@@ -2390,7 +2645,7 @@ def main() -> int:
             ).get("payment_id")
             if not isinstance(offer_pay, str) or not offer_pay:
                 raise RuntimeError(f"Invalid payment_id from offer pay: {offer_pay}")
-            run_step(f"rgbldk pay wait {offer_pay} --timeout-secs 60")
+            run_step(f"rgbldk pay wait {offer_pay} --timeout-secs 60", timeout_s=120.0)
             run_step(f"rgbldk pay get {offer_pay}")
 
             md.heading(3, "BOLT12 refund (initiate/request-payment) + abandon")
@@ -2412,7 +2667,7 @@ def main() -> int:
                 display_cmd="rgbldk pay refund request-payment <refund>",
             )
             run_step("rgbldk ctx use node-a")
-            run_step(f"rgbldk pay wait {refund1_pid} --timeout-secs 60")
+            run_step(f"rgbldk pay wait {refund1_pid} --timeout-secs 60", timeout_s=120.0)
             run_step(f"rgbldk pay get {refund1_pid}")
 
             refund2 = run_step_json("rgbldk pay refund initiate --amount-msat 1111 --payer-note refund-abandon-demo")
@@ -2485,7 +2740,7 @@ def main() -> int:
                 ).get("payment_id")
                 if not isinstance(rgb_pay, str) or not rgb_pay:
                     raise RuntimeError(f"Invalid payment_id from RGB LN pay: {rgb_pay}")
-                run_step(f"rgbldk pay wait {rgb_pay} --timeout-secs 60")
+                run_step(f"rgbldk pay wait {rgb_pay} --timeout-secs 60", timeout_s=120.0)
                 run_step(f"rgbldk pay get {rgb_pay}")
 
                 md.heading(4, "RGB Lightning transfer (L2, node-b → node-a)")
@@ -2512,7 +2767,7 @@ def main() -> int:
                 ).get("payment_id")
                 if not isinstance(rgb_pay2, str) or not rgb_pay2:
                     raise RuntimeError(f"Invalid payment_id from RGB LN pay: {rgb_pay2}")
-                run_step(f"rgbldk pay wait {rgb_pay2} --timeout-secs 60")
+                run_step(f"rgbldk pay wait {rgb_pay2} --timeout-secs 60", timeout_s=120.0)
                 run_step(f"rgbldk pay get {rgb_pay2}")
                 run_step("rgbldk ctx use node-a")
                 md.paragraph(
@@ -2534,7 +2789,7 @@ def main() -> int:
             ).get("payment_id")
             if not isinstance(pay_keysend_a_to_b, str) or not pay_keysend_a_to_b:
                 raise RuntimeError(f"Invalid payment_id from keysend: {pay_keysend_a_to_b}")
-            run_step(f"rgbldk pay wait {pay_keysend_a_to_b} --timeout-secs 60")
+            run_step(f"rgbldk pay wait {pay_keysend_a_to_b} --timeout-secs 60", timeout_s=120.0)
             run_step(f"rgbldk pay get {pay_keysend_a_to_b}")
 
             md.heading(4, "Keysend (reverse direction)")
@@ -2549,7 +2804,7 @@ def main() -> int:
             ).get("payment_id")
             if not isinstance(pay_keysend_b_to_a, str) or not pay_keysend_b_to_a:
                 raise RuntimeError(f"Invalid payment_id from keysend: {pay_keysend_b_to_a}")
-            run_step(f"rgbldk pay wait {pay_keysend_b_to_a} --timeout-secs 60")
+            run_step(f"rgbldk pay wait {pay_keysend_b_to_a} --timeout-secs 60", timeout_s=120.0)
             run_step(f"rgbldk pay get {pay_keysend_b_to_a}")
             run_step("rgbldk ctx use node-a")
 
@@ -2581,14 +2836,35 @@ def main() -> int:
 
             md.heading(2, "11) BTC on-chain settlement (L1, node-a → node-b via channel push+close) + Channel force-close")
             md.paragraph(
-                "Demonstrate graceful close vs force-close. Force-close is destructive and requires `--yes` for non-interactive safety.\n"
+                "Demonstrate graceful close vs force-close, and how `channel closing` tracks both paths. "
+                "Force-close is destructive and requires `--yes` for non-interactive safety.\n"
             )
             md.heading(3, "BTC on-chain settlement (L1, node-a → node-b via channel push+close)")
             run_step(
                 f"rgbldk channel close --user-channel-id {chan_100k} --counterparty-node-id {node_id_b}",
                 display_cmd="rgbldk channel close --user-channel-id <user_channel_id> --counterparty-node-id <node_id_b>",
             )
+            run_step("rgbldk channel closing")
+            run_step(f"rgbldk --connect {node_b} channel closing")
             bitcoind_cli(f"generatetoaddress 6 {miner_addr}")
+            # RGB channels can remain in `negotiating` after a long payment session if the peer
+            # still has in-flight HTLCs; still surface the list either way.
+            wait_for_closing_settled(
+                node_a,
+                timeout_s=240.0,
+                miner_addr_for_blocks=miner_addr,
+                require_empty=False,
+                also_sync=node_b,
+            )
+            wait_for_closing_settled(
+                node_b,
+                timeout_s=120.0,
+                miner_addr_for_blocks=miner_addr,
+                require_empty=False,
+                also_sync=node_a,
+            )
+            run_step("rgbldk channel closing")
+            run_step(f"rgbldk --connect {node_b} channel closing")
             run_step("rgbldk wallet sync")
             run_step(f"rgbldk --connect {node_b} wallet sync")
             run_step("rgbldk wallet balance")
@@ -2609,6 +2885,13 @@ def main() -> int:
                 f"rgbldk --yes channel force-close --user-channel-id {chan_force} --counterparty-node-id {node_id_b}",
                 display_cmd="rgbldk --yes channel force-close --user-channel-id <user_channel_id> --counterparty-node-id <node_id_b>",
             )
+            md.paragraph(
+                "Force-close also appears in `channel closing`. CSV delays may keep the entry around longer than a "
+                "cooperative close; the example only snapshots the post-force-close view rather than waiting for full "
+                "settlement.\n"
+            )
+            run_step("rgbldk channel closing")
+            run_step(f"rgbldk --connect {node_b} channel closing")
 
             md.heading(2, "12) Cleanup")
             md.paragraph("Tear down the docker-compose stack and remove volumes.\n")

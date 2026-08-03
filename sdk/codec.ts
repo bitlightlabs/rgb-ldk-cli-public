@@ -5,6 +5,9 @@ import type {
   Bolt12OfferDecodeResponse,
   Bolt12RefundDecodeResponse,
   ChannelDetailsExtendedDto,
+  ClosingBtcBalanceDto,
+  ClosingChannelDto,
+  ClosingRgbDto,
   CustomTlvDto,
   EventDto,
   PaymentDetailsDto,
@@ -89,6 +92,29 @@ export function decodeChannelDetailsExtendedDto(value: unknown): ChannelDetailsE
   v.outbound_scid_alias = decodeU64Nullable(v.outbound_scid_alias);
   v.inbound_scid_alias = decodeU64Nullable(v.inbound_scid_alias);
   return v as ChannelDetailsExtendedDto;
+}
+
+function decodeClosingBtcBalanceDto(value: unknown): ClosingBtcBalanceDto {
+  const v = asRecord(value);
+  v.amount_sats = decodeU64(v.amount_sats);
+  return v as ClosingBtcBalanceDto;
+}
+
+function decodeClosingRgbDto(value: unknown): ClosingRgbDto {
+  const v = asRecord(value);
+  v.local_amount = decodeU64(v.local_amount);
+  v.remote_amount = decodeU64(v.remote_amount);
+  return v as ClosingRgbDto;
+}
+
+export function decodeClosingChannelDto(value: unknown): ClosingChannelDto {
+  const v = asRecord(value);
+  v.btc_balances = asArray(v.btc_balances).map(decodeClosingBtcBalanceDto);
+  v.sweeping_balances = asArray(v.sweeping_balances).map(decodeClosingBtcBalanceDto);
+  if (v.rgb !== null && v.rgb !== undefined) {
+    v.rgb = decodeClosingRgbDto(v.rgb);
+  }
+  return v as ClosingChannelDto;
 }
 
 export function decodeBolt11DecodeResponse(value: unknown): Bolt11DecodeResponse {

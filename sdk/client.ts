@@ -23,6 +23,7 @@ import {
   Bolt12RefundRequestPaymentResponse,
   ChannelDetailsExtendedDto,
   CloseChannelRequest,
+  ClosingChannelDto,
   EventDto,
   ListeningAddressesResponse,
   NodeIdResponse,
@@ -93,6 +94,7 @@ import {
   decodeBolt12OfferDecodeResponse,
   decodeBolt12RefundDecodeResponse,
   decodeChannelDetailsExtendedDto,
+  decodeClosingChannelDto,
   decodeEventDto,
   decodePaymentDetailsDto,
   decodePaymentWaitResponse,
@@ -619,6 +621,14 @@ export class NodeHttpClient {
     const decode = decodeArray(decodeChannelDetailsExtendedDto);
     return this.request<unknown>("GET", "/channels", undefined, options).then((v) => decode(v)) as Promise<
       ChannelDetailsExtendedDto[]
+    >;
+  }
+
+  // GET /channels/closing
+  channelsClosing(options?: RequestOptions): Promise<ClosingChannelDto[]> {
+    const decode = decodeArray(decodeClosingChannelDto);
+    return this.request<unknown>("GET", "/channels/closing", undefined, options).then((v) => decode(v)) as Promise<
+      ClosingChannelDto[]
     >;
   }
 

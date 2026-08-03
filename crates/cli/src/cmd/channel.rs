@@ -1,5 +1,5 @@
 use rgbldk_http_client::dto::{
-	CloseChannelRequest, OkResponse, OpenChannelRequest, OpenChannelResponse,
+	CloseChannelRequest, ClosingChannelDto, OkResponse, OpenChannelRequest, OpenChannelResponse,
 	RgbOpenChannelRequest, SpliceInRequest, SpliceOutRequest,
 };
 use serde::{Deserialize, Serialize};
@@ -105,6 +105,84 @@ pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
 					];
 					if show_rgb {
 						headers.extend(["RGB Contract", "RGB Local", "RGB Remote"]);
+					}
+					crate::ui::print_table(app.theme, &headers, rows);
+				},
+			}
+		},
+		ChannelCommand::Closing => {
+			let url = join_url(&app.base, "/api/v1/channels/closing");
+			let closing: Vec<ClosingChannelDto> =
+				send_json(app.client.get(url)).await.unwrap_or_else(|e| die(e));
+			match app.output {
+				crate::ui::OutputMode::Json => print_json(&closing, app.pretty),
+				crate::ui::OutputMode::Text => {
+					if closing.is_empty() {
+						println!("No channels currently closing.");
+						return;
+					}
+					let show_rgb = closing.iter().any(|c| c.rgb.is_some());
+					let rows = closing
+						.into_iter()
+						.map(|c| {
+							let btc_sats: u64 =
+								c.btc_balances.iter().map(|b| b.amount_sats).sum::<u64>()
+									+ c.sweeping_balances
+										.iter()
+										.map(|b| b.amount_sats)
+										.sum::<u64>();
+							let mut row = vec![
+								c.user_channel_id.clone().unwrap_or_else(|| "-".into()),
+								c.channel_id.clone(),
+								c.counterparty_node_id.clone(),
+								dto_enum_label(&c.status),
+								dto_enum_label(&c.close_source),
+								c.closing_txid.clone().unwrap_or_else(|| "-".into()),
+								crate::ui::format_u64_with_commas(btc_sats),
+							];
+							if show_rgb {
+								if let Some(rgb) = c.rgb {
+									let contract = if app.no_truncate {
+										rgb.contract_id
+									} else {
+										crate::ui::truncate_id(&rgb.contract_id)
+									};
+									let sweep = rgb
+										.sweep_status
+										.map(|s| dto_enum_label(&s))
+										.unwrap_or_else(|| "-".into());
+									row.push(contract);
+									row.push(crate::ui::format_u64_with_commas(rgb.local_amount));
+									row.push(sweep);
+								} else {
+									row.extend(["-".into(), "-".into(), "-".into()]);
+								}
+							}
+							row
+						})
+						.map(|mut r| {
+							if !app.no_truncate {
+								// user_channel_id, channel_id, counterparty
+								r[0] = crate::ui::truncate_id(&r[0]);
+								r[1] = crate::ui::truncate_id(&r[1]);
+								r[2] = crate::ui::truncate_id(&r[2]);
+								// closing_txid
+								r[5] = crate::ui::truncate_id(&r[5]);
+							}
+							r
+						})
+						.collect::<Vec<_>>();
+					let mut headers = vec![
+						"User Channel ID",
+						"Channel ID",
+						"Counterparty",
+						"Status",
+						"Source",
+						"Closing Txid",
+						"BTC (sats)",
+					];
+					if show_rgb {
+						headers.extend(["RGB Contract", "RGB Local", "RGB Sweep"]);
 					}
 					crate::ui::print_table(app.theme, &headers, rows);
 				},
@@ -234,4 +312,11 @@ fn format_decimal(value: &str) -> String {
 		.parse::<u64>()
 		.map(crate::ui::format_u64_with_commas)
 		.unwrap_or_else(|_| value.to_string())
+}
+
+fn dto_enum_label<T: Serialize + std::fmt::Debug>(value: &T) -> String {
+	match serde_json::to_value(value) {
+		Ok(serde_json::Value::String(s)) => s,
+		_ => format!("{value:?}"),
+	}
 }

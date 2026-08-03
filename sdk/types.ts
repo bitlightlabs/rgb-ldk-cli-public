@@ -132,6 +132,48 @@ export interface CloseChannelRequest {
   counterparty_node_id: string;
 }
 
+/** Stage of a closing channel (`GET /channels/closing`). */
+export type ClosingChannelStatusDto =
+  | "negotiating"
+  | "broadcasting"
+  | "confirming"
+  | "contested"
+  | "sweeping";
+
+/** How the channel was closed, as derivable from on-chain state. */
+export type ClosingSourceDto = "coop" | "holder_force" | "counterparty_force" | "unknown";
+
+/** Progress of the RGB static-output sweep for a closing channel. */
+export type RgbSweepStatusDto = "parked" | "in_flight" | "done";
+
+export interface ClosingBtcBalanceDto {
+  kind: string;
+  amount_sats: U64;
+  maturity_height?: number | null;
+  blocks_remaining?: number | null;
+}
+
+export interface ClosingRgbDto {
+  contract_id: string;
+  local_amount: U64;
+  remote_amount: U64;
+  sweep_status?: RgbSweepStatusDto | null;
+  sweep_txid?: string | null;
+}
+
+/** A channel between close initiation and funds landing back in the wallet. */
+export interface ClosingChannelDto {
+  channel_id: string;
+  counterparty_node_id: string;
+  user_channel_id?: string | null;
+  status: ClosingChannelStatusDto;
+  close_source: ClosingSourceDto;
+  closing_txid?: string | null;
+  btc_balances: ClosingBtcBalanceDto[];
+  sweeping_balances: ClosingBtcBalanceDto[];
+  rgb?: ClosingRgbDto | null;
+}
+
 export interface Bolt11ReceiveRequest {
   amount_msat: U64;
   description: string;

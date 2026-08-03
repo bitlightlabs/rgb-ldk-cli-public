@@ -322,6 +322,8 @@ pub struct PeerConnectArgs {
 #[derive(Subcommand, Debug)]
 pub enum ChannelCommand {
 	Ls,
+	/// List channels currently closing (between close initiation and funds settling).
+	Closing,
 	Open(ChannelOpenArgs),
 	Close(ChannelCloseArgs),
 	ForceClose(ChannelCloseArgs),
