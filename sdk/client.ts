@@ -66,6 +66,9 @@ import {
   RgbOnchainSendResponse,
   RgbSignMessageRequest,
   RgbSignMessageResponse,
+  RgbUtxosMergeRequest,
+  RgbUtxosMergeResponse,
+  RgbUtxosMergeStatusResponse,
   RgbUtxosReleaseRequest,
   RgbUtxosReleaseResponse,
   RgbUtxosReserveRequest,
@@ -107,6 +110,8 @@ import {
   decodeRgbOnchainInvoiceDecodeResponse,
   decodeRgbOnchainPaymentsResponse,
   decodeRgbOnchainReceiveResponse,
+  decodeRgbUtxosMergeResponse,
+  decodeRgbUtxosMergeStatusResponse,
   decodeRgbUtxosReserveResponse,
   decodeRgbUtxosResponse,
   decodeRgbUtxosSummaryResponse,
@@ -353,6 +358,20 @@ export class NodeHttpClient {
   // POST /rgb/utxos/release
   rgbUtxosRelease(req: RgbUtxosReleaseRequest, options?: RequestOptions): Promise<RgbUtxosReleaseResponse> {
     return this.request<RgbUtxosReleaseResponse>("POST", "/rgb/utxos/release", req, options) as Promise<RgbUtxosReleaseResponse>;
+  }
+
+  // POST /rgb/utxos/merge
+  rgbUtxosMerge(req: RgbUtxosMergeRequest, options?: RequestOptions): Promise<RgbUtxosMergeResponse> {
+    return this.request<unknown>("POST", "/rgb/utxos/merge", req, options).then((v) =>
+      decodeRgbUtxosMergeResponse(v)
+    ) as Promise<RgbUtxosMergeResponse>;
+  }
+
+  // GET /rgb/utxos/merge/status
+  rgbUtxosMergeStatus(options?: RequestOptions): Promise<RgbUtxosMergeStatusResponse> {
+    return this.request<unknown>("GET", "/rgb/utxos/merge/status", undefined, options).then((v) =>
+      decodeRgbUtxosMergeStatusResponse(v)
+    ) as Promise<RgbUtxosMergeStatusResponse>;
   }
 
   // GET /rgb/contracts

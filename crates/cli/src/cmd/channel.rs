@@ -196,6 +196,8 @@ pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
 						contract_id: contract_id.clone(),
 						asset_amount,
 						color_context_data: color_context_data.clone(),
+						funding_utxo_policy: None,
+						funding_utxos: None,
 					},
 				),
 				_ => die(

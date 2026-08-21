@@ -1,5 +1,6 @@
 use rgbldk_http_client::dto::{
 	RgbUtxosFundInputDto, RgbUtxosFundOutputDto, RgbUtxosFundRequest, RgbUtxosFundResponse,
+	RgbUtxosMergeRequest, RgbUtxosMergeResponse, RgbUtxosMergeStatusResponse,
 	RgbUtxosReleaseRequest, RgbUtxosReleaseResponse, RgbUtxosReserveRequest,
 	RgbUtxosReserveResponse, RgbUtxosResponse, RgbUtxosSummaryResponse, RgbUtxosSweepInputDto,
 	RgbUtxosSweepRequest, RgbUtxosSweepResponse, RgbUtxosTopUpL1InputDto, RgbUtxosTopUpRequest,
@@ -268,6 +269,82 @@ pub(crate) async fn handle(app: &App, command: &RgbUtxosCommand) {
 							ui::format_u64_with_commas(change.value_sats)
 						);
 					}
+				},
+			}
+		},
+		RgbUtxosCommand::Merge(args) => {
+			let url = join_url(&app.base, "/api/v1/rgb/utxos/merge");
+			let req = RgbUtxosMergeRequest {
+				contract_id: args.contract_id.clone(),
+				destination_utxo: args.destination_utxo.clone(),
+				include_invoice_bound_utxos: if args.include_invoice_bound_utxos {
+					Some(true)
+				} else {
+					None
+				},
+				fee_rate_sats_per_vb: args.fee_rate_sats_per_vb,
+			};
+			let resp: RgbUtxosMergeResponse =
+				send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+			match app.output {
+				ui::OutputMode::Json => print_json(&resp, app.pretty),
+				ui::OutputMode::Text => {
+					println!("Merge operation: {}", resp.operation_id);
+					println!("Broadcast transaction: {}", resp.txid);
+					println!(
+						"Merged {} inputs, {} total.",
+						resp.merged_inputs.len(),
+						ui::format_u64_with_commas(resp.total_amount)
+					);
+					if resp.remaining_count > 0 {
+						println!(
+							"{} mergeable UTXOs remain; run merge again to continue.",
+							resp.remaining_count
+						);
+					}
+					println!("Status: {}", resp.status);
+					println!("Consignment key: {}", resp.consignment_key);
+				},
+			}
+		},
+		RgbUtxosCommand::MergeStatus => {
+			let url = join_url(&app.base, "/api/v1/rgb/utxos/merge/status");
+			let resp: RgbUtxosMergeStatusResponse =
+				send_json(app.client.get(url)).await.unwrap_or_else(|e| die(e));
+			match app.output {
+				ui::OutputMode::Json => print_json(&resp, app.pretty),
+				ui::OutputMode::Text => {
+					if resp.merges.is_empty() {
+						println!("No in-flight RGB UTXO merges.");
+						return;
+					}
+					let rows = resp
+						.merges
+						.into_iter()
+						.map(|m| {
+							vec![
+								m.txid,
+								m.destination_utxo,
+								m.contract_id.unwrap_or_else(|| "-".into()),
+								m.status,
+								m.confirmations.to_string(),
+								if m.released { "released".into() } else { "-".into() },
+							]
+						})
+						.collect::<Vec<_>>();
+					ui::print_table_with_right_align(
+						app.theme,
+						&[
+							"Txid",
+							"Destination",
+							"Contract",
+							"Status",
+							"Confirmations",
+							"Reservation",
+						],
+						rows,
+						&[4],
+					);
 				},
 			}
 		},

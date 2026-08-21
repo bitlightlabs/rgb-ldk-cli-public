@@ -605,6 +605,10 @@ pub enum RgbUtxosCommand {
 	Sweep(RgbUtxosSweepArgs),
 	/// Increase the BTC capacity of one RGB UTXO.
 	TopUp(RgbUtxosTopUpArgs),
+	/// Merge RGB UTXOs of one contract onto an existing destination outpoint.
+	Merge(RgbUtxosMergeArgs),
+	/// Show RGB UTXO merge operations and their status.
+	MergeStatus,
 }
 
 #[derive(Args, Debug)]
@@ -693,6 +697,22 @@ pub struct RgbUtxosTopUpArgs {
 	pub change_address: String,
 	#[arg(long)]
 	pub fee_rate_sats_per_vb: f32,
+}
+
+#[derive(Args, Debug)]
+pub struct RgbUtxosMergeArgs {
+	/// Contract whose spendable RGB UTXOs will be consolidated.
+	#[arg(long)]
+	pub contract_id: String,
+	/// Existing RGB-wallet outpoint (`txid:vout`) that receives the merged balance.
+	#[arg(long)]
+	pub destination_utxo: String,
+	/// Also spend UTXOs bound to pending receive invoices.
+	#[arg(long)]
+	pub include_invoice_bound_utxos: bool,
+	/// Positive fee rate in sat/vB (defaults to 2.0).
+	#[arg(long)]
+	pub fee_rate_sats_per_vb: Option<f32>,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]

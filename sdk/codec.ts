@@ -21,6 +21,9 @@ import type {
   RgbOnchainInvoiceDecodeResponse,
   RgbOnchainPaymentsResponse,
   RgbOnchainReceiveResponse,
+  RgbUtxosMergeResponse,
+  RgbUtxosMergeStatusEntryDto,
+  RgbUtxosMergeStatusResponse,
   RgbUtxosReserveResponse,
   RgbUtxosResponse,
   RgbUtxosSummaryResponse,
@@ -260,6 +263,21 @@ export function decodeRgbUtxosReserveResponse(value: unknown): RgbUtxosReserveRe
   const v = asRecord(value);
   v.reserved_until_unix_secs = decodeU64(v.reserved_until_unix_secs);
   return v as RgbUtxosReserveResponse;
+}
+
+export function decodeRgbUtxosMergeResponse(value: unknown): RgbUtxosMergeResponse {
+  const v = asRecord(value);
+  v.total_amount = decodeU64(v.total_amount);
+  return v as RgbUtxosMergeResponse;
+}
+
+export function decodeRgbUtxosMergeStatusResponse(value: unknown): RgbUtxosMergeStatusResponse {
+  const v = asRecord(value);
+  v.merges = asArray(v.merges).map((merge) => {
+    const m = asRecord(merge);
+    return m as RgbUtxosMergeStatusEntryDto;
+  });
+  return v as RgbUtxosMergeStatusResponse;
 }
 
 export function decodePaymentDetailsDto(value: unknown): PaymentDetailsDto {

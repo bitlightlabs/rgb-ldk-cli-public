@@ -694,6 +694,36 @@ export interface RgbUtxosReleaseResponse {
   released: boolean;
 }
 
+export interface RgbUtxosMergeRequest {
+  contract_id: string;
+  destination_utxo: string;
+  include_invoice_bound_utxos?: boolean | null;
+  fee_rate_sats_per_vb?: number | null;
+}
+
+export interface RgbUtxosMergeResponse {
+  operation_id: string;
+  txid: string;
+  merged_inputs: string[];
+  total_amount: U64;
+  remaining_count: number;
+  status: string;
+  consignment_key: string;
+}
+
+export interface RgbUtxosMergeStatusEntryDto {
+  txid: string;
+  destination_utxo: string;
+  contract_id?: string | null;
+  status: string;
+  confirmations: number;
+  released: boolean;
+}
+
+export interface RgbUtxosMergeStatusResponse {
+  merges: RgbUtxosMergeStatusEntryDto[];
+}
+
 // ---- BOLT12 (offers + refunds) ----
 
 export interface Bolt12OfferReceiveRequest {
