@@ -130,9 +130,10 @@ services:
       - "127.0.0.1:${NODE_A_P2P_PORT:-9735}:9735"
     volumes:
       - node-a-data:/home/rgbldk/.ldk-node
+      - ./lsps1-service.json:/home/rgbldk/lsps1-service.json:ro
     command:
       - rgbldkd
-      - server
+      - run
       - --allow-non-loopback-listen
       - --listen
       - 0.0.0.0:8500
@@ -144,6 +145,8 @@ services:
       - http://esplora:3000
       - --data-dir
       - /home/rgbldk/.ldk-node
+      - --lsps1-service-config
+      - /home/rgbldk/lsps1-service.json
       - --node-alias
       - node-a
       - --log-to-stdout
@@ -165,7 +168,7 @@ services:
       - node-b-data:/home/rgbldk/.ldk-node
     command:
       - rgbldkd
-      - server
+      - run
       - --allow-non-loopback-listen
       - --listen
       - 0.0.0.0:8500

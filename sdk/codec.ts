@@ -10,6 +10,13 @@ import type {
   ClosingRgbDto,
   CustomTlvDto,
   EventDto,
+  Lsps1InfoResponse,
+  Lsps1LspConfigDto,
+  Lsps1OptionsDto,
+  Lsps1OrderResponse,
+  Lsps1PricingDto,
+  Lsps1ServiceOrderDto,
+  Lsps1ServiceOrdersResponse,
   PaymentDetailsDto,
   PaymentWaitResponse,
   RgbContractBalanceResponse,
@@ -356,4 +363,149 @@ export function decodeEventDto(value: unknown): EventDto {
 
 export function decodeArray<T>(decodeItem: (value: unknown) => T): (value: unknown) => T[] {
   return (value: unknown) => asArray(value).map(decodeItem);
+}
+
+// ---- LSPS1 decoders ----
+
+function decodeLsps1SupportedOptions(value: unknown): AnyRecord {
+  const v = asRecord(value);
+  v.min_initial_client_balance_sat = decodeU64(v.min_initial_client_balance_sat);
+  v.max_initial_client_balance_sat = decodeU64(v.max_initial_client_balance_sat);
+  v.min_initial_lsp_balance_sat = decodeU64(v.min_initial_lsp_balance_sat);
+  v.max_initial_lsp_balance_sat = decodeU64(v.max_initial_lsp_balance_sat);
+  v.min_channel_balance_sat = decodeU64(v.min_channel_balance_sat);
+  v.max_channel_balance_sat = decodeU64(v.max_channel_balance_sat);
+  return v;
+}
+
+function decodeLsps1RgbFeeBreakdown(value: unknown): AnyRecord {
+  const v = asRecord(value);
+  v.onchain_cost_sat = decodeU64(v.onchain_cost_sat);
+  v.btc_rent_sat = decodeU64(v.btc_rent_sat);
+  v.asset_rent_sat = decodeU64(v.asset_rent_sat);
+  v.asset_sale_sat = decodeU64(v.asset_sale_sat);
+  return v;
+}
+
+export function decodeLsps1LspConfigDto(value: unknown): Lsps1LspConfigDto {
+  return asRecord(value) as Lsps1LspConfigDto;
+}
+
+export function decodeLsps1InfoResponse(value: unknown): Lsps1InfoResponse {
+  const v = asRecord(value);
+  v.supported_options = decodeLsps1SupportedOptions(v.supported_options);
+  if (v.pricing !== null && v.pricing !== undefined) {
+    const p = asRecord(v.pricing);
+    p.onchain_cost_sat = decodeU64Nullable(p.onchain_cost_sat);
+    p.min_fee_sat = decodeU64Nullable(p.min_fee_sat);
+    v.pricing = p;
+  }
+  if (v.rgb !== null && v.rgb !== undefined) {
+    const rgb = asRecord(v.rgb);
+    rgb.rgb_assets = asArray(rgb.rgb_assets).map((asset) => {
+      const a = asRecord(asset);
+      a.asset_unit_price_sat = decodeU64(a.asset_unit_price_sat);
+      a.min_lsp_asset_balance = decodeU64(a.min_lsp_asset_balance);
+      a.max_lsp_asset_balance = decodeU64(a.max_lsp_asset_balance);
+      a.max_client_asset_balance = decodeU64(a.max_client_asset_balance);
+      return a;
+    });
+    v.rgb = rgb;
+  }
+  return v as Lsps1InfoResponse;
+}
+
+export function decodeLsps1OptionsDto(value: unknown): Lsps1OptionsDto {
+  const v = asRecord(value);
+  v.supported_options = decodeLsps1SupportedOptions(v.supported_options);
+  const service = asRecord(v.service);
+  service.late_deposit_refund_window_secs = decodeU64(service.late_deposit_refund_window_secs);
+  v.service = service;
+  return v as Lsps1OptionsDto;
+}
+
+export function decodeLsps1PricingDto(value: unknown): Lsps1PricingDto {
+  const v = asRecord(value);
+  const pricing = asRecord(v.pricing);
+  pricing.onchain_cost_sat = decodeU64(pricing.onchain_cost_sat);
+  pricing.min_fee_sat = decodeU64(pricing.min_fee_sat);
+  v.pricing = pricing;
+  v.assets = asArray(v.assets).map((asset) => {
+    const a = asRecord(asset);
+    a.asset_unit_price_sat = decodeU64(a.asset_unit_price_sat);
+    a.min_lsp_asset_balance = decodeU64(a.min_lsp_asset_balance);
+    a.max_lsp_asset_balance = decodeU64(a.max_lsp_asset_balance);
+    a.max_client_asset_balance = decodeU64(a.max_client_asset_balance);
+    return a;
+  });
+  return v as Lsps1PricingDto;
+}
+
+export function decodeLsps1OrderResponse(value: unknown): Lsps1OrderResponse {
+  const v = asRecord(value);
+
+  const order = asRecord(v.order);
+  order.lsp_balance_sat = decodeU64(order.lsp_balance_sat);
+  order.client_balance_sat = decodeU64(order.client_balance_sat);
+  v.order = order;
+
+  const payment = asRecord(v.payment);
+  if (payment.bolt11 !== null && payment.bolt11 !== undefined) {
+    const b = asRecord(payment.bolt11);
+    b.expires_at_unix_secs = decodeU64(b.expires_at_unix_secs);
+    b.fee_total_sat = decodeU64(b.fee_total_sat);
+    b.order_total_sat = decodeU64(b.order_total_sat);
+    payment.bolt11 = b;
+  }
+  if (payment.onchain !== null && payment.onchain !== undefined) {
+    const o = asRecord(payment.onchain);
+    o.expires_at_unix_secs = decodeU64(o.expires_at_unix_secs);
+    o.fee_total_sat = decodeU64(o.fee_total_sat);
+    o.order_total_sat = decodeU64(o.order_total_sat);
+    payment.onchain = o;
+  }
+  v.payment = payment;
+
+  if (v.channel !== null && v.channel !== undefined) {
+    const c = asRecord(v.channel);
+    c.funded_at_unix_secs = decodeU64(c.funded_at_unix_secs);
+    c.expires_at_unix_secs = decodeU64(c.expires_at_unix_secs);
+    v.channel = c;
+  }
+
+  if (v.rgb !== null && v.rgb !== undefined) {
+    const rgb = asRecord(v.rgb);
+    rgb.lsp_asset_balance = decodeU64(rgb.lsp_asset_balance);
+    rgb.client_asset_balance = decodeU64(rgb.client_asset_balance);
+    rgb.fee_breakdown = decodeLsps1RgbFeeBreakdown(rgb.fee_breakdown);
+    v.rgb = rgb;
+  }
+
+  return v as Lsps1OrderResponse;
+}
+
+export function decodeLsps1ServiceOrderDto(value: unknown): Lsps1ServiceOrderDto {
+  const v = asRecord(value);
+  v.lsp_balance_sat = decodeU64(v.lsp_balance_sat);
+  v.client_balance_sat = decodeU64(v.client_balance_sat);
+  v.fee_total_sat = decodeU64(v.fee_total_sat);
+  v.order_total_sat = decodeU64(v.order_total_sat);
+  v.onchain_paid_sat = decodeU64Nullable(v.onchain_paid_sat);
+  v.created_at_unix_secs = decodeU64(v.created_at_unix_secs);
+  v.payment_expires_at_unix_secs = decodeU64(v.payment_expires_at_unix_secs);
+  v.channel_closed_at_unix_secs = decodeU64Nullable(v.channel_closed_at_unix_secs);
+  if (v.rgb !== null && v.rgb !== undefined) {
+    const rgb = asRecord(v.rgb);
+    rgb.lsp_asset_balance = decodeU64(rgb.lsp_asset_balance);
+    rgb.client_asset_balance = decodeU64(rgb.client_asset_balance);
+    rgb.fee_breakdown = decodeLsps1RgbFeeBreakdown(rgb.fee_breakdown);
+    v.rgb = rgb;
+  }
+  return v as Lsps1ServiceOrderDto;
+}
+
+export function decodeLsps1ServiceOrdersResponse(value: unknown): Lsps1ServiceOrdersResponse {
+  const v = asRecord(value);
+  v.orders = asArray(v.orders).map((o) => decodeLsps1ServiceOrderDto(o));
+  return v as Lsps1ServiceOrdersResponse;
 }

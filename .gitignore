@@ -12,3 +12,6 @@
 # IDE
 .idea
 .vscode
+
+# Local-only archive (not tracked): retired standalone scripts/docs
+/local-archive

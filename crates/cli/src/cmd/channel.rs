@@ -125,12 +125,12 @@ pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
 					let rows = closing
 						.into_iter()
 						.map(|c| {
-							let btc_sats: u64 =
-								c.btc_balances.iter().map(|b| b.amount_sats).sum::<u64>()
-									+ c.sweeping_balances
-										.iter()
-										.map(|b| b.amount_sats)
-										.sum::<u64>();
+							let btc_sats: u64 = c
+								.btc_balances
+								.iter()
+								.map(|b| b.amount_sats)
+								.sum::<u64>()
+								+ c.sweeping_balances.iter().map(|b| b.amount_sats).sum::<u64>();
 							let mut row = vec![
 								c.user_channel_id.clone().unwrap_or_else(|| "-".into()),
 								c.channel_id.clone(),
@@ -209,7 +209,7 @@ pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
 				address: args.addr.clone(),
 				channel_amount_sats: args.amount_sats,
 				push_to_counterparty_msat: args.push_msat,
-				announce: if args.private { Some(false) } else { None },
+				announce: if args.announce { Some(true) } else { None },
 				rgb,
 			};
 			let url = join_url(&app.base, "/api/v1/channel/open");

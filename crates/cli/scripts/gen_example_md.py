@@ -112,6 +112,15 @@ COMMAND_TREE: dict[str, Any] = {
         "splice-in": None,
         "splice-out": None,
     },
+    "lsps1": {
+        "info": None,
+        "lsp": {"get": None, "set": None},
+        "options": {"get": None, "set": None},
+        "pricing": {"get": None, "set": None},
+        "order": {"create": None, "get": None},
+        "rgb-order": None,
+        "orders": {"ls": None, "get": None},
+    },
     "swap": {
         "create": None,
         "create-multihop": None,
@@ -227,7 +236,11 @@ def _terminate_process(proc: subprocess.Popen[str], *, timeout_s: float) -> None
 
 
 def sh(cmd: str) -> list[str]:
-    return ["bash", "-lc", cmd]
+    # Non-login shell: the caller injects PATH into env explicitly, and a login
+    # shell would source ~/.bash_profile / ~/.profile, whose interactive banners
+    # can print to stdout and corrupt the JSON captured from `--output json`
+    # commands. Keep captured output free of dotfile noise.
+    return ["bash", "-c", cmd]
 
 
 def first_nonempty_line(s: str) -> str:
@@ -760,9 +773,9 @@ def main() -> int:
                 )
 
             if use_src:
-                build_daemon_cmd = f"(cd {rgb_ldk_node_dir} && cargo build --bin rgbldkd)"
+                build_daemon_cmd = f"(cd {rgb_ldk_node_dir} && cargo build -p rgbldkd --bin rgbldkd)"
                 build_daemon_cmd_display = (
-                    f"(cd {rgb_ldk_node_dir_display} && cargo build --bin rgbldkd)"
+                    f"(cd {rgb_ldk_node_dir_display} && cargo build -p rgbldkd --bin rgbldkd)"
                 )
                 md.command_only(build_daemon_cmd_display)
                 if not args.skip_daemon_build:
@@ -782,6 +795,29 @@ def main() -> int:
                 if not rgbldkd_bin.exists():
                     raise RuntimeError(f"rgbldkd binary not found at {rgbldkd_bin}")
 
+                # node-a runs the LSPS1 (bLIP-51) channel-selling service so the
+                # lsps1 section below can exercise a real purchase. Ranges are
+                # widened for regtest; everything else keeps its built-in default
+                # and is tunable at runtime via PUT /lsps1/{options,pricing}.
+                lsps1_config_file_a = data_dir_a / "lsps1-service.json"
+                lsps1_config_file_a.write_text(
+                    json.dumps(
+                        {
+                            "advertise_service": True,
+                            "min_required_channel_confirmations": 0,
+                            "min_funding_confirms_within_blocks": 1,
+                            "min_initial_lsp_balance_sat": 10000,
+                            "max_initial_lsp_balance_sat": 100000000,
+                            "min_channel_balance_sat": 10000,
+                            "max_channel_balance_sat": 100000000,
+                            "min_onchain_payment_confirmations": 1,
+                        },
+                        indent=2,
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+
                 _progress("starting local rgbldkd node-a/node-b")
                 cmd_a = (
                     f"{rgbldkd_bin} run "
@@ -794,6 +830,7 @@ def main() -> int:
                     f"--keystore-passphrase-file {passphrase_file_a} "
                     f"--auto-init-keystore "
                     f"--auto-unlock "
+                    f"--lsps1-service-config {lsps1_config_file_a} "
                     f"--node-alias node-a "
                     f"--log-to-stdout --log-level info"
                 )
@@ -1448,6 +1485,39 @@ def main() -> int:
                     f"Last response: {last_obj!r}"
                 )
 
+            def wait_for_htlc_locked(
+                connect: str, payment_id: str, *, timeout_s: float = 90.0,
+            ) -> dict[str, Any]:
+                """Wait until the receiver has the HOLD HTLC actually claimable.
+
+                For a HOLD invoice the incoming payment shows up as `Pending` the
+                moment the HTLC record is created, but it is only claimable/failable
+                once the node has emitted PaymentClaimable and flipped `htlc_locked`
+                to true. `claim_for_hash`/`fail_for_hash` are no-ops before that
+                point (LDK's claimable_payments set is still empty), so callers MUST
+                wait on this before claiming or failing — waiting on `status ==
+                Pending` alone is a race. Receiver-side payment_id equals the
+                payment_hash (PaymentId(payment_hash)).
+                """
+                deadline = time.time() + timeout_s
+                last_obj: Any = None
+                while time.time() < deadline:
+                    ensure_within_runtime(f"wait_for_htlc_locked({connect}, {payment_id})")
+                    obj = run_hidden_json(
+                        f"rgbldk --connect {connect} pay get {payment_id}",
+                        check=False,
+                        timeout_s=10.0,
+                    )
+                    last_obj = obj
+                    if isinstance(obj, dict) and obj.get("htlc_locked") is True:
+                        return obj
+                    time.sleep(1.0)
+
+                raise RuntimeError(
+                    f"Timed out waiting for HOLD HTLC {payment_id} on {connect} to become "
+                    f"claimable (htlc_locked=true). Last response: {last_obj!r}"
+                )
+
             def wait_for_swap_status(
                 connect: str, payment_hash: str, status: str, *, timeout_s: float = 90.0,
             ) -> dict[str, Any]:
@@ -1693,8 +1763,8 @@ def main() -> int:
                 raise RuntimeError("missing node_id_a (expected it to be set in the node basics section)")
             run_step("rgbldk ctx use node-b")
             chan_b_to_a = run_step_json(
-                f"rgbldk channel open --node-id {node_id_a} --addr {node_a_p2p} --amount-sats 120000 --push-msat 30000000",
-                display_cmd="rgbldk channel open --node-id <node_id_a> --addr <node_a_p2p> --amount-sats 120000 --push-msat 30000000",
+                f"rgbldk channel open --node-id {node_id_a} --addr {node_a_p2p} --amount-sats 120000 --push-msat 30000000 --announce",
+                display_cmd="rgbldk channel open --node-id <node_id_a> --addr <node_a_p2p> --amount-sats 120000 --push-msat 30000000 --announce",
                 retries=30,
                 retry_sleep_s=1.0,
             ).get("user_channel_id")
@@ -1725,7 +1795,8 @@ def main() -> int:
             run_step("rgbldk channel ls")
 
             graph_scid: Optional[int] = None
-            deadline = time.time() + 90.0
+            deadline = time.time() + 180.0
+            graph_poll = 0
             while time.time() < deadline:
                 graph_channels = run_hidden_json(
                     "rgbldk graph channels",
@@ -1742,6 +1813,22 @@ def main() -> int:
                         if isinstance(first_scid, str) and first_scid.isdigit():
                             graph_scid = int(first_scid)
                             break
+                # A public channel is only announced once its funding tx is buried
+                # and both peers have gossiped; keep advancing the chain so the
+                # announcement can propagate on a quiet regtest.
+                graph_poll += 1
+                if graph_poll % 5 == 0:
+                    bitcoind_cli(f"generatetoaddress 1 {miner_addr}", include_result=False)
+                    runner.run(
+                        normalize_rgbldk_cmd(f"rgbldk --connect {node_a} wallet sync"),
+                        check=False,
+                        timeout_s=clamp_timeout(DEFAULT_STEP_TIMEOUT_S, "wallet sync (node-a graph wait)"),
+                    )
+                    runner.run(
+                        normalize_rgbldk_cmd(f"rgbldk --connect {node_b} wallet sync"),
+                        check=False,
+                        timeout_s=clamp_timeout(DEFAULT_STEP_TIMEOUT_S, "wallet sync (node-b graph wait)"),
+                    )
                 time.sleep(1.0)
             if graph_scid is None:
                 raise RuntimeError("Timed out waiting for a public channel to appear in graph channels")
@@ -1809,6 +1896,148 @@ def main() -> int:
             run_step("rgbldk ctx use node-b")
             run_step("rgbldk wallet sync")
             run_step("rgbldk wallet balance")
+            run_step("rgbldk ctx use node-a")
+
+            md.heading(2, "5b) LSPS1 channel purchase (node-b buys inbound liquidity from node-a)")
+            md.paragraph(
+                "node-a runs the LSPS1 (bLIP-51) channel-selling service (started with "
+                "`--lsps1-service-config`). node-b, the client, configures node-a as its LSP, places a "
+                "BTC channel order, pays the order on-chain to the deposit address, and node-a opens the "
+                "ordered channel back to node-b. The operator side (`pricing`, `options`, `orders`) and the "
+                "client side (`lsp`, `info`, `order`) are both shown. Amounts are decimal-string sats; an "
+                "order is complete once its `channel` field is populated (and the operator ledger shows "
+                "`order_state: completed`).\n"
+            )
+            md.heading(3, "Operator: inspect and re-apply pricing / options (node-a)")
+            if not node_id_a:
+                raise RuntimeError("missing node_id_a (expected it to be set in the node basics section)")
+
+            # Read the operator's runtime config, then write it straight back to
+            # demonstrate the PUT endpoints without changing behaviour.
+            lsps1_pricing = run_step_json("rgbldk lsps1 pricing get")
+            lsps1_pricing_file = Path(tmpdir) / "lsps1-pricing.json"
+            lsps1_pricing_file.write_text(json.dumps(lsps1_pricing), encoding="utf-8")
+            run_step(
+                f"rgbldk lsps1 pricing set --json {lsps1_pricing_file}",
+                display_cmd="rgbldk lsps1 pricing set --json pricing.json",
+            )
+            lsps1_options = run_step_json("rgbldk lsps1 options get")
+            lsps1_options_file = Path(tmpdir) / "lsps1-options.json"
+            lsps1_options_file.write_text(json.dumps(lsps1_options), encoding="utf-8")
+            run_step(
+                f"rgbldk lsps1 options set --json {lsps1_options_file}",
+                display_cmd="rgbldk lsps1 options set --json options.json",
+            )
+            run_step("rgbldk lsps1 orders ls")
+
+            md.heading(3, "Client: configure LSP, inspect the offering, place an order (node-b)")
+            run_step("rgbldk ctx use node-b")
+            run_step(
+                f"rgbldk lsps1 lsp set --pubkey {node_id_a} --address {node_a_p2p}",
+                display_cmd="rgbldk lsps1 lsp set --pubkey <node_id_a> --address <node_a_p2p>",
+            )
+            run_step("rgbldk lsps1 lsp get")
+            # The client must have a live P2P connection to the LSP before any
+            # LSPS1 request: `lsps1 info`/`order` are real bLIP-51 round-trips over
+            # the peer connection, and `lsp set` only stores config — it does not
+            # dial. Without this the info call comes back 502 ConnectionFailed.
+            run_step(
+                f"rgbldk peer connect {node_id_a} {node_a_p2p} --persist",
+                display_cmd="rgbldk peer connect <node_id_a> <node_a_p2p> --persist",
+                retries=10,
+                retry_sleep_s=2.0,
+            )
+            # `lsps1 info` round-trips to the LSP; allow a few retries while the
+            # freshly (re)established peer connection settles.
+            run_step("rgbldk lsps1 info", retries=10, retry_sleep_s=2.0)
+            # Pay the order on-chain: the client just sends the order total to the
+            # deposit address the LSP returns — no pre-existing channel and nothing
+            # to gossip. The LSP opens the ordered channel once the deposit confirms.
+            md.paragraph(
+                "The order is paid on-chain: the client sends the order total to the deposit address "
+                "the LSP returns (`payment.onchain.address`), with no pre-existing channel required. "
+                "The LSP's watcher opens the ordered channel once the deposit confirms.\n"
+            )
+            # order create is another LSP round-trip over the peer connection.
+            lsps1_order = run_step_json(
+                "rgbldk lsps1 order create --lsp-balance-sat 100000 --channel-expiry-blocks 4380",
+                retries=10,
+                retry_sleep_s=2.0,
+            )
+            order_id = lsps1_order.get("order_id")
+            if not isinstance(order_id, str) or not order_id:
+                raise RuntimeError(f"Invalid order_id from lsps1 order create: {lsps1_order}")
+            payment = lsps1_order.get("payment")
+            onchain = payment.get("onchain") if isinstance(payment, dict) else None
+            if not isinstance(onchain, dict):
+                raise RuntimeError(f"No onchain payment option in lsps1 order: {lsps1_order}")
+            deposit_addr = onchain.get("address")
+            order_total_sat = onchain.get("order_total_sat")
+            if not isinstance(deposit_addr, str) or not deposit_addr:
+                raise RuntimeError(f"No onchain deposit address in lsps1 order: {lsps1_order}")
+            if order_total_sat is None:
+                raise RuntimeError(f"No order_total_sat in lsps1 order: {lsps1_order}")
+            # order_total_sat is a decimal-string sat amount (U64 wire convention).
+            order_total_btc = f"{int(order_total_sat) / 1e8:.8f}"
+
+            md.heading(3, "Client: pay the order on-chain; node-a opens the channel")
+            md.paragraph(
+                f"Send the order total (`{order_total_sat}` sat) to the deposit address from "
+                "`payment.onchain.address`. Any wallet works; on regtest the miner pays it directly. "
+                "Once the deposit confirms, node-a's watcher opens the ordered channel back to node-b.\n"
+            )
+            bitcoind_cli(f"sendtoaddress {deposit_addr} {order_total_btc}", include_result=False)
+            bitcoind_cli(f"generatetoaddress 6 {miner_addr}", include_result=False)
+            # The LSP watcher (~5s cadence) accepts the confirmed deposit and opens
+            # the channel; poll the order until its `channel` field is populated.
+            lsps1_deadline = time.time() + 240.0
+            lsps1_poll = 0
+            while time.time() < lsps1_deadline:
+                og = run_hidden_json(
+                    f"rgbldk lsps1 order get {order_id}",
+                    check=False,
+                    timeout_s=20.0,
+                )
+                if isinstance(og, dict) and isinstance(og.get("channel"), dict):
+                    break
+                lsps1_poll += 1
+                if lsps1_poll % 3 == 0:
+                    bitcoind_cli(f"generatetoaddress 1 {miner_addr}", include_result=False)
+                    runner.run(normalize_rgbldk_cmd(f"rgbldk --connect {node_a} wallet sync"), check=False)
+                    runner.run(normalize_rgbldk_cmd(f"rgbldk --connect {node_b} wallet sync"), check=False)
+                time.sleep(2.0)
+            run_step(
+                f"rgbldk lsps1 order get {order_id}",
+                display_cmd="rgbldk lsps1 order get <order_id>",
+            )
+            run_step("rgbldk channel ls")
+
+            md.heading(3, "Operator: the fulfilled order in the ledger (node-a)")
+            run_step("rgbldk ctx use node-a")
+            run_step("rgbldk lsps1 orders ls")
+            run_step(
+                f"rgbldk lsps1 orders get {order_id}",
+                display_cmd="rgbldk lsps1 orders get <order_id>",
+            )
+
+            md.heading(3, "Client: RGB channel orders")
+            md.paragraph(
+                "RGB channel orders (`lsps1 rgb-order`) require the LSP to advertise an RGB asset offering "
+                "and hold that asset in inventory. This node-a instance sells BTC capacity only, so the "
+                "call below is expected to be rejected — it documents the command shape and the "
+                "asset-not-offered error a client sees against a BTC-only LSP.\n"
+            )
+            run_step("rgbldk ctx use node-b")
+            run_step(
+                "rgbldk lsps1 rgb-order --asset-id "
+                "rgb:2WBcas9-Vm3S6huqv-Yd2yMUM3l-fWbTvHtnv-CvcQngbY5-tdEeVw "
+                "--lsp-asset-balance 100 --lsp-balance-sat 100000 --channel-expiry-blocks 4380",
+                display_cmd=(
+                    "rgbldk lsps1 rgb-order --asset-id <contract_id> "
+                    "--lsp-asset-balance 100 --lsp-balance-sat 100000 --channel-expiry-blocks 4380"
+                ),
+                check=False,
+            )
             run_step("rgbldk ctx use node-a")
 
             md.heading(2, "6) RGB (sync/issuers/contracts)")
@@ -2155,19 +2384,12 @@ def main() -> int:
                         f"Failed to find channel by user_channel_id in channel ls: {chan_100k}. "
                         f"Last channel ls JSON: {last_chans!r}"
                     )
-                channel_point = chan.get("channel_point")
-                if not isinstance(channel_point, str) or ":" not in channel_point:
-                    raise RuntimeError(f"Invalid channel_point in channel ls: {channel_point}")
-                funding_txid = channel_point.split(":", 1)[0]
-
                 md.paragraph(
-                    "Because we passed `--rgb-context` during `channel open`, node-b can fetch the funding consignment "
-                    "directly from node-a over HTTP (no manual download/upload step needed). You can verify that node-b "
-                    "has cached the funding consignment by querying its consignment endpoint by the funding txid:\n"
-                )
-                run_step(
-                    f"curl -sSf -o /dev/null -w '%{{http_code}}\\n' '{node_b}/api/v1/rgb/consignments/{funding_txid}?format=zip'",
-                    display_cmd="curl -sSf -o /dev/null -w '%{http_code}\\n' 'http://<B_HOST>:8502/api/v1/rgb/consignments/<funding_txid>?format=zip'",
+                    "Because we passed `--rgb-context` during `channel open`, in a multi-host deployment the acceptor "
+                    "fetches the funding consignment directly from the opener over HTTP (no manual download/upload). "
+                    "On this single-host demo both daemons share one consignment cache directory, so that receiver-side "
+                    "HTTP fetch isn't exercised here; the RGB balance checks below are the real proof the channel carries "
+                    "its asset.\n"
                 )
 
             if contract_id:
@@ -2180,11 +2402,15 @@ def main() -> int:
                     "make the channel funding transaction deterministic.\n"
                 )
 
-                # B -> A
+                # B -> A. node-a spent its spare RGB outpoints on the earlier A->B
+                # send and the RGB channel funding, so it has no free UTXO to blind a
+                # beneficiary against. Use a witness-output invoice (`--use-witness-utxo`,
+                # `...@wout:...`), which binds the beneficiary to the transfer tx itself
+                # and needs no pre-existing blinding UTXO.
                 run_step("rgbldk ctx use node-a")
                 inv_ba = run_step_json(
-                    f"rgbldk rgb onchain invoice-create --contract-id {contract_id} --amount 7",
-                    display_cmd="rgbldk rgb onchain invoice-create --contract-id <contract_id> --amount 7",
+                    f"rgbldk rgb onchain invoice-create --contract-id {contract_id} --amount 7 --use-witness-utxo",
+                    display_cmd="rgbldk rgb onchain invoice-create --contract-id <contract_id> --amount 7 --use-witness-utxo",
                 ).get("invoice")
                 if not isinstance(inv_ba, str) or not inv_ba:
                     raise RuntimeError(f"Invalid RGB on-chain invoice from node-a: {inv_ba}")
@@ -2568,7 +2794,9 @@ def main() -> int:
             ).get("payment_id")
             if not isinstance(hold_claim_pid, str) or not hold_claim_pid:
                 raise RuntimeError(f"Invalid payment_id from hold invoice send: {hold_claim_pid}")
-            wait_for_payment_status(node_b, hold_claim_pid, "Pending", timeout_s=90.0)
+            # Same claimability requirement as the fail path below: claim-for-hash is
+            # only effective once the HOLD HTLC is actually claimable (htlc_locked).
+            wait_for_htlc_locked(node_b, claim_payment_hash_hex, timeout_s=90.0)
             run_step("rgbldk ctx use node-b")
             run_step(
                 f"rgbldk pay invoice claim-for-hash --payment-hash {claim_payment_hash_hex} --preimage {claim_preimage_hex} --claimable-amount-msat 14000",
@@ -2596,7 +2824,11 @@ def main() -> int:
             ).get("payment_id")
             if not isinstance(hold_fail_pid, str) or not hold_fail_pid:
                 raise RuntimeError(f"Invalid payment_id from hold invoice send: {hold_fail_pid}")
-            wait_for_payment_status(node_b, hold_fail_pid, "Pending", timeout_s=90.0)
+            # The HOLD HTLC must be actually claimable on node-b before we fail it;
+            # fail-for-hash is a silent no-op otherwise (LDK's claimable_payments set
+            # is still empty, so no update_fail_htlc reaches the sender and it hangs
+            # in Pending forever). Receiver payment_id == payment_hash.
+            wait_for_htlc_locked(node_b, fail_payment_hash_hex, timeout_s=90.0)
             run_step("rgbldk ctx use node-b")
             run_step(
                 f"rgbldk pay invoice fail-for-hash {fail_payment_hash_hex}",

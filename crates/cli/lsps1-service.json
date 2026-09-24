@@ -1,0 +1,10 @@
+{
+  "advertise_service": true,
+  "min_required_channel_confirmations": 0,
+  "min_funding_confirms_within_blocks": 1,
+  "min_initial_lsp_balance_sat": 10000,
+  "max_initial_lsp_balance_sat": 100000000,
+  "min_channel_balance_sat": 10000,
+  "max_channel_balance_sat": 100000000,
+  "min_onchain_payment_confirmations": 1
+}

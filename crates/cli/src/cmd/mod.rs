@@ -4,6 +4,7 @@ pub(crate) mod debug;
 pub(crate) mod events;
 pub(crate) mod graph;
 pub(crate) mod keystore;
+pub(crate) mod lsps1;
 pub(crate) mod node;
 pub(crate) mod pay;
 pub(crate) mod peer;

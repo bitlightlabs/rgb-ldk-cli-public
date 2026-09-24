@@ -114,6 +114,11 @@ pub enum Command {
 		#[command(subcommand)]
 		command: ChannelCommand,
 	},
+	/// LSPS1 channel-purchase operations (client orders + operator config).
+	Lsps1 {
+		#[command(subcommand)]
+		command: Lsps1Command,
+	},
 	/// Network graph inspection.
 	Graph {
 		#[command(subcommand)]
@@ -341,9 +346,12 @@ pub struct ChannelOpenArgs {
 	pub amount_sats: u64,
 	#[arg(long)]
 	pub push_msat: Option<u64>,
-	/// Create a private channel (unannounced).
-	#[arg(long)]
+	/// Create a private channel (unannounced). This is the default.
+	#[arg(long, conflicts_with = "announce")]
 	pub private: bool,
+	/// Announce the channel publicly so it propagates into the network graph.
+	#[arg(long)]
+	pub announce: bool,
 	/// Open an RGB-enabled channel (requires all `--rgb-*` args).
 	#[arg(long)]
 	pub rgb_contract_id: Option<String>,
@@ -381,6 +389,134 @@ pub struct ChannelSpliceOutArgs {
 	pub address: String,
 	#[arg(long)]
 	pub splice_amount_sats: u64,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Lsps1Command {
+	/// Show the configured LSP's offering (limits, pricing, RGB assets).
+	Info,
+	/// Client-side LSP configuration.
+	Lsp {
+		#[command(subcommand)]
+		command: Lsps1LspCommand,
+	},
+	/// Operator runtime options (order limits + service behavior).
+	Options {
+		#[command(subcommand)]
+		command: Lsps1GetSetCommand,
+	},
+	/// Operator pricing (BTC rent + per-asset offering).
+	Pricing {
+		#[command(subcommand)]
+		command: Lsps1GetSetCommand,
+	},
+	/// Place / inspect a plain BTC channel order (client side).
+	Order {
+		#[command(subcommand)]
+		command: Lsps1OrderCommand,
+	},
+	/// Place an RGB channel order (client side).
+	RgbOrder(Lsps1RgbOrderArgs),
+	/// Operator fulfillment ledger.
+	Orders {
+		#[command(subcommand)]
+		command: Lsps1OrdersCommand,
+	},
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Lsps1LspCommand {
+	/// Show the currently configured LSP.
+	Get,
+	/// Configure the LSP to buy channels from.
+	Set(Lsps1LspSetArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct Lsps1LspSetArgs {
+	/// LSP node pubkey, hex-encoded.
+	#[arg(long)]
+	pub pubkey: String,
+	/// LSP socket address, e.g. `203.0.113.5:9735`.
+	#[arg(long)]
+	pub address: String,
+	/// Access token, if the LSP requires one.
+	#[arg(long)]
+	pub token: Option<String>,
+}
+
+/// Shared get/set shape for `options` and `pricing` (set reads a JSON body,
+/// since both are nested structures better edited as a document).
+#[derive(Subcommand, Debug)]
+pub enum Lsps1GetSetCommand {
+	/// Print the current value.
+	Get,
+	/// Replace the value from a JSON document.
+	Set(Lsps1JsonArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct Lsps1JsonArgs {
+	/// Path to a JSON file, or `-` to read stdin.
+	#[arg(long)]
+	pub json: String,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Lsps1OrderCommand {
+	/// Place a plain BTC channel order.
+	Create(Lsps1OrderCreateArgs),
+	/// Fetch an order by id.
+	Get { order_id: String },
+}
+
+#[derive(Args, Debug)]
+pub struct Lsps1OrderCreateArgs {
+	/// Sats the LSP provides on its side (inbound liquidity bought).
+	#[arg(long)]
+	pub lsp_balance_sat: u64,
+	/// Sats pushed to this node's side (paid on top of the fee).
+	#[arg(long, default_value_t = 0)]
+	pub client_balance_sat: u64,
+	/// Channel lease duration in blocks.
+	#[arg(long)]
+	pub channel_expiry_blocks: u32,
+	/// Announce the channel to the network.
+	#[arg(long)]
+	pub announce_channel: bool,
+}
+
+#[derive(Args, Debug)]
+pub struct Lsps1RgbOrderArgs {
+	/// RGB contract id of the ordered asset.
+	#[arg(long)]
+	pub asset_id: String,
+	/// Asset units the LSP provides on its side.
+	#[arg(long)]
+	pub lsp_asset_balance: u64,
+	/// Asset units pushed to this node's side (buy-out, if offered).
+	#[arg(long, default_value_t = 0)]
+	pub client_asset_balance: u64,
+	/// Sats the LSP provides on its side.
+	#[arg(long)]
+	pub lsp_balance_sat: u64,
+	/// Sats pushed to this node's side.
+	#[arg(long, default_value_t = 0)]
+	pub client_balance_sat: u64,
+	/// Channel lease duration in blocks.
+	#[arg(long)]
+	pub channel_expiry_blocks: u32,
+	/// Announce the channel to the network.
+	#[arg(long)]
+	pub announce_channel: bool,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Lsps1OrdersCommand {
+	/// List served orders.
+	Ls,
+	/// Fetch a served order by id.
+	Get { order_id: String },
 }
 
 #[derive(Subcommand, Debug)]

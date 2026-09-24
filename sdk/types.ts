@@ -814,3 +814,205 @@ export interface PaymentWaitResponse {
   payment: PaymentDetailsDto;
   checks?: HealthCheckDto[];
 }
+
+// ---- LSPS1 channel orders ----
+
+export interface Lsps1LspConfigDto {
+  pubkey: string;
+  address: string;
+  token?: string | null;
+}
+
+export interface Lsps1SupportedOptionsDto {
+  min_required_channel_confirmations: number;
+  min_funding_confirms_within_blocks: number;
+  supports_zero_channel_reserve: boolean;
+  max_channel_expiry_blocks: number;
+  min_initial_client_balance_sat: U64;
+  max_initial_client_balance_sat: U64;
+  min_initial_lsp_balance_sat: U64;
+  max_initial_lsp_balance_sat: U64;
+  min_channel_balance_sat: U64;
+  max_channel_balance_sat: U64;
+}
+
+export interface Lsps1RgbAssetOfferDto {
+  asset_id: string;
+  ticker: string;
+  precision: number;
+  /** Sale price per whole asset unit, in satoshi (balances are in smallest units). */
+  asset_unit_price_sat: U64;
+  asset_rent_ppm_per_year: number;
+  min_lsp_asset_balance: U64;
+  max_lsp_asset_balance: U64;
+  max_client_asset_balance: U64;
+}
+
+export interface Lsps1RgbOfferingDto {
+  rgb_assets: Lsps1RgbAssetOfferDto[];
+}
+
+export interface Lsps1LspPricingDto {
+  btc_capacity_ppm_per_year: number;
+  onchain_cost_sat?: U64 | null;
+  min_fee_sat?: U64 | null;
+}
+
+export interface Lsps1InfoResponse {
+  supported_options: Lsps1SupportedOptionsDto;
+  pricing?: Lsps1LspPricingDto | null;
+  rgb?: Lsps1RgbOfferingDto | null;
+}
+
+export interface Lsps1OrderCreateRequest {
+  lsp_balance_sat: U64;
+  client_balance_sat?: U64;
+  channel_expiry_blocks: number;
+  announce_channel?: boolean;
+}
+
+export interface Lsps1RgbOrderCreateRequest {
+  asset_id: string;
+  lsp_asset_balance: U64;
+  client_asset_balance?: U64;
+  lsp_balance_sat: U64;
+  client_balance_sat?: U64;
+  channel_expiry_blocks: number;
+  announce_channel?: boolean;
+}
+
+export interface Lsps1OrderParamsDto {
+  lsp_balance_sat: U64;
+  client_balance_sat: U64;
+  required_channel_confirmations: number;
+  funding_confirms_within_blocks: number;
+  channel_expiry_blocks: number;
+  announce_channel: boolean;
+}
+
+export interface Lsps1Bolt11PaymentDto {
+  state: string;
+  expires_at_unix_secs: U64;
+  fee_total_sat: U64;
+  order_total_sat: U64;
+  invoice: string;
+}
+
+export interface Lsps1OnchainPaymentDto {
+  state: string;
+  expires_at_unix_secs: U64;
+  fee_total_sat: U64;
+  order_total_sat: U64;
+  address: string;
+  min_onchain_payment_confirmations?: number | null;
+  refund_onchain_address?: string | null;
+}
+
+export interface Lsps1PaymentOptionsDto {
+  bolt11?: Lsps1Bolt11PaymentDto | null;
+  onchain?: Lsps1OnchainPaymentDto | null;
+}
+
+export interface Lsps1ChannelInfoDto {
+  funded_at_unix_secs: U64;
+  funding_outpoint: string;
+  expires_at_unix_secs: U64;
+}
+
+export interface Lsps1RgbFeeBreakdownDto {
+  onchain_cost_sat: U64;
+  btc_rent_sat: U64;
+  asset_rent_sat: U64;
+  asset_sale_sat: U64;
+}
+
+export interface Lsps1RgbOrderDetailsDto {
+  asset_id: string;
+  lsp_asset_balance: U64;
+  client_asset_balance: U64;
+  fee_breakdown: Lsps1RgbFeeBreakdownDto;
+  asset_funding_outpoint?: string | null;
+}
+
+export interface Lsps1OrderResponse {
+  order_id: string;
+  order: Lsps1OrderParamsDto;
+  payment: Lsps1PaymentOptionsDto;
+  channel?: Lsps1ChannelInfoDto | null;
+  rgb?: Lsps1RgbOrderDetailsDto | null;
+}
+
+export interface Lsps1AssetPricingDto {
+  asset_id: string;
+  ticker: string;
+  precision: number;
+  /** Sale price per whole asset unit, in satoshi (balances are in smallest units). */
+  asset_unit_price_sat: U64;
+  asset_rent_ppm_per_year: number;
+  min_lsp_asset_balance: U64;
+  max_lsp_asset_balance: U64;
+  max_client_asset_balance: U64;
+  color_context: string;
+}
+
+export interface Lsps1PricingCoreDto {
+  btc_capacity_ppm_per_year: number;
+  onchain_cost_sat: U64;
+  min_fee_sat: U64;
+}
+
+export interface Lsps1PricingDto {
+  pricing: Lsps1PricingCoreDto;
+  assets: Lsps1AssetPricingDto[];
+}
+
+export interface Lsps1ServiceBehaviorDto {
+  require_token?: string | null;
+  bolt11_invoice_expiry_secs: number;
+  min_onchain_payment_confirmations: number;
+  max_fulfill_retries: number;
+  auto_close_expired_channels: boolean;
+  channel_expiry_grace_blocks: number;
+  late_deposit_refund_window_secs: U64;
+}
+
+export interface Lsps1OptionsDto {
+  supported_options: Lsps1SupportedOptionsDto;
+  service: Lsps1ServiceBehaviorDto;
+}
+
+export interface Lsps1ServiceRgbOrderDto {
+  asset_id: string;
+  lsp_asset_balance: U64;
+  client_asset_balance: U64;
+  fee_breakdown: Lsps1RgbFeeBreakdownDto;
+}
+
+export interface Lsps1ServiceOrderDto {
+  order_id: string;
+  counterparty_node_id: string;
+  order_state: string;
+  payment_state: string;
+  paid_via?: string | null;
+  lsp_balance_sat: U64;
+  client_balance_sat: U64;
+  channel_expiry_blocks: number;
+  announce_channel: boolean;
+  fee_total_sat: U64;
+  order_total_sat: U64;
+  onchain_address?: string | null;
+  onchain_paid_sat?: U64 | null;
+  refund_onchain_address?: string | null;
+  refund_txid?: string | null;
+  fulfill_retry_count: number;
+  created_at_unix_secs: U64;
+  payment_expires_at_unix_secs: U64;
+  funding_outpoint?: string | null;
+  funded_at_height?: number | null;
+  channel_closed_at_unix_secs?: U64 | null;
+  rgb?: Lsps1ServiceRgbOrderDto | null;
+}
+
+export interface Lsps1ServiceOrdersResponse {
+  orders: Lsps1ServiceOrderDto[];
+}

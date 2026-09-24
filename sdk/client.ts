@@ -26,6 +26,15 @@ import {
   ClosingChannelDto,
   EventDto,
   ListeningAddressesResponse,
+  Lsps1InfoResponse,
+  Lsps1LspConfigDto,
+  Lsps1OptionsDto,
+  Lsps1OrderCreateRequest,
+  Lsps1OrderResponse,
+  Lsps1PricingDto,
+  Lsps1RgbOrderCreateRequest,
+  Lsps1ServiceOrderDto,
+  Lsps1ServiceOrdersResponse,
   NodeIdResponse,
   OkResponse,
   OpenChannelRequest,
@@ -99,6 +108,13 @@ import {
   decodeChannelDetailsExtendedDto,
   decodeClosingChannelDto,
   decodeEventDto,
+  decodeLsps1InfoResponse,
+  decodeLsps1LspConfigDto,
+  decodeLsps1OptionsDto,
+  decodeLsps1OrderResponse,
+  decodeLsps1PricingDto,
+  decodeLsps1ServiceOrderDto,
+  decodeLsps1ServiceOrdersResponse,
   decodePaymentDetailsDto,
   decodePaymentWaitResponse,
   decodeRgbContractBalanceResponse,
@@ -821,6 +837,92 @@ export class NodeHttpClient {
   // POST /events/handled
   eventsHandled(options?: RequestOptions): Promise<OkResponse> {
     return this.request<OkResponse>("POST", "/events/handled", {}, options) as Promise<OkResponse>;
+  }
+
+  // ---- LSPS1 channel orders ----
+
+  // GET /lsps1/info
+  lsps1Info(options?: RequestOptions): Promise<Lsps1InfoResponse> {
+    return this.request<unknown>("GET", "/lsps1/info", undefined, options).then((v) =>
+      decodeLsps1InfoResponse(v)
+    ) as Promise<Lsps1InfoResponse>;
+  }
+
+  // GET /lsps1/lsp
+  lsps1GetLsp(options?: RequestOptions): Promise<Lsps1LspConfigDto> {
+    return this.request<unknown>("GET", "/lsps1/lsp", undefined, options).then((v) =>
+      decodeLsps1LspConfigDto(v)
+    ) as Promise<Lsps1LspConfigDto>;
+  }
+
+  // PUT /lsps1/lsp
+  lsps1SetLsp(req: Lsps1LspConfigDto, options?: RequestOptions): Promise<Lsps1LspConfigDto> {
+    return this.request<unknown>("PUT", "/lsps1/lsp", req, options).then((v) =>
+      decodeLsps1LspConfigDto(v)
+    ) as Promise<Lsps1LspConfigDto>;
+  }
+
+  // GET /lsps1/options
+  lsps1GetOptions(options?: RequestOptions): Promise<Lsps1OptionsDto> {
+    return this.request<unknown>("GET", "/lsps1/options", undefined, options).then((v) =>
+      decodeLsps1OptionsDto(v)
+    ) as Promise<Lsps1OptionsDto>;
+  }
+
+  // PUT /lsps1/options
+  lsps1SetOptions(req: Lsps1OptionsDto, options?: RequestOptions): Promise<Lsps1OptionsDto> {
+    return this.request<unknown>("PUT", "/lsps1/options", req, options).then((v) =>
+      decodeLsps1OptionsDto(v)
+    ) as Promise<Lsps1OptionsDto>;
+  }
+
+  // GET /lsps1/pricing
+  lsps1GetPricing(options?: RequestOptions): Promise<Lsps1PricingDto> {
+    return this.request<unknown>("GET", "/lsps1/pricing", undefined, options).then((v) =>
+      decodeLsps1PricingDto(v)
+    ) as Promise<Lsps1PricingDto>;
+  }
+
+  // PUT /lsps1/pricing
+  lsps1SetPricing(req: Lsps1PricingDto, options?: RequestOptions): Promise<Lsps1PricingDto> {
+    return this.request<unknown>("PUT", "/lsps1/pricing", req, options).then((v) =>
+      decodeLsps1PricingDto(v)
+    ) as Promise<Lsps1PricingDto>;
+  }
+
+  // POST /lsps1/order
+  lsps1CreateOrder(req: Lsps1OrderCreateRequest, options?: RequestOptions): Promise<Lsps1OrderResponse> {
+    return this.request<unknown>("POST", "/lsps1/order", req, options).then((v) =>
+      decodeLsps1OrderResponse(v)
+    ) as Promise<Lsps1OrderResponse>;
+  }
+
+  // GET /lsps1/order/{order_id}
+  lsps1GetOrder(orderId: string, options?: RequestOptions): Promise<Lsps1OrderResponse> {
+    return this.request<unknown>("GET", `/lsps1/order/${orderId}`, undefined, options).then((v) =>
+      decodeLsps1OrderResponse(v)
+    ) as Promise<Lsps1OrderResponse>;
+  }
+
+  // POST /lsps1/rgb_order
+  lsps1CreateRgbOrder(req: Lsps1RgbOrderCreateRequest, options?: RequestOptions): Promise<Lsps1OrderResponse> {
+    return this.request<unknown>("POST", "/lsps1/rgb_order", req, options).then((v) =>
+      decodeLsps1OrderResponse(v)
+    ) as Promise<Lsps1OrderResponse>;
+  }
+
+  // GET /lsps1/orders
+  lsps1Orders(options?: RequestOptions): Promise<Lsps1ServiceOrdersResponse> {
+    return this.request<unknown>("GET", "/lsps1/orders", undefined, options).then((v) =>
+      decodeLsps1ServiceOrdersResponse(v)
+    ) as Promise<Lsps1ServiceOrdersResponse>;
+  }
+
+  // GET /lsps1/orders/{order_id}
+  lsps1GetServedOrder(orderId: string, options?: RequestOptions): Promise<Lsps1ServiceOrderDto> {
+    return this.request<unknown>("GET", `/lsps1/orders/${orderId}`, undefined, options).then((v) =>
+      decodeLsps1ServiceOrderDto(v)
+    ) as Promise<Lsps1ServiceOrderDto>;
   }
 }
 
