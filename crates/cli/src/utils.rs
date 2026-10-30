@@ -3,6 +3,13 @@ use std::io::Read;
 use std::io::Write;
 use std::time::Duration;
 
+pub fn enum_label<T: serde::Serialize>(value: &T) -> String {
+	serde_json::to_string(value)
+		.unwrap_or_else(|_| "<invalid>".to_string())
+		.trim_matches('"')
+		.to_string()
+}
+
 pub fn print_json<T: serde::Serialize>(value: &T, pretty: bool) {
 	if pretty {
 		println!("{}", serde_json::to_string_pretty(value).unwrap());

@@ -815,13 +815,33 @@ export interface PaymentWaitResponse {
   checks?: HealthCheckDto[];
 }
 
-// ---- LSPS1 channel orders ----
+// ---- LSP list ----
 
-export interface Lsps1LspConfigDto {
+export interface LspAddRequest {
   pubkey: string;
   address: string;
   token?: string | null;
+  /** Accept 0conf channels from this LSP. Required for JIT channels. */
+  trust_peer_0conf: boolean;
+  /** Accept channels without an on-chain force-close reserve. Needed with no on-chain BTC. */
+  trust_peer_no_reserve: boolean;
 }
+
+export interface LspDto {
+  pubkey: string;
+  address: string;
+  token?: string | null;
+  trust_peer_0conf: boolean;
+  trust_peer_no_reserve: boolean;
+  /** LSPS protocol numbers (`1` = LSPS1, `2` = LSPS2); `null` until the LSP answered a probe. */
+  protocols?: number[] | null;
+}
+
+export interface LspListResponse {
+  lsps: LspDto[];
+}
+
+// ---- LSPS1 channel orders ----
 
 export interface Lsps1SupportedOptionsDto {
   min_required_channel_confirmations: number;
@@ -864,7 +884,21 @@ export interface Lsps1InfoResponse {
   rgb?: Lsps1RgbOfferingDto | null;
 }
 
+/** One LSP's answer in `GET /lsps1/info`: either `info` or `error` is set. */
+export interface Lsps1InfoEntryDto {
+  lsp_node_id: string;
+  info?: Lsps1InfoResponse | null;
+  /** Same shape as an error response body. */
+  error?: Record<string, unknown> | null;
+}
+
+export interface Lsps1InfoListResponse {
+  lsps: Lsps1InfoEntryDto[];
+}
+
 export interface Lsps1OrderCreateRequest {
+  /** The LSP to order from; must be in `GET /lsps`. */
+  lsp_node_id: string;
   lsp_balance_sat: U64;
   client_balance_sat?: U64;
   channel_expiry_blocks: number;
@@ -872,6 +906,8 @@ export interface Lsps1OrderCreateRequest {
 }
 
 export interface Lsps1RgbOrderCreateRequest {
+  /** The LSP to order from; must be in `GET /lsps`. */
+  lsp_node_id: string;
   asset_id: string;
   lsp_asset_balance: U64;
   client_asset_balance?: U64;
@@ -1015,4 +1051,126 @@ export interface Lsps1ServiceOrderDto {
 
 export interface Lsps1ServiceOrdersResponse {
   orders: Lsps1ServiceOrderDto[];
+}
+
+// ---- LSPS2 JIT channels ----
+
+export interface Lsps2QuoteRequest {
+  lsp_node_id: string;
+  /** Payment amount to price, if any. */
+  amount_msat?: U64 | null;
+}
+
+export interface Lsps2FeeOfferDto {
+  min_fee_msat: U64;
+  proportional_ppm: number;
+  valid_until: string;
+  min_lifetime: number;
+  max_client_to_self_delay: number;
+  min_payment_size_msat: U64;
+  max_payment_size_msat: U64;
+}
+
+export interface Lsps2QuoteResponse {
+  offers: Lsps2FeeOfferDto[];
+  /** Fee of the cheapest offer covering `amount_msat`; `null` without an amount or when none covers it. */
+  fee_msat?: U64 | null;
+}
+
+export interface Lsps2InvoiceRequest {
+  lsp_node_id: string;
+  /** Omit for a variable-amount invoice. */
+  amount_msat?: U64 | null;
+  /** Fixed amount: the most the LSP may take in msat. Variable amount: the most in ppm. */
+  max_fee?: U64 | null;
+  description?: string;
+  expiry_secs: number;
+}
+
+export interface Lsps2InvoiceResponse {
+  invoice: string;
+}
+
+export interface Lsps2RgbQuoteRequest {
+  lsp_node_id: string;
+  contract_id: string;
+  /** Asset amount of the payment to receive. */
+  asset_amount: U64;
+  /** Asset amount the LSP puts into the channel; at least `asset_amount`. */
+  lsp_asset_balance: U64;
+  /** BTC the LSP puts into the channel. */
+  lsp_balance_sat: U64;
+  /** BTC carried by the payment, excluding the fee. Defaults to 354000. */
+  btc_carrier_amount_msat?: U64 | null;
+}
+
+export interface Lsps2RgbFeeDto {
+  fee_sat: U64;
+  onchain_cost_sat: U64;
+  btc_rent_sat: U64;
+  asset_rent_sat: U64;
+}
+
+export interface Lsps2RgbAssetOfferDto {
+  asset_id: string;
+  ticker: string;
+  precision: number;
+  asset_unit_price_sat: U64;
+  asset_rent_ppm_per_year: number;
+  min_lsp_asset_balance: U64;
+  max_lsp_asset_balance: U64;
+}
+
+export interface Lsps2RgbOfferingDto {
+  assets: Lsps2RgbAssetOfferDto[];
+  btc_capacity_ppm_per_year: number;
+  onchain_cost_sat: U64;
+  min_fee_sat: U64;
+  min_lsp_balance_sat: U64;
+  max_lsp_balance_sat: U64;
+  min_lifetime: number;
+}
+
+export interface Lsps2RgbQuoteResponse {
+  offering: Lsps2RgbOfferingDto;
+  /** Estimated locally; the actual fee is set by `POST /lsps2/rgb_invoice`. */
+  estimated_fee: Lsps2RgbFeeDto;
+  min_btc_carrier_amount_msat: U64;
+  max_btc_carrier_amount_msat: U64;
+}
+
+export interface Lsps2RgbInvoiceRequest extends Lsps2RgbQuoteRequest {
+  /** No invoice is created if the LSP's fee is above this. */
+  max_fee_sat: U64;
+  description?: string;
+  expiry_secs: number;
+}
+
+export interface Lsps2RgbInvoiceResponse {
+  invoice: string;
+  payment_hash: string;
+  fee: Lsps2RgbFeeDto;
+  /** What the payer pays: the carrier plus the fee. */
+  amount_msat: U64;
+  expires_at_unix_secs: U64;
+  min_lifetime: number;
+}
+
+export interface Lsps2OptionsDto {
+  require_token?: string | null;
+  channel_opening_fee_ppm: number;
+  channel_over_provisioning_ppm: number;
+  min_channel_opening_fee_msat: U64;
+  min_channel_lifetime: number;
+  max_client_to_self_delay: number;
+  min_payment_size_msat: U64;
+  max_payment_size_msat: U64;
+  max_unpaid_channels_per_peer: number;
+  max_unpaid_channels_total: number;
+  unpaid_channel_close_secs: U64;
+}
+
+export interface Lsps2OptionsResponse extends Lsps2OptionsDto {
+  /** Set at startup only. */
+  advertise_service: boolean;
 }

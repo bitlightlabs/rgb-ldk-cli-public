@@ -26,8 +26,10 @@ import {
   ClosingChannelDto,
   EventDto,
   ListeningAddressesResponse,
-  Lsps1InfoResponse,
-  Lsps1LspConfigDto,
+  LspAddRequest,
+  LspDto,
+  LspListResponse,
+  Lsps1InfoListResponse,
   Lsps1OptionsDto,
   Lsps1OrderCreateRequest,
   Lsps1OrderResponse,
@@ -35,6 +37,16 @@ import {
   Lsps1RgbOrderCreateRequest,
   Lsps1ServiceOrderDto,
   Lsps1ServiceOrdersResponse,
+  Lsps2InvoiceRequest,
+  Lsps2InvoiceResponse,
+  Lsps2OptionsDto,
+  Lsps2OptionsResponse,
+  Lsps2QuoteRequest,
+  Lsps2QuoteResponse,
+  Lsps2RgbInvoiceRequest,
+  Lsps2RgbInvoiceResponse,
+  Lsps2RgbQuoteRequest,
+  Lsps2RgbQuoteResponse,
   NodeIdResponse,
   OkResponse,
   OpenChannelRequest,
@@ -108,13 +120,19 @@ import {
   decodeChannelDetailsExtendedDto,
   decodeClosingChannelDto,
   decodeEventDto,
-  decodeLsps1InfoResponse,
-  decodeLsps1LspConfigDto,
+  decodeLspDto,
+  decodeLspListResponse,
+  decodeLsps1InfoListResponse,
   decodeLsps1OptionsDto,
   decodeLsps1OrderResponse,
   decodeLsps1PricingDto,
   decodeLsps1ServiceOrderDto,
   decodeLsps1ServiceOrdersResponse,
+  decodeLsps2InvoiceResponse,
+  decodeLsps2OptionsResponse,
+  decodeLsps2QuoteResponse,
+  decodeLsps2RgbInvoiceResponse,
+  decodeLsps2RgbQuoteResponse,
   decodePaymentDetailsDto,
   decodePaymentWaitResponse,
   decodeRgbContractBalanceResponse,
@@ -841,25 +859,33 @@ export class NodeHttpClient {
 
   // ---- LSPS1 channel orders ----
 
+  // GET /lsps
+  listLsps(options?: RequestOptions): Promise<LspListResponse> {
+    return this.request<unknown>("GET", "/lsps", undefined, options).then((v) =>
+      decodeLspListResponse(v)
+    ) as Promise<LspListResponse>;
+  }
+
+  // POST /lsps
+  addLsp(req: LspAddRequest, options?: RequestOptions): Promise<LspDto> {
+    return this.request<unknown>("POST", "/lsps", req, options).then((v) =>
+      decodeLspDto(v)
+    ) as Promise<LspDto>;
+  }
+
+  // DELETE /lsps/{node_id}
+  removeLsp(nodeId: string, options?: RequestOptions): Promise<void> {
+    return this.request<unknown>("DELETE", `/lsps/${encodeURIComponent(nodeId)}`, undefined, options).then(
+      () => undefined
+    );
+  }
+
   // GET /lsps1/info
-  lsps1Info(options?: RequestOptions): Promise<Lsps1InfoResponse> {
-    return this.request<unknown>("GET", "/lsps1/info", undefined, options).then((v) =>
-      decodeLsps1InfoResponse(v)
-    ) as Promise<Lsps1InfoResponse>;
-  }
-
-  // GET /lsps1/lsp
-  lsps1GetLsp(options?: RequestOptions): Promise<Lsps1LspConfigDto> {
-    return this.request<unknown>("GET", "/lsps1/lsp", undefined, options).then((v) =>
-      decodeLsps1LspConfigDto(v)
-    ) as Promise<Lsps1LspConfigDto>;
-  }
-
-  // PUT /lsps1/lsp
-  lsps1SetLsp(req: Lsps1LspConfigDto, options?: RequestOptions): Promise<Lsps1LspConfigDto> {
-    return this.request<unknown>("PUT", "/lsps1/lsp", req, options).then((v) =>
-      decodeLsps1LspConfigDto(v)
-    ) as Promise<Lsps1LspConfigDto>;
+  lsps1Info(lspNodeId?: string, options?: RequestOptions): Promise<Lsps1InfoListResponse> {
+    const q = lspNodeId ? `?lsp_node_id=${encodeURIComponent(lspNodeId)}` : "";
+    return this.request<unknown>("GET", `/lsps1/info${q}`, undefined, options).then((v) =>
+      decodeLsps1InfoListResponse(v)
+    ) as Promise<Lsps1InfoListResponse>;
   }
 
   // GET /lsps1/options
@@ -923,6 +949,48 @@ export class NodeHttpClient {
     return this.request<unknown>("GET", `/lsps1/orders/${orderId}`, undefined, options).then((v) =>
       decodeLsps1ServiceOrderDto(v)
     ) as Promise<Lsps1ServiceOrderDto>;
+  }
+
+  // POST /lsps2/quote
+  lsps2Quote(req: Lsps2QuoteRequest, options?: RequestOptions): Promise<Lsps2QuoteResponse> {
+    return this.request<unknown>("POST", "/lsps2/quote", req, options).then((v) =>
+      decodeLsps2QuoteResponse(v)
+    ) as Promise<Lsps2QuoteResponse>;
+  }
+
+  // POST /lsps2/invoice
+  lsps2Invoice(req: Lsps2InvoiceRequest, options?: RequestOptions): Promise<Lsps2InvoiceResponse> {
+    return this.request<unknown>("POST", "/lsps2/invoice", req, options).then((v) =>
+      decodeLsps2InvoiceResponse(v)
+    ) as Promise<Lsps2InvoiceResponse>;
+  }
+
+  // POST /lsps2/rgb_quote
+  lsps2RgbQuote(req: Lsps2RgbQuoteRequest, options?: RequestOptions): Promise<Lsps2RgbQuoteResponse> {
+    return this.request<unknown>("POST", "/lsps2/rgb_quote", req, options).then((v) =>
+      decodeLsps2RgbQuoteResponse(v)
+    ) as Promise<Lsps2RgbQuoteResponse>;
+  }
+
+  // POST /lsps2/rgb_invoice
+  lsps2RgbInvoice(req: Lsps2RgbInvoiceRequest, options?: RequestOptions): Promise<Lsps2RgbInvoiceResponse> {
+    return this.request<unknown>("POST", "/lsps2/rgb_invoice", req, options).then((v) =>
+      decodeLsps2RgbInvoiceResponse(v)
+    ) as Promise<Lsps2RgbInvoiceResponse>;
+  }
+
+  // GET /lsps2/options
+  lsps2GetOptions(options?: RequestOptions): Promise<Lsps2OptionsResponse> {
+    return this.request<unknown>("GET", "/lsps2/options", undefined, options).then((v) =>
+      decodeLsps2OptionsResponse(v)
+    ) as Promise<Lsps2OptionsResponse>;
+  }
+
+  // PUT /lsps2/options
+  lsps2SetOptions(req: Lsps2OptionsDto, options?: RequestOptions): Promise<Lsps2OptionsResponse> {
+    return this.request<unknown>("PUT", "/lsps2/options", req, options).then((v) =>
+      decodeLsps2OptionsResponse(v)
+    ) as Promise<Lsps2OptionsResponse>;
   }
 }
 

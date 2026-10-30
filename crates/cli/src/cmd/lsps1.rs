@@ -1,13 +1,12 @@
 use rgbldk_http_client::dto::{
-	Lsps1InfoResponse, Lsps1LspConfigDto, Lsps1OptionsDto, Lsps1OrderCreateRequest,
-	Lsps1OrderResponse, Lsps1PricingDto, Lsps1RgbOrderCreateRequest, Lsps1ServiceOrderDto,
-	Lsps1ServiceOrdersResponse,
+	Lsps1InfoListResponse, Lsps1OptionsDto, Lsps1OrderCreateRequest, Lsps1OrderResponse,
+	Lsps1PricingDto, Lsps1RgbOrderCreateRequest, Lsps1ServiceOrderDto, Lsps1ServiceOrdersResponse,
 };
 
 use crate::app::App;
 use crate::cli::{
-	Lsps1Command, Lsps1GetSetCommand, Lsps1JsonArgs, Lsps1LspCommand, Lsps1LspSetArgs,
-	Lsps1OrderCommand, Lsps1OrderCreateArgs, Lsps1OrdersCommand,
+	Lsps1Command, Lsps1GetSetCommand, Lsps1JsonArgs, Lsps1OrderCommand, Lsps1OrderCreateArgs,
+	Lsps1OrdersCommand,
 };
 use crate::client::{join_url, send_json};
 use crate::ui;
@@ -15,13 +14,15 @@ use crate::utils::{die, print_json};
 
 pub(crate) async fn handle(app: &App, command: &Lsps1Command) {
 	match command {
-		Lsps1Command::Info => {
+		Lsps1Command::Info { lsp } => {
 			let url = join_url(&app.base, "/api/v1/lsps1/info");
-			let info: Lsps1InfoResponse =
-				send_json(app.client.get(url)).await.unwrap_or_else(|e| die(e));
+			let mut req = app.client.get(url);
+			if let Some(lsp) = lsp {
+				req = req.query(&[("lsp_node_id", lsp)]);
+			}
+			let info: Lsps1InfoListResponse = send_json(req).await.unwrap_or_else(|e| die(e));
 			print_json(&info, app.pretty);
 		},
-		Lsps1Command::Lsp { command } => handle_lsp(app, command).await,
 		Lsps1Command::Options { command } => match command {
 			Lsps1GetSetCommand::Get => {
 				let url = join_url(&app.base, "/api/v1/lsps1/options");
@@ -55,6 +56,7 @@ pub(crate) async fn handle(app: &App, command: &Lsps1Command) {
 		Lsps1Command::Order { command } => handle_order(app, command).await,
 		Lsps1Command::RgbOrder(args) => {
 			let req = Lsps1RgbOrderCreateRequest {
+				lsp_node_id: args.lsp.clone(),
 				asset_id: args.asset_id.clone(),
 				lsp_asset_balance: args.lsp_asset_balance,
 				client_asset_balance: args.client_asset_balance,
@@ -72,44 +74,18 @@ pub(crate) async fn handle(app: &App, command: &Lsps1Command) {
 	}
 }
 
-async fn handle_lsp(app: &App, command: &Lsps1LspCommand) {
-	match command {
-		Lsps1LspCommand::Get => {
-			let url = join_url(&app.base, "/api/v1/lsps1/lsp");
-			let lsp: Lsps1LspConfigDto =
-				send_json(app.client.get(url)).await.unwrap_or_else(|e| die(e));
-			print_json(&lsp, app.pretty);
-		},
-		Lsps1LspCommand::Set(args) => {
-			let Lsps1LspSetArgs { pubkey, address, token } = args;
-			let req = Lsps1LspConfigDto {
-				pubkey: pubkey.clone(),
-				address: address.clone(),
-				token: token.clone(),
-			};
-			let url = join_url(&app.base, "/api/v1/lsps1/lsp");
-			let updated: Lsps1LspConfigDto =
-				send_json(app.client.put(url).json(&req)).await.unwrap_or_else(|e| die(e));
-			match app.output {
-				ui::OutputMode::Json => print_json(&updated, app.pretty),
-				ui::OutputMode::Text => {
-					println!("LSP set to {} @ {}", updated.pubkey, updated.address)
-				},
-			}
-		},
-	}
-}
-
 async fn handle_order(app: &App, command: &Lsps1OrderCommand) {
 	match command {
 		Lsps1OrderCommand::Create(args) => {
 			let Lsps1OrderCreateArgs {
+				lsp,
 				lsp_balance_sat,
 				client_balance_sat,
 				channel_expiry_blocks,
 				announce_channel,
 			} = args;
 			let req = Lsps1OrderCreateRequest {
+				lsp_node_id: lsp.clone(),
 				lsp_balance_sat: *lsp_balance_sat,
 				client_balance_sat: *client_balance_sat,
 				channel_expiry_blocks: *channel_expiry_blocks,
@@ -195,7 +171,7 @@ fn print_orders_table(app: &App, orders: &[rgbldk_http_client::dto::Lsps1Service
 }
 
 /// Read a `--json` argument: a file path, or `-` for stdin.
-fn read_json_arg<T: serde::de::DeserializeOwned>(args: &Lsps1JsonArgs) -> T {
+pub(crate) fn read_json_arg<T: serde::de::DeserializeOwned>(args: &Lsps1JsonArgs) -> T {
 	use std::io::Read;
 	let raw = if args.json == "-" {
 		let mut buf = String::new();

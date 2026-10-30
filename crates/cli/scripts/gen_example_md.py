@@ -112,14 +112,21 @@ COMMAND_TREE: dict[str, Any] = {
         "splice-in": None,
         "splice-out": None,
     },
+    "lsp": {"ls": None, "add": None, "rm": None},
     "lsps1": {
         "info": None,
-        "lsp": {"get": None, "set": None},
         "options": {"get": None, "set": None},
         "pricing": {"get": None, "set": None},
         "order": {"create": None, "get": None},
         "rgb-order": None,
         "orders": {"ls": None, "get": None},
+    },
+    "lsps2": {
+        "quote": None,
+        "invoice": None,
+        "rgb-quote": None,
+        "rgb-invoice": None,
+        "options": {"get": None, "set": None},
     },
     "swap": {
         "create": None,
@@ -817,6 +824,13 @@ def main() -> int:
                     + "\n",
                     encoding="utf-8",
                 )
+                # node-a also runs the LSPS2 (bLIP-52) JIT channel service with its
+                # built-in defaults; tunable at runtime via PUT /lsps2/options.
+                lsps2_config_file_a = data_dir_a / "lsps2-service.json"
+                lsps2_config_file_a.write_text(
+                    json.dumps({"advertise_service": True}, indent=2) + "\n",
+                    encoding="utf-8",
+                )
 
                 _progress("starting local rgbldkd node-a/node-b")
                 cmd_a = (
@@ -831,6 +845,7 @@ def main() -> int:
                     f"--auto-init-keystore "
                     f"--auto-unlock "
                     f"--lsps1-service-config {lsps1_config_file_a} "
+                    f"--lsps2-service-config {lsps2_config_file_a} "
                     f"--node-alias node-a "
                     f"--log-to-stdout --log-level info"
                 )
@@ -1901,10 +1916,10 @@ def main() -> int:
             md.heading(2, "5b) LSPS1 channel purchase (node-b buys inbound liquidity from node-a)")
             md.paragraph(
                 "node-a runs the LSPS1 (bLIP-51) channel-selling service (started with "
-                "`--lsps1-service-config`). node-b, the client, configures node-a as its LSP, places a "
+                "`--lsps1-service-config`). node-b, the client, adds node-a to its LSP list, places a "
                 "BTC channel order, pays the order on-chain to the deposit address, and node-a opens the "
                 "ordered channel back to node-b. The operator side (`pricing`, `options`, `orders`) and the "
-                "client side (`lsp`, `info`, `order`) are both shown. Amounts are decimal-string sats; an "
+                "client side (`lsp add`, `info`, `order`) are both shown. Amounts are decimal-string sats; an "
                 "order is complete once its `channel` field is populated (and the operator ledger shows "
                 "`order_state: completed`).\n"
             )
@@ -1930,25 +1945,25 @@ def main() -> int:
             )
             run_step("rgbldk lsps1 orders ls")
 
-            md.heading(3, "Client: configure LSP, inspect the offering, place an order (node-b)")
+            md.heading(3, "Client: add the LSP, inspect the offering, place an order (node-b)")
+            md.paragraph(
+                "`lsp add` connects to the LSP and asks which LSPS protocols it supports (LSPS0); the entry "
+                "is saved only if that succeeds. `--trust-0conf` lets node-b use channels from node-a "
+                "before the funding confirms, which the LSPS2 section below needs. `--trust-no-reserve` "
+                "drops the on-chain reserve node-b would otherwise keep for force-close fees.\n"
+            )
             run_step("rgbldk ctx use node-b")
             run_step(
-                f"rgbldk lsps1 lsp set --pubkey {node_id_a} --address {node_a_p2p}",
-                display_cmd="rgbldk lsps1 lsp set --pubkey <node_id_a> --address <node_a_p2p>",
-            )
-            run_step("rgbldk lsps1 lsp get")
-            # The client must have a live P2P connection to the LSP before any
-            # LSPS1 request: `lsps1 info`/`order` are real bLIP-51 round-trips over
-            # the peer connection, and `lsp set` only stores config — it does not
-            # dial. Without this the info call comes back 502 ConnectionFailed.
-            run_step(
-                f"rgbldk peer connect {node_id_a} {node_a_p2p} --persist",
-                display_cmd="rgbldk peer connect <node_id_a> <node_a_p2p> --persist",
+                f"rgbldk lsp add --pubkey {node_id_a} --address {node_a_p2p} --trust-0conf --trust-no-reserve",
+                display_cmd=(
+                    "rgbldk lsp add --pubkey <node_id_a> --address <node_a_p2p> --trust-0conf --trust-no-reserve"
+                ),
                 retries=10,
                 retry_sleep_s=2.0,
             )
+            run_step("rgbldk lsp ls")
             # `lsps1 info` round-trips to the LSP; allow a few retries while the
-            # freshly (re)established peer connection settles.
+            # peer connection settles.
             run_step("rgbldk lsps1 info", retries=10, retry_sleep_s=2.0)
             # Pay the order on-chain: the client just sends the order total to the
             # deposit address the LSP returns — no pre-existing channel and nothing
@@ -1960,7 +1975,10 @@ def main() -> int:
             )
             # order create is another LSP round-trip over the peer connection.
             lsps1_order = run_step_json(
-                "rgbldk lsps1 order create --lsp-balance-sat 100000 --channel-expiry-blocks 4380",
+                f"rgbldk lsps1 order create --lsp {node_id_a} --lsp-balance-sat 100000 --channel-expiry-blocks 4380",
+                display_cmd=(
+                    "rgbldk lsps1 order create --lsp <node_id_a> --lsp-balance-sat 100000 --channel-expiry-blocks 4380"
+                ),
                 retries=10,
                 retry_sleep_s=2.0,
             )
@@ -2029,15 +2047,101 @@ def main() -> int:
             )
             run_step("rgbldk ctx use node-b")
             run_step(
-                "rgbldk lsps1 rgb-order --asset-id "
+                f"rgbldk lsps1 rgb-order --lsp {node_id_a} --asset-id "
                 "rgb:2WBcas9-Vm3S6huqv-Yd2yMUM3l-fWbTvHtnv-CvcQngbY5-tdEeVw "
                 "--lsp-asset-balance 100 --lsp-balance-sat 100000 --channel-expiry-blocks 4380",
                 display_cmd=(
-                    "rgbldk lsps1 rgb-order --asset-id <contract_id> "
+                    "rgbldk lsps1 rgb-order --lsp <node_id_a> --asset-id <contract_id> "
                     "--lsp-asset-balance 100 --lsp-balance-sat 100000 --channel-expiry-blocks 4380"
                 ),
                 check=False,
             )
+            run_step("rgbldk ctx use node-a")
+
+            md.heading(2, "5c) LSPS2 JIT channels (node-b receives through a channel node-a opens on payment)")
+            md.paragraph(
+                "node-a also runs the LSPS2 (bLIP-52) JIT channel service (started with "
+                "`--lsps2-service-config`). node-b buys a JIT invoice from node-a. When a payer pays it, "
+                "node-a opens a 0conf channel to node-b and forwards the payment minus the opening fee. "
+                "node-b must be online when the payment arrives and must trust node-a for 0conf "
+                "(`lsp add --trust-0conf`); otherwise `invoice`/`rgb-invoice` return 409 "
+                "`precondition_failed` before anything is bought.\n"
+            )
+            md.heading(3, "Operator: inspect and re-apply LSPS2 options (node-a)")
+            lsps2_options = run_step_json("rgbldk lsps2 options get")
+            lsps2_options_file = Path(tmpdir) / "lsps2-options.json"
+            lsps2_options_file.write_text(json.dumps(lsps2_options), encoding="utf-8")
+            run_step(
+                f"rgbldk lsps2 options set --json {lsps2_options_file}",
+                display_cmd="rgbldk lsps2 options set --json options.json",
+            )
+
+            md.heading(3, "Client: BTC JIT quote and invoice (node-b)")
+            md.paragraph(
+                "`quote` lists node-a's fee offers; with `--amount-msat` it also returns the opening fee "
+                "for that amount: `max(amount × proportional_ppm / 1,000,000, min_fee_msat)`. `invoice` "
+                "buys the JIT channel and returns a BOLT11 invoice whose route hint goes through node-a. "
+                "`--max-fee` caps the fee (total msat for a fixed amount).\n"
+            )
+            run_step("rgbldk ctx use node-b")
+            run_step(
+                f"rgbldk lsps2 quote --lsp {node_id_a} --amount-msat 50000000",
+                display_cmd="rgbldk lsps2 quote --lsp <node_id_a> --amount-msat 50000000",
+                retries=10,
+                retry_sleep_s=2.0,
+            )
+            run_step(
+                f"rgbldk lsps2 invoice --lsp {node_id_a} --amount-msat 50000000 --max-fee 2500000",
+                display_cmd="rgbldk lsps2 invoice --lsp <node_id_a> --amount-msat 50000000 --max-fee 2500000",
+                retries=10,
+                retry_sleep_s=2.0,
+            )
+            md.paragraph(
+                "The invoice is paid by any node with a route to node-a; node-b then sees a "
+                "`PaymentReceived` for the amount minus the fee, and `pay payments` lists it with kind "
+                "`Bolt11Jit`. This walkthrough has no third node, so the invoice is not paid here.\n"
+            )
+
+            md.heading(3, "Client: RGB JIT quote (node-b)")
+            md.paragraph(
+                "RGB JIT channels carry BTC and an asset, and are priced with the LSP's LSPS1 pricing, so the "
+                "LSP must run LSPS1 too and offer the asset. `rgb-quote` returns the offering and a local fee "
+                "estimate; `rgb-invoice` takes the same arguments plus `--max-fee-sat` and returns an RGB "
+                "invoice. This node-a instance offers no RGB asset, so both calls below are expected to be "
+                "rejected — they document the command shape.\n"
+            )
+            run_step(
+                f"rgbldk lsps2 rgb-quote --lsp {node_id_a} "
+                "--contract-id contract:RDD~tWXQ-QrO45y4-iOwxuEP-98LEwNV-0rIPeXA-Rwf60ko "
+                "--asset-amount 100 --lsp-asset-balance 150 --lsp-balance-sat 200000",
+                display_cmd=(
+                    "rgbldk lsps2 rgb-quote --lsp <node_id_a> --contract-id <contract_id> "
+                    "--asset-amount 100 --lsp-asset-balance 150 --lsp-balance-sat 200000"
+                ),
+                check=False,
+            )
+            run_step(
+                f"rgbldk lsps2 rgb-invoice --lsp {node_id_a} "
+                "--contract-id contract:RDD~tWXQ-QrO45y4-iOwxuEP-98LEwNV-0rIPeXA-Rwf60ko "
+                "--asset-amount 100 --lsp-asset-balance 150 --lsp-balance-sat 200000 --max-fee-sat 2000",
+                display_cmd=(
+                    "rgbldk lsps2 rgb-invoice --lsp <node_id_a> --contract-id <contract_id> "
+                    "--asset-amount 100 --lsp-asset-balance 150 --lsp-balance-sat 200000 --max-fee-sat 2000"
+                ),
+                check=False,
+            )
+
+            md.heading(3, "Client: remove the LSP (node-b)")
+            md.paragraph(
+                "`lsp rm` drops node-a from the list. Channels already bought stay open, but JIT invoices "
+                "bought from node-a can no longer be paid. It is refused while an order is paid but its "
+                "channel is not open yet.\n"
+            )
+            run_step(
+                f"rgbldk lsp rm {node_id_a}",
+                display_cmd="rgbldk lsp rm <node_id_a>",
+            )
+            run_step("rgbldk lsp ls")
             run_step("rgbldk ctx use node-a")
 
             md.heading(2, "6) RGB (sync/issuers/contracts)")

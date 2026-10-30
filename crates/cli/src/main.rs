@@ -36,7 +36,9 @@ async fn main() {
 			| Command::Rgb { .. }
 			| Command::Peer { .. }
 			| Command::Channel { .. }
+			| Command::Lsp { .. }
 			| Command::Lsps1 { .. }
+			| Command::Lsps2 { .. }
 			| Command::Graph { .. }
 			| Command::Pay { .. }
 			| Command::Swap { .. }
@@ -111,8 +113,14 @@ async fn main() {
 		Command::Channel { ref command } => {
 			cmd::channel::handle(&app, command).await;
 		},
+		Command::Lsp { ref command } => {
+			cmd::lsp::handle(&app, command).await;
+		},
 		Command::Lsps1 { ref command } => {
 			cmd::lsps1::handle(&app, command).await;
+		},
+		Command::Lsps2 { ref command } => {
+			cmd::lsps2::handle(&app, command).await;
 		},
 
 		Command::Graph { ref command } => {

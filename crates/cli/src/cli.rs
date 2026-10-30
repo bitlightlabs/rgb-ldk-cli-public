@@ -114,10 +114,20 @@ pub enum Command {
 		#[command(subcommand)]
 		command: ChannelCommand,
 	},
+	/// LSPs this node buys channels from (client side).
+	Lsp {
+		#[command(subcommand)]
+		command: LspCommand,
+	},
 	/// LSPS1 channel-purchase operations (client orders + operator config).
 	Lsps1 {
 		#[command(subcommand)]
 		command: Lsps1Command,
+	},
+	/// LSPS2 JIT channels: receive through a channel the LSP opens on payment.
+	Lsps2 {
+		#[command(subcommand)]
+		command: Lsps2Command,
 	},
 	/// Network graph inspection.
 	Graph {
@@ -300,6 +310,10 @@ pub enum WalletCommand {
 	Address,
 	Sync,
 	Utxos,
+	/// Show the recorded Txoscope status for one wallet UTXO.
+	UtxoStatus {
+		outpoint: String,
+	},
 }
 
 #[derive(Args, Debug, Default)]
@@ -393,12 +407,11 @@ pub struct ChannelSpliceOutArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum Lsps1Command {
-	/// Show the configured LSP's offering (limits, pricing, RGB assets).
-	Info,
-	/// Client-side LSP configuration.
-	Lsp {
-		#[command(subcommand)]
-		command: Lsps1LspCommand,
+	/// Show the LSPs' offerings (limits, pricing, RGB assets).
+	Info {
+		/// Only query this LSP (hex pubkey); all LSPS1 LSPs when omitted.
+		#[arg(long)]
+		lsp: Option<String>,
 	},
 	/// Operator runtime options (order limits + service behavior).
 	Options {
@@ -425,15 +438,20 @@ pub enum Lsps1Command {
 }
 
 #[derive(Subcommand, Debug)]
-pub enum Lsps1LspCommand {
-	/// Show the currently configured LSP.
-	Get,
-	/// Configure the LSP to buy channels from.
-	Set(Lsps1LspSetArgs),
+pub enum LspCommand {
+	/// List the LSPs and the protocols each supports.
+	Ls,
+	/// Add an LSP, or update the entry with the same pubkey.
+	Add(LspAddArgs),
+	/// Remove an LSP.
+	Rm {
+		/// LSP node pubkey, hex-encoded.
+		pubkey: String,
+	},
 }
 
 #[derive(Args, Debug)]
-pub struct Lsps1LspSetArgs {
+pub struct LspAddArgs {
 	/// LSP node pubkey, hex-encoded.
 	#[arg(long)]
 	pub pubkey: String,
@@ -443,6 +461,13 @@ pub struct Lsps1LspSetArgs {
 	/// Access token, if the LSP requires one.
 	#[arg(long)]
 	pub token: Option<String>,
+	/// Accept 0conf channels from this LSP. Required for JIT channels.
+	#[arg(long)]
+	pub trust_0conf: bool,
+	/// Accept channels from this LSP without keeping an on-chain reserve for
+	/// force-close fees. Needed when this node has no on-chain BTC.
+	#[arg(long)]
+	pub trust_no_reserve: bool,
 }
 
 /// Shared get/set shape for `options` and `pricing` (set reads a JSON body,
@@ -472,6 +497,9 @@ pub enum Lsps1OrderCommand {
 
 #[derive(Args, Debug)]
 pub struct Lsps1OrderCreateArgs {
+	/// LSP to order from (hex pubkey); must be in `lsp ls`.
+	#[arg(long)]
+	pub lsp: String,
 	/// Sats the LSP provides on its side (inbound liquidity bought).
 	#[arg(long)]
 	pub lsp_balance_sat: u64,
@@ -488,6 +516,9 @@ pub struct Lsps1OrderCreateArgs {
 
 #[derive(Args, Debug)]
 pub struct Lsps1RgbOrderArgs {
+	/// LSP to order from (hex pubkey); must be in `lsp ls`.
+	#[arg(long)]
+	pub lsp: String,
 	/// RGB contract id of the ordered asset.
 	#[arg(long)]
 	pub asset_id: String,
@@ -517,6 +548,85 @@ pub enum Lsps1OrdersCommand {
 	Ls,
 	/// Fetch a served order by id.
 	Get { order_id: String },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Lsps2Command {
+	/// Show the LSP's BTC JIT fee offers, and the fee for an amount.
+	Quote(Lsps2QuoteArgs),
+	/// Get a BOLT11 invoice paid through a BTC JIT channel.
+	Invoice(Lsps2InvoiceArgs),
+	/// Show the LSP's RGB JIT offering and estimate the fee.
+	RgbQuote(Lsps2RgbQuoteArgs),
+	/// Get an RGB invoice paid through an RGB JIT channel.
+	RgbInvoice(Lsps2RgbInvoiceArgs),
+	/// Operator runtime options of the LSPS2 service.
+	Options {
+		#[command(subcommand)]
+		command: Lsps1GetSetCommand,
+	},
+}
+
+#[derive(Args, Debug)]
+pub struct Lsps2QuoteArgs {
+	/// LSP to quote (hex pubkey); must be in `lsp ls`.
+	#[arg(long)]
+	pub lsp: String,
+	/// Payment amount to price.
+	#[arg(long)]
+	pub amount_msat: Option<u64>,
+}
+
+#[derive(Args, Debug)]
+pub struct Lsps2InvoiceArgs {
+	/// LSP to buy from (hex pubkey); must be in `lsp ls`.
+	#[arg(long)]
+	pub lsp: String,
+	/// Invoice amount; omit for a variable-amount invoice.
+	#[arg(long)]
+	pub amount_msat: Option<u64>,
+	/// Highest fee accepted: total msat for a fixed amount, ppm for a variable amount.
+	#[arg(long)]
+	pub max_fee: Option<u64>,
+	#[arg(long, default_value = "")]
+	pub description: String,
+	#[arg(long, default_value_t = 3600)]
+	pub expiry_secs: u32,
+}
+
+#[derive(Args, Debug)]
+pub struct Lsps2RgbQuoteArgs {
+	/// LSP to buy from (hex pubkey); must be in `lsp ls`.
+	#[arg(long)]
+	pub lsp: String,
+	/// RGB contract id of the asset to receive.
+	#[arg(long)]
+	pub contract_id: String,
+	/// Asset amount of the payment to receive.
+	#[arg(long)]
+	pub asset_amount: u64,
+	/// Asset amount the LSP puts into the channel; at least `--asset-amount`.
+	#[arg(long)]
+	pub lsp_asset_balance: u64,
+	/// BTC the LSP puts into the channel.
+	#[arg(long)]
+	pub lsp_balance_sat: u64,
+	/// BTC carried by the payment, excluding the fee. Defaults to 354000.
+	#[arg(long)]
+	pub btc_carrier_amount_msat: Option<u64>,
+}
+
+#[derive(Args, Debug)]
+pub struct Lsps2RgbInvoiceArgs {
+	#[command(flatten)]
+	pub quote: Lsps2RgbQuoteArgs,
+	/// No invoice is created if the LSP's fee is above this.
+	#[arg(long)]
+	pub max_fee_sat: u64,
+	#[arg(long, default_value = "")]
+	pub description: String,
+	#[arg(long, default_value_t = 3600)]
+	pub expiry_secs: u32,
 }
 
 #[derive(Subcommand, Debug)]

@@ -130,7 +130,8 @@ services:
       - "127.0.0.1:${NODE_A_P2P_PORT:-9735}:9735"
     volumes:
       - node-a-data:/home/rgbldk/.ldk-node
-      - ./lsps1-service.json:/home/rgbldk/lsps1-service.json:ro
+      - ./lsps1-service.json:/etc/rgbldk/lsps1-service.json:ro
+      - ./lsps2-service.json:/etc/rgbldk/lsps2-service.json:ro
     command:
       - rgbldkd
       - run
@@ -146,7 +147,9 @@ services:
       - --data-dir
       - /home/rgbldk/.ldk-node
       - --lsps1-service-config
-      - /home/rgbldk/lsps1-service.json
+      - /etc/rgbldk/lsps1-service.json
+      - --lsps2-service-config
+      - /etc/rgbldk/lsps2-service.json
       - --node-alias
       - node-a
       - --log-to-stdout

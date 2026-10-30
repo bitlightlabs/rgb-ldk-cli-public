@@ -10,13 +10,20 @@ import type {
   ClosingRgbDto,
   CustomTlvDto,
   EventDto,
+  LspDto,
+  LspListResponse,
+  Lsps1InfoListResponse,
   Lsps1InfoResponse,
-  Lsps1LspConfigDto,
   Lsps1OptionsDto,
   Lsps1OrderResponse,
   Lsps1PricingDto,
   Lsps1ServiceOrderDto,
   Lsps1ServiceOrdersResponse,
+  Lsps2InvoiceResponse,
+  Lsps2OptionsResponse,
+  Lsps2QuoteResponse,
+  Lsps2RgbInvoiceResponse,
+  Lsps2RgbQuoteResponse,
   PaymentDetailsDto,
   PaymentWaitResponse,
   RgbContractBalanceResponse,
@@ -387,8 +394,26 @@ function decodeLsps1RgbFeeBreakdown(value: unknown): AnyRecord {
   return v;
 }
 
-export function decodeLsps1LspConfigDto(value: unknown): Lsps1LspConfigDto {
-  return asRecord(value) as Lsps1LspConfigDto;
+export function decodeLspDto(value: unknown): LspDto {
+  return asRecord(value) as LspDto;
+}
+
+export function decodeLspListResponse(value: unknown): LspListResponse {
+  const v = asRecord(value);
+  v.lsps = asArray(v.lsps).map((l) => decodeLspDto(l));
+  return v as LspListResponse;
+}
+
+export function decodeLsps1InfoListResponse(value: unknown): Lsps1InfoListResponse {
+  const v = asRecord(value);
+  v.lsps = asArray(v.lsps).map((entry) => {
+    const e = asRecord(entry);
+    if (e.info !== null && e.info !== undefined) {
+      e.info = decodeLsps1InfoResponse(e.info);
+    }
+    return e;
+  });
+  return v as Lsps1InfoListResponse;
 }
 
 export function decodeLsps1InfoResponse(value: unknown): Lsps1InfoResponse {
@@ -508,4 +533,70 @@ export function decodeLsps1ServiceOrdersResponse(value: unknown): Lsps1ServiceOr
   const v = asRecord(value);
   v.orders = asArray(v.orders).map((o) => decodeLsps1ServiceOrderDto(o));
   return v as Lsps1ServiceOrdersResponse;
+}
+
+// ---- LSPS2 decoders ----
+
+function decodeLsps2RgbFee(value: unknown): AnyRecord {
+  const v = asRecord(value);
+  v.fee_sat = decodeU64(v.fee_sat);
+  v.onchain_cost_sat = decodeU64(v.onchain_cost_sat);
+  v.btc_rent_sat = decodeU64(v.btc_rent_sat);
+  v.asset_rent_sat = decodeU64(v.asset_rent_sat);
+  return v;
+}
+
+export function decodeLsps2QuoteResponse(value: unknown): Lsps2QuoteResponse {
+  const v = asRecord(value);
+  v.offers = asArray(v.offers).map((offer) => {
+    const o = asRecord(offer);
+    o.min_fee_msat = decodeU64(o.min_fee_msat);
+    o.min_payment_size_msat = decodeU64(o.min_payment_size_msat);
+    o.max_payment_size_msat = decodeU64(o.max_payment_size_msat);
+    return o;
+  });
+  v.fee_msat = decodeU64Nullable(v.fee_msat);
+  return v as Lsps2QuoteResponse;
+}
+
+export function decodeLsps2InvoiceResponse(value: unknown): Lsps2InvoiceResponse {
+  return asRecord(value) as Lsps2InvoiceResponse;
+}
+
+export function decodeLsps2RgbQuoteResponse(value: unknown): Lsps2RgbQuoteResponse {
+  const v = asRecord(value);
+  const offering = asRecord(v.offering);
+  offering.assets = asArray(offering.assets).map((asset) => {
+    const a = asRecord(asset);
+    a.asset_unit_price_sat = decodeU64(a.asset_unit_price_sat);
+    a.min_lsp_asset_balance = decodeU64(a.min_lsp_asset_balance);
+    a.max_lsp_asset_balance = decodeU64(a.max_lsp_asset_balance);
+    return a;
+  });
+  offering.onchain_cost_sat = decodeU64(offering.onchain_cost_sat);
+  offering.min_fee_sat = decodeU64(offering.min_fee_sat);
+  offering.min_lsp_balance_sat = decodeU64(offering.min_lsp_balance_sat);
+  offering.max_lsp_balance_sat = decodeU64(offering.max_lsp_balance_sat);
+  v.offering = offering;
+  v.estimated_fee = decodeLsps2RgbFee(v.estimated_fee);
+  v.min_btc_carrier_amount_msat = decodeU64(v.min_btc_carrier_amount_msat);
+  v.max_btc_carrier_amount_msat = decodeU64(v.max_btc_carrier_amount_msat);
+  return v as Lsps2RgbQuoteResponse;
+}
+
+export function decodeLsps2RgbInvoiceResponse(value: unknown): Lsps2RgbInvoiceResponse {
+  const v = asRecord(value);
+  v.fee = decodeLsps2RgbFee(v.fee);
+  v.amount_msat = decodeU64(v.amount_msat);
+  v.expires_at_unix_secs = decodeU64(v.expires_at_unix_secs);
+  return v as Lsps2RgbInvoiceResponse;
+}
+
+export function decodeLsps2OptionsResponse(value: unknown): Lsps2OptionsResponse {
+  const v = asRecord(value);
+  v.min_channel_opening_fee_msat = decodeU64(v.min_channel_opening_fee_msat);
+  v.min_payment_size_msat = decodeU64(v.min_payment_size_msat);
+  v.max_payment_size_msat = decodeU64(v.max_payment_size_msat);
+  v.unpaid_channel_close_secs = decodeU64(v.unpaid_channel_close_secs);
+  return v as Lsps2OptionsResponse;
 }

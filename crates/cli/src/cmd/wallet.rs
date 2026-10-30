@@ -1,9 +1,9 @@
-use rgbldk_http_client::dto::{BalancesDto, WalletUtxosResponse};
+use rgbldk_http_client::dto::{BalancesDto, WalletUtxoStatusDto, WalletUtxosResponse};
 
 use crate::app::App;
 use crate::cli::WalletCommand;
 use crate::client::{join_url, send_json};
-use crate::utils::{die, print_json};
+use crate::utils::{die, enum_label, print_json};
 
 pub(crate) async fn handle(app: &App, command: &WalletCommand) {
 	match command {
@@ -216,6 +216,40 @@ pub(crate) async fn handle(app: &App, command: &WalletCommand) {
 						rows,
 						&[1, 3, 6],
 					);
+				},
+			}
+		},
+		WalletCommand::UtxoStatus { outpoint } => {
+			let url =
+				join_url(&app.base, &format!("/api/v1/wallet/utxo/status?outpoint={outpoint}"));
+			let status: WalletUtxoStatusDto =
+				send_json(app.client.get(url)).await.unwrap_or_else(|e| die(e));
+			match app.output {
+				crate::ui::OutputMode::Json => print_json(&status, app.pretty),
+				crate::ui::OutputMode::Text => {
+					println!("Outpoint: {}", status.outpoint);
+					println!("Account: {}", status.account_id);
+					println!("Scope: {}", status.scope_id);
+					println!("Value: {} sats", status.value_sats);
+					println!("On-chain state: {}", enum_label(&status.onchain_state));
+					println!("Availability: {}", enum_label(&status.availability));
+					println!("Selectable: {}", status.selectable);
+					if let Some(operation) = status.operation {
+						println!(
+							"Operation: {} ({})",
+							operation.operation_id,
+							enum_label(&operation.phase)
+						);
+					}
+					if let Some(lock) = status.lock {
+						println!("Lock: {} ({})", lock.operation_id, enum_label(&lock.purpose));
+						if let Some(expires_at) = lock.expires_at_unix_secs {
+							println!("Lock expiry: {expires_at}");
+						}
+					}
+					if let Some(reason) = status.unavailable_reason {
+						println!("Unavailable reason: {reason}");
+					}
 				},
 			}
 		},
