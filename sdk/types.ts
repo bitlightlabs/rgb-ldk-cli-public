@@ -88,6 +88,8 @@ export interface PaymentDetailsDto {
   fee_paid_msat: U64 | null;
   payment_hash?: string | null;
   htlc_locked: boolean;
+  updated_at_unix_secs: U64;
+  expires_at_unix_secs?: U64 | null;
   kind_details?: any;
 }
 
@@ -112,6 +114,26 @@ export interface ChannelDetailsExtendedDto {
   short_channel_id?: U64 | null;
   outbound_scid_alias?: U64 | null;
   inbound_scid_alias?: U64 | null;
+  lsp?: ChannelLspLeaseDto | null;
+}
+
+/** Lease of a channel bought from an LSP, as seen by the buyer. */
+export interface ChannelLspLeaseDto {
+  pubkey: string;
+  address: string;
+  /** `lsps1` for a channel bought with an order, `lsps2` for a JIT channel. */
+  protocol: string;
+  /** Order the channel was bought with. `null` for a JIT channel. */
+  order_id: string | null;
+  /** JIT channel: fee the LSP took from the first payment. `null` for a variable-amount invoice. */
+  opening_fee_msat?: U64 | null;
+  /** JIT channel: CLTV delta of the LSP's hop in the invoice. */
+  cltv_expiry_delta?: number | null;
+  funded_at_height: number;
+  /** Chain height when the lease ends. The LSP may close the channel after this plus its grace period. */
+  expires_at_height: number;
+  funded_at_unix_secs: U64;
+  created_at_unix_secs: U64;
 }
 
 export interface OpenChannelRequest {
@@ -900,9 +922,21 @@ export interface Lsps1OrderCreateRequest {
   /** The LSP to order from; must be in `GET /lsps`. */
   lsp_node_id: string;
   lsp_balance_sat: U64;
+  /**
+   * Sats on this node's side of the new channel, paid on top of the fee. 0 when omitted. Must be
+   * between the LSP's `min_initial_client_balance_sat` and `max_initial_client_balance_sat`, so it
+   * can only be omitted when the LSP's minimum is 0.
+   */
   client_balance_sat?: U64;
   channel_expiry_blocks: number;
   announce_channel?: boolean;
+  /**
+   * Id of this request, 1 to 64 characters. A retry with the same id and the same parameters
+   * returns the first order. The same id with other parameters fails with 409
+   * `idempotency_key_reused`. If an earlier request with the id got no answer, the retry fails
+   * with 409 `outcome_unknown`.
+   */
+  client_request_id?: string | null;
 }
 
 export interface Lsps1RgbOrderCreateRequest {
@@ -910,11 +944,15 @@ export interface Lsps1RgbOrderCreateRequest {
   lsp_node_id: string;
   asset_id: string;
   lsp_asset_balance: U64;
+  /** Buying assets with the channel is not supported yet. Omit it or send 0. */
   client_asset_balance?: U64;
   lsp_balance_sat: U64;
+  /** Same rule as `client_balance_sat` on `Lsps1OrderCreateRequest`. */
   client_balance_sat?: U64;
   channel_expiry_blocks: number;
   announce_channel?: boolean;
+  /** Same meaning as on `Lsps1OrderCreateRequest`. */
+  client_request_id?: string | null;
 }
 
 export interface Lsps1OrderParamsDto {
@@ -972,6 +1010,8 @@ export interface Lsps1RgbOrderDetailsDto {
 
 export interface Lsps1OrderResponse {
   order_id: string;
+  /** The `client_request_id` of the order. Present until one day after the payment window ended. */
+  client_request_id?: string | null;
   order: Lsps1OrderParamsDto;
   payment: Lsps1PaymentOptionsDto;
   channel?: Lsps1ChannelInfoDto | null;
@@ -1006,10 +1046,16 @@ export interface Lsps1ServiceBehaviorDto {
   require_token?: string | null;
   bolt11_invoice_expiry_secs: number;
   min_onchain_payment_confirmations: number;
-  max_fulfill_retries: number;
   auto_close_expired_channels: boolean;
   channel_expiry_grace_blocks: number;
   late_deposit_refund_window_secs: U64;
+  onchain_open_timeout_blocks?: number;
+  /** Blocks after a channel became due for closing before it is force-closed. 0 never force-closes. */
+  force_close_after_blocks?: number;
+  /** `false` pauses the service. New orders are rejected and existing ones are still served. */
+  accept_new_orders: boolean;
+  max_unpaid_orders_per_peer?: number;
+  max_unpaid_orders_total?: number;
 }
 
 export interface Lsps1OptionsDto {
@@ -1025,6 +1071,8 @@ export interface Lsps1ServiceRgbOrderDto {
 }
 
 export interface Lsps1ServiceOrderDto {
+  /** Whether this order counts toward `max_unpaid_orders_per_peer` and `max_unpaid_orders_total`. */
+  counts_toward_unpaid_quota: boolean;
   order_id: string;
   counterparty_node_id: string;
   order_state: string;
@@ -1046,11 +1094,45 @@ export interface Lsps1ServiceOrderDto {
   funding_outpoint?: string | null;
   funded_at_height?: number | null;
   channel_closed_at_unix_secs?: U64 | null;
+  /** How this node closed the channel: `cooperative` or `force`. */
+  close_kind?: string | null;
+  /** Failed cooperative close attempts since the channel was due. */
+  close_attempts: number;
+  last_close_error?: string | null;
+  first_close_attempt_at_unix_secs?: U64 | null;
+  next_close_attempt_at_unix_secs?: U64 | null;
+  /** Why the order failed. `cancelled` when the operator cancelled it. */
+  failure_reason?: string | null;
+  cancelled_at_unix_secs?: U64 | null;
+  cancel_reason?: string | null;
   rgb?: Lsps1ServiceRgbOrderDto | null;
 }
 
 export interface Lsps1ServiceOrdersResponse {
   orders: Lsps1ServiceOrderDto[];
+}
+
+export interface Lsps1OrderCancelRequest {
+  /** Operator note stored with the order, at most 128 characters. */
+  reason?: string | null;
+}
+
+export interface Lsps1OrdersCancelRequest {
+  /** The client's node pubkey, hex-encoded. */
+  counterparty_node_id: string;
+  /** Operator note stored with each order, at most 128 characters. */
+  reason?: string | null;
+}
+
+export interface Lsps1OrderCancelSkippedDto {
+  order_id: string;
+  reason: string;
+}
+
+export interface Lsps1OrdersCancelResponse {
+  cancelled: Lsps1ServiceOrderDto[];
+  /** Orders that were not cancelled, for example because a deposit was already seen. */
+  skipped: Lsps1OrderCancelSkippedDto[];
 }
 
 // ---- LSPS2 JIT channels ----
@@ -1089,6 +1171,18 @@ export interface Lsps2InvoiceRequest {
 
 export interface Lsps2InvoiceResponse {
   invoice: string;
+  payment_hash: string;
+  /** Amount the payer pays. Absent if the invoice has no amount. */
+  amount_msat?: U64 | null;
+  /** Set when the invoice has an amount. The fee the LSP takes from the payment. */
+  fee_msat?: U64 | null;
+  /** Set when the invoice has no amount. The LSP takes this share (ppm) of the payment as its fee. */
+  fee_ppm?: U64 | null;
+  /** Set when the invoice has no amount. The fee is never below this. */
+  min_fee_msat?: U64 | null;
+  expires_at_unix_secs: U64;
+  /** Number of blocks the LSP keeps the channel open. */
+  min_lifetime: number;
 }
 
 export interface Lsps2RgbQuoteRequest {
@@ -1100,7 +1194,7 @@ export interface Lsps2RgbQuoteRequest {
   lsp_asset_balance: U64;
   /** BTC the LSP puts into the channel. */
   lsp_balance_sat: U64;
-  /** BTC carried by the payment, excluding the fee. Defaults to 354000. */
+  /** BTC carried by the payment, excluding the fee. Minimum and default: 355000. */
   btc_carrier_amount_msat?: U64 | null;
 }
 
@@ -1157,6 +1251,8 @@ export interface Lsps2RgbInvoiceResponse {
 }
 
 export interface Lsps2OptionsDto {
+  /** `false` pauses the service. No new JIT channels are sold and existing ones are not affected. */
+  accept_new_channels: boolean;
   require_token?: string | null;
   channel_opening_fee_ppm: number;
   channel_over_provisioning_ppm: number;
@@ -1171,6 +1267,48 @@ export interface Lsps2OptionsDto {
 }
 
 export interface Lsps2OptionsResponse extends Lsps2OptionsDto {
-  /** Set at startup only. */
+  /** Set at startup only. `PUT /lsps2/options` rejects this field. */
   advertise_service: boolean;
+}
+
+/** One JIT channel sold by this node's LSPS2 service. */
+export interface Lsps2JitChannelDto {
+  /** Whether this channel counts toward `max_unpaid_channels_per_peer` and `max_unpaid_channels_total`. */
+  counts_toward_unpaid_quota: boolean;
+  user_channel_id: string;
+  counterparty_node_id: string;
+  intercept_scid: U64;
+  /** One of `awaiting_payment`, `opening`, `awaiting_fee`, `fee_paid`, `closed`. */
+  state: string;
+  channel_id?: string | null;
+  /** When the first payment arrived. */
+  opened_at_unix_secs?: U64 | null;
+  /** When the offer the client bought expires. */
+  valid_until_unix_secs: U64;
+  min_lifetime: number;
+  amt_to_forward_msat?: U64 | null;
+  /** Opening fee collected so far. */
+  opening_fee_msat?: U64 | null;
+  fee_paid_at_unix_secs?: U64 | null;
+  rgb?: Lsps2JitRgbDto | null;
+  /** How this node closed the channel: `cooperative` or `force`. */
+  close_kind?: string | null;
+  channel_closed_at_unix_secs?: U64 | null;
+  /** Failed cooperative close attempts since the channel was due. */
+  close_attempts: number;
+  last_close_error?: string | null;
+  first_close_attempt_at_unix_secs?: U64 | null;
+  next_close_attempt_at_unix_secs?: U64 | null;
+}
+
+/** Terms an RGB JIT channel was sold with. */
+export interface Lsps2JitRgbDto {
+  contract_id: string;
+  asset_amount: U64;
+  lsp_asset_balance: U64;
+  lsp_balance_sat: U64;
+}
+
+export interface Lsps2JitChannelsResponse {
+  channels: Lsps2JitChannelDto[];
 }

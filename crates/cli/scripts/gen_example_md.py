@@ -119,7 +119,7 @@ COMMAND_TREE: dict[str, Any] = {
         "pricing": {"get": None, "set": None},
         "order": {"create": None, "get": None},
         "rgb-order": None,
-        "orders": {"ls": None, "get": None},
+        "orders": {"ls": None, "get": None, "cancel": None, "cancel-peer": None},
     },
     "lsps2": {
         "quote": None,
@@ -127,6 +127,7 @@ COMMAND_TREE: dict[str, Any] = {
         "rgb-quote": None,
         "rgb-invoice": None,
         "options": {"get": None, "set": None},
+        "jit-channels": None,
     },
     "swap": {
         "create": None,
@@ -2056,7 +2057,50 @@ def main() -> int:
                 ),
                 check=False,
             )
+
+            md.heading(3, "Retry-safe orders and operator cancel")
+            md.paragraph(
+                "`--client-request-id` makes a retry safe: running the same command again returns the "
+                "first order instead of placing a second one. The operator can cancel an order while it "
+                "is still awaiting payment, one by one or for a whole client.\n"
+            )
+            retry_order_cmd = (
+                f"rgbldk lsps1 order create --lsp {node_id_a} --lsp-balance-sat 100000 "
+                "--channel-expiry-blocks 4380 --client-request-id example-order-1"
+            )
+            retry_order_display = (
+                "rgbldk lsps1 order create --lsp <node_id_a> --lsp-balance-sat 100000 "
+                "--channel-expiry-blocks 4380 --client-request-id example-order-1"
+            )
+            retry_order = run_step_json(
+                retry_order_cmd, display_cmd=retry_order_display, retries=10, retry_sleep_s=2.0
+            )
+            retry_order_id = retry_order.get("order_id")
+            if not isinstance(retry_order_id, str) or not retry_order_id:
+                raise RuntimeError(f"Invalid order_id from lsps1 order create: {retry_order}")
+            retry_order_again = run_step_json(retry_order_cmd, display_cmd=retry_order_display)
+            if retry_order_again.get("order_id") != retry_order_id:
+                raise RuntimeError(f"Retry placed a second order: {retry_order_again}")
             run_step("rgbldk ctx use node-a")
+            run_step(
+                f"rgbldk lsps1 orders cancel {retry_order_id} --reason example",
+                display_cmd="rgbldk lsps1 orders cancel <order_id> --reason example",
+            )
+            run_step("rgbldk ctx use node-b")
+            run_step(
+                f"rgbldk lsps1 order create --lsp {node_id_a} --lsp-balance-sat 100000 "
+                "--channel-expiry-blocks 4380 --client-request-id example-order-2",
+                display_cmd=(
+                    "rgbldk lsps1 order create --lsp <node_id_a> --lsp-balance-sat 100000 "
+                    "--channel-expiry-blocks 4380 --client-request-id example-order-2"
+                ),
+            )
+            run_step("rgbldk ctx use node-a")
+            run_step(
+                f"rgbldk lsps1 orders cancel-peer {node_id_b}",
+                display_cmd="rgbldk lsps1 orders cancel-peer <node_id_b>",
+            )
+            run_step("rgbldk lsps1 orders ls")
 
             md.heading(2, "5c) LSPS2 JIT channels (node-b receives through a channel node-a opens on payment)")
             md.paragraph(
@@ -2090,17 +2134,35 @@ def main() -> int:
                 retries=10,
                 retry_sleep_s=2.0,
             )
-            run_step(
+            jit_invoice = run_step_json(
                 f"rgbldk lsps2 invoice --lsp {node_id_a} --amount-msat 50000000 --max-fee 2500000",
                 display_cmd="rgbldk lsps2 invoice --lsp <node_id_a> --amount-msat 50000000 --max-fee 2500000",
                 retries=10,
                 retry_sleep_s=2.0,
+            )
+            jit_payment_hash = jit_invoice.get("payment_hash")
+            if not isinstance(jit_payment_hash, str) or not jit_payment_hash:
+                raise RuntimeError(f"No payment_hash in lsps2 invoice: {jit_invoice}")
+            md.paragraph(
+                "The response carries the payment hash, the fee and the expiry. `pay get` follows the "
+                "payment by that hash.\n"
+            )
+            run_step(
+                f"rgbldk pay get {jit_payment_hash}",
+                display_cmd="rgbldk pay get <payment_hash>",
             )
             md.paragraph(
                 "The invoice is paid by any node with a route to node-a; node-b then sees a "
                 "`PaymentReceived` for the amount minus the fee, and `pay payments` lists it with kind "
                 "`Bolt11Jit`. This walkthrough has no third node, so the invoice is not paid here.\n"
             )
+            md.paragraph(
+                "The operator lists the JIT channels it sold, and the offers that were bought and not "
+                "paid yet, with `jit-channels`.\n"
+            )
+            run_step("rgbldk ctx use node-a")
+            run_step("rgbldk lsps2 jit-channels")
+            run_step("rgbldk ctx use node-b")
 
             md.heading(3, "Client: RGB JIT quote (node-b)")
             md.paragraph(

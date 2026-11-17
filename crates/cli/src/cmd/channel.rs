@@ -37,6 +37,25 @@ struct ChannelDetailsView {
 	is_usable: bool,
 	is_announced: bool,
 	rgb_balance: Option<RgbChannelBalanceView>,
+	/// Lease of a channel bought from an LSP.
+	#[serde(default)]
+	lsp: Option<ChannelLspLeaseView>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct ChannelLspLeaseView {
+	pubkey: String,
+	address: String,
+	protocol: String,
+	order_id: Option<String>,
+	#[serde(default)]
+	opening_fee_msat: Option<String>,
+	#[serde(default)]
+	cltv_expiry_delta: Option<u32>,
+	funded_at_height: u32,
+	expires_at_height: u32,
+	#[serde(flatten)]
+	rest: serde_json::Map<String, serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -56,6 +75,7 @@ pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
 				crate::ui::OutputMode::Json => print_json(&chans, app.pretty),
 				crate::ui::OutputMode::Text => {
 					let show_rgb = chans.iter().any(|c| c.rgb_balance.is_some());
+					let show_lsp = chans.iter().any(|c| c.lsp.is_some());
 					let rows = chans
 						.into_iter()
 						.map(|c| {
@@ -83,6 +103,14 @@ pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
 									row.extend(["-".into(), "-".into(), "-".into()]);
 								}
 							}
+							if show_lsp {
+								if let Some(lsp) = c.lsp {
+									row.push(lsp.protocol);
+									row.push(lsp.expires_at_height.to_string());
+								} else {
+									row.extend(["-".into(), "-".into()]);
+								}
+							}
 							row
 						})
 						.map(|mut r| {
@@ -105,6 +133,9 @@ pub(crate) async fn handle(app: &App, command: &ChannelCommand) {
 					];
 					if show_rgb {
 						headers.extend(["RGB Contract", "RGB Local", "RGB Remote"]);
+					}
+					if show_lsp {
+						headers.extend(["Lease", "Lease Ends (height)"]);
 					}
 					crate::ui::print_table(app.theme, &headers, rows);
 				},

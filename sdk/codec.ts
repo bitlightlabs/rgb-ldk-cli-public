@@ -18,8 +18,10 @@ import type {
   Lsps1OrderResponse,
   Lsps1PricingDto,
   Lsps1ServiceOrderDto,
+  Lsps1OrdersCancelResponse,
   Lsps1ServiceOrdersResponse,
   Lsps2InvoiceResponse,
+  Lsps2JitChannelsResponse,
   Lsps2OptionsResponse,
   Lsps2QuoteResponse,
   Lsps2RgbInvoiceResponse,
@@ -108,6 +110,13 @@ export function decodeChannelDetailsExtendedDto(value: unknown): ChannelDetailsE
   v.short_channel_id = decodeU64Nullable(v.short_channel_id);
   v.outbound_scid_alias = decodeU64Nullable(v.outbound_scid_alias);
   v.inbound_scid_alias = decodeU64Nullable(v.inbound_scid_alias);
+  if (v.lsp !== null && v.lsp !== undefined) {
+    const lsp = asRecord(v.lsp);
+    lsp.opening_fee_msat = decodeU64Nullable(lsp.opening_fee_msat);
+    lsp.funded_at_unix_secs = decodeU64(lsp.funded_at_unix_secs);
+    lsp.created_at_unix_secs = decodeU64(lsp.created_at_unix_secs);
+    v.lsp = lsp;
+  }
   return v as ChannelDetailsExtendedDto;
 }
 
@@ -298,6 +307,8 @@ export function decodePaymentDetailsDto(value: unknown): PaymentDetailsDto {
   const v = asRecord(value);
   v.amount_msat = decodeU64Nullable(v.amount_msat);
   v.fee_paid_msat = decodeU64Nullable(v.fee_paid_msat);
+  v.updated_at_unix_secs = decodeU64(v.updated_at_unix_secs);
+  v.expires_at_unix_secs = decodeU64Nullable(v.expires_at_unix_secs);
   return v as PaymentDetailsDto;
 }
 
@@ -519,6 +530,9 @@ export function decodeLsps1ServiceOrderDto(value: unknown): Lsps1ServiceOrderDto
   v.created_at_unix_secs = decodeU64(v.created_at_unix_secs);
   v.payment_expires_at_unix_secs = decodeU64(v.payment_expires_at_unix_secs);
   v.channel_closed_at_unix_secs = decodeU64Nullable(v.channel_closed_at_unix_secs);
+  v.first_close_attempt_at_unix_secs = decodeU64Nullable(v.first_close_attempt_at_unix_secs);
+  v.next_close_attempt_at_unix_secs = decodeU64Nullable(v.next_close_attempt_at_unix_secs);
+  v.cancelled_at_unix_secs = decodeU64Nullable(v.cancelled_at_unix_secs);
   if (v.rgb !== null && v.rgb !== undefined) {
     const rgb = asRecord(v.rgb);
     rgb.lsp_asset_balance = decodeU64(rgb.lsp_asset_balance);
@@ -533,6 +547,13 @@ export function decodeLsps1ServiceOrdersResponse(value: unknown): Lsps1ServiceOr
   const v = asRecord(value);
   v.orders = asArray(v.orders).map((o) => decodeLsps1ServiceOrderDto(o));
   return v as Lsps1ServiceOrdersResponse;
+}
+
+export function decodeLsps1OrdersCancelResponse(value: unknown): Lsps1OrdersCancelResponse {
+  const v = asRecord(value);
+  v.cancelled = asArray(v.cancelled).map((o) => decodeLsps1ServiceOrderDto(o));
+  v.skipped = asArray(v.skipped);
+  return v as Lsps1OrdersCancelResponse;
 }
 
 // ---- LSPS2 decoders ----
@@ -560,7 +581,13 @@ export function decodeLsps2QuoteResponse(value: unknown): Lsps2QuoteResponse {
 }
 
 export function decodeLsps2InvoiceResponse(value: unknown): Lsps2InvoiceResponse {
-  return asRecord(value) as Lsps2InvoiceResponse;
+  const v = asRecord(value);
+  v.amount_msat = decodeU64Nullable(v.amount_msat);
+  v.fee_msat = decodeU64Nullable(v.fee_msat);
+  v.fee_ppm = decodeU64Nullable(v.fee_ppm);
+  v.min_fee_msat = decodeU64Nullable(v.min_fee_msat);
+  v.expires_at_unix_secs = decodeU64(v.expires_at_unix_secs);
+  return v as Lsps2InvoiceResponse;
 }
 
 export function decodeLsps2RgbQuoteResponse(value: unknown): Lsps2RgbQuoteResponse {
@@ -599,4 +626,29 @@ export function decodeLsps2OptionsResponse(value: unknown): Lsps2OptionsResponse
   v.max_payment_size_msat = decodeU64(v.max_payment_size_msat);
   v.unpaid_channel_close_secs = decodeU64(v.unpaid_channel_close_secs);
   return v as Lsps2OptionsResponse;
+}
+
+export function decodeLsps2JitChannelsResponse(value: unknown): Lsps2JitChannelsResponse {
+  const v = asRecord(value);
+  v.channels = asArray(v.channels).map((channel) => {
+    const c = asRecord(channel);
+    c.intercept_scid = decodeU64(c.intercept_scid);
+    c.opened_at_unix_secs = decodeU64Nullable(c.opened_at_unix_secs);
+    c.valid_until_unix_secs = decodeU64(c.valid_until_unix_secs);
+    c.amt_to_forward_msat = decodeU64Nullable(c.amt_to_forward_msat);
+    c.opening_fee_msat = decodeU64Nullable(c.opening_fee_msat);
+    c.fee_paid_at_unix_secs = decodeU64Nullable(c.fee_paid_at_unix_secs);
+    c.channel_closed_at_unix_secs = decodeU64Nullable(c.channel_closed_at_unix_secs);
+    c.first_close_attempt_at_unix_secs = decodeU64Nullable(c.first_close_attempt_at_unix_secs);
+    c.next_close_attempt_at_unix_secs = decodeU64Nullable(c.next_close_attempt_at_unix_secs);
+    if (c.rgb !== null && c.rgb !== undefined) {
+      const rgb = asRecord(c.rgb);
+      rgb.asset_amount = decodeU64(rgb.asset_amount);
+      rgb.lsp_asset_balance = decodeU64(rgb.lsp_asset_balance);
+      rgb.lsp_balance_sat = decodeU64(rgb.lsp_balance_sat);
+      c.rgb = rgb;
+    }
+    return c;
+  });
+  return v as Lsps2JitChannelsResponse;
 }

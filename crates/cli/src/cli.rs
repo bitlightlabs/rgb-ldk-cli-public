@@ -503,7 +503,8 @@ pub struct Lsps1OrderCreateArgs {
 	/// Sats the LSP provides on its side (inbound liquidity bought).
 	#[arg(long)]
 	pub lsp_balance_sat: u64,
-	/// Sats pushed to this node's side (paid on top of the fee).
+	/// Sats on this node's side of the new channel, paid on top of the fee. Must be between the
+	/// LSP's `min_initial_client_balance_sat` and `max_initial_client_balance_sat` (see `lsps1 info`).
 	#[arg(long, default_value_t = 0)]
 	pub client_balance_sat: u64,
 	/// Channel lease duration in blocks.
@@ -512,6 +513,10 @@ pub struct Lsps1OrderCreateArgs {
 	/// Announce the channel to the network.
 	#[arg(long)]
 	pub announce_channel: bool,
+	/// Id of this request. Repeating the command with the same id and the same
+	/// parameters returns the first order instead of placing a second one.
+	#[arg(long)]
+	pub client_request_id: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -525,13 +530,15 @@ pub struct Lsps1RgbOrderArgs {
 	/// Asset units the LSP provides on its side.
 	#[arg(long)]
 	pub lsp_asset_balance: u64,
-	/// Asset units pushed to this node's side (buy-out, if offered).
+	/// Asset units on this node's side of the new channel. Buying assets with the channel is not
+	/// supported yet, so leave this at 0.
 	#[arg(long, default_value_t = 0)]
 	pub client_asset_balance: u64,
 	/// Sats the LSP provides on its side.
 	#[arg(long)]
 	pub lsp_balance_sat: u64,
-	/// Sats pushed to this node's side.
+	/// Sats on this node's side of the new channel, paid on top of the fee. Must be between the
+	/// LSP's `min_initial_client_balance_sat` and `max_initial_client_balance_sat` (see `lsps1 info`).
 	#[arg(long, default_value_t = 0)]
 	pub client_balance_sat: u64,
 	/// Channel lease duration in blocks.
@@ -540,6 +547,10 @@ pub struct Lsps1RgbOrderArgs {
 	/// Announce the channel to the network.
 	#[arg(long)]
 	pub announce_channel: bool,
+	/// Id of this request. Repeating the command with the same id and the same
+	/// parameters returns the first order instead of placing a second one.
+	#[arg(long)]
+	pub client_request_id: Option<String>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -548,6 +559,21 @@ pub enum Lsps1OrdersCommand {
 	Ls,
 	/// Fetch a served order by id.
 	Get { order_id: String },
+	/// Cancel a served order that is still awaiting payment.
+	Cancel {
+		order_id: String,
+		/// Operator note stored with the order.
+		#[arg(long)]
+		reason: Option<String>,
+	},
+	/// Cancel every unpaid order of one client.
+	CancelPeer {
+		/// The client's node pubkey, hex-encoded.
+		counterparty_node_id: String,
+		/// Operator note stored with each order.
+		#[arg(long)]
+		reason: Option<String>,
+	},
 }
 
 #[derive(Subcommand, Debug)]
@@ -565,6 +591,8 @@ pub enum Lsps2Command {
 		#[command(subcommand)]
 		command: Lsps1GetSetCommand,
 	},
+	/// Operator list of the JIT channels this node sold.
+	JitChannels,
 }
 
 #[derive(Args, Debug)]
@@ -611,7 +639,7 @@ pub struct Lsps2RgbQuoteArgs {
 	/// BTC the LSP puts into the channel.
 	#[arg(long)]
 	pub lsp_balance_sat: u64,
-	/// BTC carried by the payment, excluding the fee. Defaults to 354000.
+	/// BTC carried by the payment, excluding the fee. Minimum and default: 355000.
 	#[arg(long)]
 	pub btc_carrier_amount_msat: Option<u64>,
 }

@@ -1,6 +1,7 @@
 use rgbldk_http_client::dto::{
-	Lsps1InfoListResponse, Lsps1OptionsDto, Lsps1OrderCreateRequest, Lsps1OrderResponse,
-	Lsps1PricingDto, Lsps1RgbOrderCreateRequest, Lsps1ServiceOrderDto, Lsps1ServiceOrdersResponse,
+	Lsps1InfoListResponse, Lsps1OptionsDto, Lsps1OrderCancelRequest, Lsps1OrderCreateRequest,
+	Lsps1OrderResponse, Lsps1OrdersCancelRequest, Lsps1OrdersCancelResponse, Lsps1PricingDto,
+	Lsps1RgbOrderCreateRequest, Lsps1ServiceOrderDto, Lsps1ServiceOrdersResponse,
 };
 
 use crate::app::App;
@@ -64,6 +65,7 @@ pub(crate) async fn handle(app: &App, command: &Lsps1Command) {
 				client_balance_sat: args.client_balance_sat,
 				channel_expiry_blocks: args.channel_expiry_blocks,
 				announce_channel: args.announce_channel,
+				client_request_id: args.client_request_id.clone(),
 			};
 			let url = join_url(&app.base, "/api/v1/lsps1/rgb_order");
 			let resp: Lsps1OrderResponse =
@@ -83,6 +85,7 @@ async fn handle_order(app: &App, command: &Lsps1OrderCommand) {
 				client_balance_sat,
 				channel_expiry_blocks,
 				announce_channel,
+				client_request_id,
 			} = args;
 			let req = Lsps1OrderCreateRequest {
 				lsp_node_id: lsp.clone(),
@@ -90,6 +93,7 @@ async fn handle_order(app: &App, command: &Lsps1OrderCommand) {
 				client_balance_sat: *client_balance_sat,
 				channel_expiry_blocks: *channel_expiry_blocks,
 				announce_channel: *announce_channel,
+				client_request_id: client_request_id.clone(),
 			};
 			let url = join_url(&app.base, "/api/v1/lsps1/order");
 			let resp: Lsps1OrderResponse =
@@ -121,6 +125,23 @@ async fn handle_orders(app: &App, command: &Lsps1OrdersCommand) {
 			let order: Lsps1ServiceOrderDto =
 				send_json(app.client.get(url)).await.unwrap_or_else(|e| die(e));
 			print_json(&order, app.pretty);
+		},
+		Lsps1OrdersCommand::Cancel { order_id, reason } => {
+			let req = Lsps1OrderCancelRequest { reason: reason.clone() };
+			let url = join_url(&app.base, &format!("/api/v1/lsps1/orders/{order_id}/cancel"));
+			let order: Lsps1ServiceOrderDto =
+				send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+			print_json(&order, app.pretty);
+		},
+		Lsps1OrdersCommand::CancelPeer { counterparty_node_id, reason } => {
+			let req = Lsps1OrdersCancelRequest {
+				counterparty_node_id: counterparty_node_id.clone(),
+				reason: reason.clone(),
+			};
+			let url = join_url(&app.base, "/api/v1/lsps1/orders/cancel");
+			let resp: Lsps1OrdersCancelResponse =
+				send_json(app.client.post(url).json(&req)).await.unwrap_or_else(|e| die(e));
+			print_json(&resp, app.pretty);
 		},
 	}
 }
@@ -163,10 +184,11 @@ fn print_orders_table(app: &App, orders: &[rgbldk_http_client::dto::Lsps1Service
 				o.order_state.clone(),
 				o.payment_state.clone(),
 				o.paid_via.clone().unwrap_or_else(|| "-".into()),
+				o.failure_reason.clone().unwrap_or_else(|| "-".into()),
 			]
 		})
 		.collect::<Vec<_>>();
-	let headers = vec!["Order ID", "Counterparty", "Order", "Payment", "Paid Via"];
+	let headers = vec!["Order ID", "Counterparty", "Order", "Payment", "Paid Via", "Failure"];
 	ui::print_table(app.theme, &headers, rows);
 }
 

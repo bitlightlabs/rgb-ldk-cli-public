@@ -64,6 +64,10 @@ struct PaymentDetailsView {
 	payment_hash: Option<String>,
 	#[serde(default)]
 	htlc_locked: bool,
+	#[serde(default)]
+	updated_at_unix_secs: Option<String>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	expires_at_unix_secs: Option<String>,
 	kind_details: Option<serde_json::Value>,
 }
 
@@ -199,6 +203,14 @@ pub(crate) async fn handle(app: &App, command: &PayCommand) {
 						vec!["status".into(), status_value],
 						vec!["kind".into(), p.kind],
 						vec!["htlc_locked".into(), p.htlc_locked.to_string()],
+						vec![
+							"updated_at (unix secs)".into(),
+							p.updated_at_unix_secs.unwrap_or_else(|| "-".into()),
+						],
+						vec![
+							"expires_at (unix secs)".into(),
+							p.expires_at_unix_secs.unwrap_or_else(|| "-".into()),
+						],
 						vec![
 							"kind_details".into(),
 							p.kind_details

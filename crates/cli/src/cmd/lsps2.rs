@@ -1,7 +1,7 @@
 use rgbldk_http_client::dto::{
-	Lsps2InvoiceRequest, Lsps2InvoiceResponse, Lsps2OptionsDto, Lsps2OptionsResponse,
-	Lsps2QuoteRequest, Lsps2QuoteResponse, Lsps2RgbInvoiceRequest, Lsps2RgbInvoiceResponse,
-	Lsps2RgbQuoteRequest, Lsps2RgbQuoteResponse,
+	Lsps2InvoiceRequest, Lsps2InvoiceResponse, Lsps2JitChannelDto, Lsps2JitChannelsResponse,
+	Lsps2OptionsDto, Lsps2OptionsResponse, Lsps2QuoteRequest, Lsps2QuoteResponse,
+	Lsps2RgbInvoiceRequest, Lsps2RgbInvoiceResponse, Lsps2RgbQuoteRequest, Lsps2RgbQuoteResponse,
 };
 
 use crate::app::App;
@@ -73,15 +73,64 @@ pub(crate) async fn handle(app: &App, command: &Lsps2Command) {
 				print_json(&opts, app.pretty);
 			},
 			Lsps1GetSetCommand::Set(args) => {
-				// `options get` output can be fed back as is: `advertise_service` is ignored.
-				let body: Lsps2OptionsDto = read_json_arg(args);
+				// The node rejects `advertise_service` in the body. It is dropped here so that the
+				// output of `options get` can be edited and fed back.
+				let mut doc: serde_json::Value = read_json_arg(args);
+				if let Some(fields) = doc.as_object_mut() {
+					fields.remove("advertise_service");
+				}
+				let body: Lsps2OptionsDto = serde_json::from_value(doc)
+					.unwrap_or_else(|e| die(format!("invalid JSON: {e}")));
 				let url = join_url(&app.base, "/api/v1/lsps2/options");
 				let updated: Lsps2OptionsResponse =
 					send_json(app.client.put(url).json(&body)).await.unwrap_or_else(|e| die(e));
 				print_json(&updated, app.pretty);
 			},
 		},
+		Lsps2Command::JitChannels => {
+			let url = join_url(&app.base, "/api/v1/lsps2/jit_channels");
+			let resp: Lsps2JitChannelsResponse =
+				send_json(app.client.get(url)).await.unwrap_or_else(|e| die(e));
+			match app.output {
+				ui::OutputMode::Json => print_json(&resp, app.pretty),
+				ui::OutputMode::Text => print_jit_channels_table(app, &resp.channels),
+			}
+		},
 	}
+}
+
+fn print_jit_channels_table(app: &App, channels: &[Lsps2JitChannelDto]) {
+	if channels.is_empty() {
+		println!("No JIT channels sold.");
+		return;
+	}
+	let short = |id: &str| if app.no_truncate { id.to_string() } else { ui::truncate_id(id) };
+	let rows = channels
+		.iter()
+		.map(|c| {
+			vec![
+				short(&c.counterparty_node_id),
+				c.state.clone(),
+				c.channel_id.as_deref().map(short).unwrap_or_else(|| "-".into()),
+				if c.rgb.is_some() { "RGB".into() } else { "BTC".into() },
+				c.opening_fee_msat.map(|fee| fee.to_string()).unwrap_or_else(|| "-".into()),
+				c.counts_toward_unpaid_quota.to_string(),
+				c.close_kind.clone().unwrap_or_else(|| "-".into()),
+				c.close_attempts.to_string(),
+			]
+		})
+		.collect::<Vec<_>>();
+	let headers = vec![
+		"Counterparty",
+		"State",
+		"Channel ID",
+		"Kind",
+		"Fee (msat)",
+		"Unpaid Quota",
+		"Closed By",
+		"Close Attempts",
+	];
+	ui::print_table(app.theme, &headers, rows);
 }
 
 fn rgb_quote(args: &Lsps2RgbQuoteArgs) -> Lsps2RgbQuoteRequest {

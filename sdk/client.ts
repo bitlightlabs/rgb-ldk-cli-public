@@ -31,14 +31,18 @@ import {
   LspListResponse,
   Lsps1InfoListResponse,
   Lsps1OptionsDto,
+  Lsps1OrderCancelRequest,
   Lsps1OrderCreateRequest,
   Lsps1OrderResponse,
+  Lsps1OrdersCancelRequest,
+  Lsps1OrdersCancelResponse,
   Lsps1PricingDto,
   Lsps1RgbOrderCreateRequest,
   Lsps1ServiceOrderDto,
   Lsps1ServiceOrdersResponse,
   Lsps2InvoiceRequest,
   Lsps2InvoiceResponse,
+  Lsps2JitChannelsResponse,
   Lsps2OptionsDto,
   Lsps2OptionsResponse,
   Lsps2QuoteRequest,
@@ -125,10 +129,12 @@ import {
   decodeLsps1InfoListResponse,
   decodeLsps1OptionsDto,
   decodeLsps1OrderResponse,
+  decodeLsps1OrdersCancelResponse,
   decodeLsps1PricingDto,
   decodeLsps1ServiceOrderDto,
   decodeLsps1ServiceOrdersResponse,
   decodeLsps2InvoiceResponse,
+  decodeLsps2JitChannelsResponse,
   decodeLsps2OptionsResponse,
   decodeLsps2QuoteResponse,
   decodeLsps2RgbInvoiceResponse,
@@ -951,6 +957,27 @@ export class NodeHttpClient {
     ) as Promise<Lsps1ServiceOrderDto>;
   }
 
+  // POST /lsps1/orders/{order_id}/cancel
+  lsps1CancelServedOrder(
+    orderId: string,
+    req: Lsps1OrderCancelRequest = {},
+    options?: RequestOptions
+  ): Promise<Lsps1ServiceOrderDto> {
+    return this.request<unknown>("POST", `/lsps1/orders/${orderId}/cancel`, req, options).then((v) =>
+      decodeLsps1ServiceOrderDto(v)
+    ) as Promise<Lsps1ServiceOrderDto>;
+  }
+
+  // POST /lsps1/orders/cancel
+  lsps1CancelServedOrdersOfPeer(
+    req: Lsps1OrdersCancelRequest,
+    options?: RequestOptions
+  ): Promise<Lsps1OrdersCancelResponse> {
+    return this.request<unknown>("POST", "/lsps1/orders/cancel", req, options).then((v) =>
+      decodeLsps1OrdersCancelResponse(v)
+    ) as Promise<Lsps1OrdersCancelResponse>;
+  }
+
   // POST /lsps2/quote
   lsps2Quote(req: Lsps2QuoteRequest, options?: RequestOptions): Promise<Lsps2QuoteResponse> {
     return this.request<unknown>("POST", "/lsps2/quote", req, options).then((v) =>
@@ -991,6 +1018,13 @@ export class NodeHttpClient {
     return this.request<unknown>("PUT", "/lsps2/options", req, options).then((v) =>
       decodeLsps2OptionsResponse(v)
     ) as Promise<Lsps2OptionsResponse>;
+  }
+
+  // GET /lsps2/jit_channels
+  lsps2JitChannels(options?: RequestOptions): Promise<Lsps2JitChannelsResponse> {
+    return this.request<unknown>("GET", "/lsps2/jit_channels", undefined, options).then((v) =>
+      decodeLsps2JitChannelsResponse(v)
+    ) as Promise<Lsps2JitChannelsResponse>;
   }
 }
 

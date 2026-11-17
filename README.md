@@ -54,9 +54,25 @@ Every purchase names the LSP it buys from with `--lsp <pubkey>`.
 rgbldk lsp add --pubkey <lsp_pubkey> --address 203.0.113.5:9735 --trust-0conf
 rgbldk lsp ls
 rgbldk lsps1 info                                   # all LSPS1 LSPs, or --lsp <pubkey>
-rgbldk lsps1 order create --lsp <lsp_pubkey> --lsp-balance-sat 100000 --channel-expiry-blocks 4380
+rgbldk lsps1 order create --lsp <lsp_pubkey> --lsp-balance-sat 100000 --channel-expiry-blocks 4380 \
+  --client-request-id order-2026-11-16-a
 rgbldk lsp rm <lsp_pubkey>
 ```
+
+`--client-request-id` makes a retry safe. It works the same on `lsps1 rgb-order`.
+
+- Same id, same parameters: the first order is returned. No second order is placed.
+- Same id, different parameters: 409 `idempotency_key_reused`.
+- An earlier request with the id was sent and got no answer: 409 `outcome_unknown`.
+  The order may or may not exist at the LSP. Use a new id to place a new order.
+
+`--client-balance-sat` (default 0) must be between the LSP's `min_initial_client_balance_sat`
+and `max_initial_client_balance_sat`, shown by `rgbldk lsps1 info`. A value outside that range
+is rejected with 400. It works the same on `lsps1 rgb-order`.
+
+`rgbldk channel ls` shows a `Lease` column for channels bought from an LSP
+(`lsps1` or `lsps2`) and the chain height at which the lease ends. The JSON
+output has the full lease under `lsp`.
 
 - `--trust-0conf`: use channels from this LSP before the funding confirms. JIT
   channels (LSPS2) need it.
@@ -120,9 +136,38 @@ Minimal example (`crates/cli/lsps1-service.json`):
 | `channel_expiry_grace_blocks` | u32 | `144` | Grace blocks before an expired lease is closed. |
 | `late_deposit_refund_window_secs` | u64 | `2592000` | Window for auto-refunding a late deposit (30 days). |
 | `onchain_open_timeout_blocks` | u32 | `144` | Blocks an on-chain-paid order keeps retrying the channel open while the client is unreachable, before it is refunded. |
+| `force_close_after_blocks` | u32 | `0` | Force-close a channel that is still open this many blocks after it was due to close. `0` never force-closes. Any other value must be at least 144. |
+| `accept_new_orders` | bool | `true` | `false` pauses the service: new orders are refused, existing orders are still served. |
+| `max_unpaid_orders_per_peer` | u32 | `5` | Orders one client may have awaiting payment. |
+| `max_unpaid_orders_total` | u32 | `100` | The same, across all clients. |
 
 The `default_*` fields set the pricing until the first `PUT /lsps1/pricing`;
 after that the persisted pricing is used.
+
+### Operating the service
+
+```bash
+rgbldk lsps1 orders ls
+rgbldk lsps1 orders cancel <order_id> --reason "price changed"
+rgbldk lsps1 orders cancel-peer <client_pubkey>
+```
+
+- `orders cancel` works only while the order awaits payment and no deposit to its
+  on-chain address has been seen. Otherwise it fails with 409. A cancelled order
+  is `failed` with `failure_reason` `cancelled`. A lightning payment that still
+  arrives is failed back right away. A later on-chain deposit is refunded.
+- `orders cancel-peer` cancels every unpaid order of one client and lists the
+  ones it had to skip.
+- To pause the service, set `service.accept_new_orders` to `false` with
+  `lsps1 options set`. The setting survives a restart.
+- `PUT /lsps1/options` replaces the whole document and rejects unknown fields
+  with 400. `service.accept_new_orders` is required. Start from the output of
+  `lsps1 options get`.
+
+When a lease ends, the LSP closes the channel cooperatively. An attempt while
+the client is offline does not count as a failure. Failed attempts back off
+exponentially, up to one hour apart. `orders get` shows `close_attempts`,
+`last_close_error` and `next_close_attempt_at_unix_secs`.
 
 ## LSPS2 service (JIT channels)
 
@@ -162,10 +207,16 @@ rgbldk lsps2 rgb-invoice --lsp <lsp_pubkey> --contract-id <contract_id> \
   with the yearly rent rates of the LSPS1 pricing applied for `min_lifetime`
   blocks. `--lsp-asset-balance` beyond `--asset-amount` stays in the channel as
   inbound capacity for later RGB payments. The payer pays
-  `--btc-carrier-amount-msat` (default 354000) plus the fee; the client receives
+  `--btc-carrier-amount-msat` (default 355000) plus the fee; the client receives
   the carrier and the asset.
 - `rgb-invoice` fails with 409 `fee_above_limit` if the LSP's fee is above
   `--max-fee-sat`; pass the `estimated_fee.fee_sat` from `rgb-quote`.
+- With `--output json`, `invoice` also returns `payment_hash`, the fee
+  (`fee_msat` for a fixed amount, `fee_ppm` and `min_fee_msat` for a variable
+  amount), `expires_at_unix_secs` and `min_lifetime`. `rgbldk pay get <payment_hash>`
+  follows the payment and shows when it last changed and when it expires.
+- A refusal by the LSP comes back at once as 400 `lsp_rejected` with the LSP's
+  code and message. A paused LSP answers 503 `jit_service_disabled`.
 
 The LSP closes a JIT channel itself: if the opening fee never arrives,
 `unpaid_channel_close_secs` after the offer expired (offers are valid 24 hours);
@@ -203,10 +254,28 @@ strings) into this file.
 | `max_unpaid_channels_per_peer` | u32 | `1` | JIT channels one client may have open with the fee still outstanding, BTC and RGB together. |
 | `max_unpaid_channels_total` | u32 | `10` | The same, across all clients. |
 | `unpaid_channel_close_secs` | u64 | `86400` | Seconds after the offer expired when a channel whose fee never arrived is closed. |
+| `accept_new_channels` | bool | `true` | `false` pauses the service: no new JIT channel is sold, existing channels are not affected. |
 
 Past either unpaid-channel limit, new purchases are refused. The limit is
 checked again when the payment arrives, so a payment to an invoice bought
-earlier can fail too.
+earlier can fail too. Both limits must be at least 1. To stop selling, use
+`accept_new_channels`.
+
+### Operating the service
+
+```bash
+rgbldk lsps2 jit-channels
+rgbldk lsps2 options get > options.json   # edit, e.g. "accept_new_channels": false
+rgbldk lsps2 options set --json options.json
+```
+
+- `jit-channels` lists every JIT channel this node sold, also after it was
+  closed, plus offers that were bought and not paid yet. It shows the state,
+  the fee collected, and how closing is going.
+- `PUT /lsps2/options` replaces the whole document and rejects unknown fields
+  with 400. `accept_new_channels` is required. `options set` drops
+  `advertise_service` from the document, so the output of `options get` can be
+  edited and fed back.
 
 ## Offline debugging (invoice + consignment)
 
